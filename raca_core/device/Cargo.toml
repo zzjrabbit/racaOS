@@ -1,0 +1,23 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "device"
+version = "0.1.0"
+edition = "2021"
+forced-target = "x86_64-unknown-none"
+
+[dependencies]
+limine = "0.2.0"
+spin = "0.9.8"
+x86_64 = "0.15.1"
+
+[dependencies.framework]
+path = "../framework"
+
+[dependencies.conquer-once]
+version = "0.4.0"
+default-features = false
+
+[dependencies.log]
+version = "0.4.22"
+default-features = false
