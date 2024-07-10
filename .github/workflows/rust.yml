@@ -17,5 +17,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: rustup target add x86_64-unknown-none;rustup target add x86_64-unknown-uefi;python build.py -b -r
+      run: rustup default nightly;rustup target add x86_64-unknown-none;rustup target add x86_64-unknown-uefi;python build.py -b -r
       
