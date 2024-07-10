@@ -1,0 +1,21 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "edition14" ]
+  pull_request:
+    branches: [ "edition14" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: python build.py -b -r
+      
