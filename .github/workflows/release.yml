@@ -1,0 +1,38 @@
+name: Create Release  
+  
+on:  
+  push:  
+    tags:  
+      - 'v*' # 监听以v开头的标签，如v1.0.0  
+  
+jobs:  
+  build:  
+    name: Build and Release  
+    runs-on: ubuntu-latest  
+    steps:  
+      - name: Checkout code  
+        uses: actions/checkout@v4  
+  
+      - name: Build your project  
+        run: rustup default nightly;rustup target add x86_64-unknown-none;rustup target add x86_64-unknown-uefi; rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu;python build.py -b;zip -r ./boot.zip ./esp
+   
+      - name: Create Release  
+        id: create_release  
+        uses: actions/create-release@v1  
+        env:  
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+        with:  
+          tag_name: ${{ github.ref }}  
+          release_name: Release ${{ github.ref }}  
+          draft: false  
+          prerelease: false  
+  
+      - name: Upload Release Asset  
+        uses: actions/upload-release-asset@v1  
+        env:  
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+        with:  
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  
+          asset_path: ./boot.zip # 替换为你的构建产物路径  
+          asset_name: boot.zip # 可以是任意名称  
+          asset_content_type: application/zip
