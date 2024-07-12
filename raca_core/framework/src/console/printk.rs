@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
-use conquer_once::spin::OnceCell;
 use super::display::*;
+use conquer_once::spin::OnceCell;
 use noto_sans_mono_bitmap::{get_raster, get_raster_width, FontWeight, RasterHeight};
 use spin::Mutex;
 use x86_64::instructions::interrupts::without_interrupts;
@@ -51,7 +51,12 @@ impl Printk {
         }
         for y in 0..FONT_HEIGHT as usize {
             for x in 0..FONT_WIDTH {
-                self.display.write_pixel(self.row_position + x, self.column_position + y, self.color, 0);
+                self.display.write_pixel(
+                    self.row_position + x,
+                    self.column_position + y,
+                    self.color,
+                    0,
+                );
             }
         }
     }
@@ -66,7 +71,12 @@ impl Printk {
         let rendered = get_raster(byte, FONT_WEIGHT, FONT_HEIGHT).unwrap();
         for (y, lines) in rendered.raster().iter().enumerate() {
             for (x, column) in lines.iter().enumerate() {
-                self.display.write_pixel(self.row_position + x, self.column_position + y, self.color, *column);
+                self.display.write_pixel(
+                    self.row_position + x,
+                    self.column_position + y,
+                    self.color,
+                    *column,
+                );
             }
         }
         self.row_position += rendered.width();

@@ -3,8 +3,9 @@
 
 use alloc::vec;
 use framework::{
+    arch::apic::get_lapic_id,
     init_framework, println,
-    task::{scheduler::SCHEDULER, Process},
+    task::{scheduler::SCHEDULERS, Process},
     user::regist_syscall_handler,
 };
 use limine::BaseRevision;
@@ -20,9 +21,9 @@ static BASE_REVISION: BaseRevision = BaseRevision::with_revision(1);
 pub extern "C" fn _start() {
     init_framework();
     regist_syscall_handler(syscall_handler);
-    //Process::new_user_process("Hello1", include_bytes!("../../../apps/hello1.rae"));
+    Process::new_user_process("Hello1", include_bytes!("../../../apps/hello1.rae"));
     println!("Hello, Frame Kernel!");
-    x86_64::instructions::interrupts::enable();
+    framework::start_schedule();
     loop {}
 }
 
@@ -42,10 +43,10 @@ pub fn syscall_handler(
             let buf_len = arg2;
             let mut buf = vec![0; buf_len];
 
-            framework::println!("read : {:x}", buf_addr);
-
-            if let Err(_) = SCHEDULER
+            if let Err(_) = SCHEDULERS
                 .read()
+                .get(&get_lapic_id())
+                .unwrap()
                 .current_thread
                 .read()
                 .process
@@ -58,7 +59,11 @@ pub fn syscall_handler(
                 panic!("Read error at {:x}!", buf_addr);
             }
 
-            framework::println!("{}", core::str::from_utf8(buf.as_slice()).unwrap());
+            framework::print!("{}", core::str::from_utf8(buf.as_slice()).unwrap());
+        }
+        1 => {
+            framework::print!("[{}]",framework::arch::apic::get_lapic_id());
+            // 在这里输出当前线程所在的CPU的lapic id
         }
         _ => {}
     }

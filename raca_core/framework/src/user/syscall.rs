@@ -6,22 +6,14 @@ use x86_64::registers::rflags::RFlags;
 use x86_64::VirtAddr;
 
 use crate::arch::gdt::Selectors;
-use crate::arch::smp::CPUS;
 
 pub fn init() {
-    unsafe {
-        CPUS.force_unlock();
-    }
-
     let handler_addr = syscall_handler as *const () as u64;
 
     SFMask::write(RFlags::INTERRUPT_FLAG);
     LStar::write(VirtAddr::new(handler_addr as u64));
 
     let (code_selector, data_selector) = Selectors::get_kernel_segments();
-    unsafe {
-        CPUS.force_unlock();
-    }
     let (user_code_selector, user_data_selector) = Selectors::get_user_segments();
 
     Star::write(

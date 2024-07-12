@@ -5,6 +5,5 @@ pub mod stack;
 pub mod thread;
 
 pub use process::Process;
-pub use thread::Thread;
 pub use scheduler::init;
-
+pub use thread::Thread;

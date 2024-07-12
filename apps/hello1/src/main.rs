@@ -21,6 +21,18 @@ pub extern "C" fn syscall2(_rax: u64, _rdi: *const u8, _rsi: usize) -> usize {
     }
 }
 
+#[naked]
+pub extern "C" fn syscall3(_rax: u64) {
+    unsafe {
+        core::arch::asm!(
+            "mov rax, rdi",
+            "syscall",
+            "ret",
+            options(noreturn)
+        )
+    }
+}
+
 pub fn write(buffer: *const u8, length: usize) -> usize {
     const WRITE_SYSCALL_NUMBER: u64 = 0;
     syscall2(WRITE_SYSCALL_NUMBER, buffer, length)
@@ -29,6 +41,7 @@ pub fn write(buffer: *const u8, length: usize) -> usize {
 #[no_mangle]
 pub fn _start() {
     loop {
-        write("[Hello]".as_ptr(),7);
+        //write("[racaOS]".as_ptr(),6);
+        syscall3(1);
     }
 }

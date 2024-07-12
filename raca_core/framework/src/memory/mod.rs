@@ -50,4 +50,3 @@ pub fn create_page_table_from_kernel() -> GeneralPageTable {
         unsafe { GeneralPageTable::new_from_address(&mut frame_allocator, page_table_address) }
     })
 }
-

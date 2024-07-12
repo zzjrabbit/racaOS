@@ -1,3 +1,4 @@
+use core::sync::atomic::{AtomicBool, Ordering};
 use core::{cell::UnsafeCell, ptr};
 use x86_64::PhysAddr;
 
@@ -5,6 +6,7 @@ use crate::arch::acpi::ACPI;
 use crate::memory::convert_physical_to_virtual;
 
 pub static HPET: Hpet = Hpet::uninit();
+pub static HPET_INIT: AtomicBool = AtomicBool::new(false);
 
 pub fn init() {
     let acpi = ACPI.try_get().unwrap();
@@ -16,6 +18,8 @@ pub fn init() {
 
     log::debug!("HPET clock speed: {} femto seconds", HPET.clock_speed());
     log::debug!("HPET timers: {} available", HPET.timers_count());
+
+    HPET_INIT.store(true, Ordering::Relaxed);
 }
 
 pub struct Hpet {

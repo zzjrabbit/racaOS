@@ -200,7 +200,7 @@ impl CleanUp for GeneralPageTable {
 }
 
 impl GeneralPageTable {
-    pub fn read(&self, addr: VirtAddr, len: usize, buf: &mut [u8]) -> Result<(),()> {
+    pub fn read(&self, addr: VirtAddr, len: usize, buf: &mut [u8]) -> Result<(), ()> {
         let start_addr = addr;
         let end_addr = addr + len as u64;
 
@@ -209,14 +209,14 @@ impl GeneralPageTable {
         for addr in start_addr..end_addr {
             let phys_addr = if let Some(addr) = self.translate_addr(addr) {
                 addr
-            }else {
+            } else {
                 return Err(());
             };
 
             let kernel_virt_addr = convert_physical_to_virtual(phys_addr);
 
             let reffer = kernel_virt_addr.as_u64() as *const u8;
-            buf[idx] = unsafe{reffer.read()};
+            buf[idx] = unsafe { reffer.read() };
 
             idx += 1;
         }
@@ -224,7 +224,7 @@ impl GeneralPageTable {
         Ok(())
     }
 
-    pub fn write(&self, buf: &[u8], addr: VirtAddr) -> Result<(),()> {
+    pub fn write(&self, buf: &[u8], addr: VirtAddr) -> Result<(), ()> {
         let start_addr = addr;
         let end_addr = addr + buf.len() as u64;
 
@@ -233,7 +233,7 @@ impl GeneralPageTable {
         for addr in start_addr..end_addr {
             let phys_addr = if let Some(addr) = self.translate_addr(addr) {
                 addr
-            }else {
+            } else {
                 return Err(());
             };
 

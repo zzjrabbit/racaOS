@@ -9,11 +9,11 @@ use x86_64::instructions::interrupts;
 use x86_64::structures::paging::PageTableFlags;
 use x86_64::VirtAddr;
 
-use super::scheduler::SCHEDULER;
 use super::thread::{SharedThread, Thread};
 use crate::memory::GeneralPageTable;
 use crate::memory::MemoryManager;
 use crate::memory::{create_page_table_from_kernel, KERNEL_PAGE_TABLE};
+use crate::task::scheduler::add_process;
 
 pub(super) type SharedProcess = Arc<RwLock<Process>>;
 pub(super) type WeakSharedProcess = Weak<RwLock<Process>>;
@@ -58,9 +58,9 @@ impl Process {
         let binary = ProcessBinary::parse(elf_data);
         let process = Arc::new(RwLock::new(Self::new(name)));
         ProcessBinary::map_segments(&binary, &mut process.write().page_table);
-        log::info!("User Entry Point: {:x}",binary.entry());
+        log::info!("User Entry Point: {:x}", binary.entry());
         Thread::new_user_thread(Arc::downgrade(&process), binary.entry() as usize);
-        SCHEDULER.write().add(process.clone());
+        add_process(process.clone());
         process
     }
 }

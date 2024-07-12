@@ -1,5 +1,5 @@
-use limine::request::FramebufferRequest;
 use core::slice::from_raw_parts_mut;
+use limine::request::FramebufferRequest;
 
 #[used]
 #[link_section = ".requests"]
@@ -60,10 +60,11 @@ impl Display {
         let response = FRAMEBUFFER_REQUEST.get_response().unwrap();
         let frame_buffer = response.framebuffers().last().take().unwrap();
 
-        let mode = frame_buffer.modes().unwrap().last().take().unwrap();
+        //let mode = frame_buffer.modes().unwrap().last().take().unwrap();
+        //mode.
 
-        let width = mode.width as _;
-        let height = mode.height as _;
+        let width = frame_buffer.width() as _;
+        let height = frame_buffer.height() as _;
 
         let pixel_format = match (
             frame_buffer.red_mask_shift(),
@@ -94,7 +95,7 @@ impl Display {
         }
     }
 
-    pub fn write_pixel(&mut self , x: usize, y: usize, color: Color, intensity: u8) {
+    pub fn write_pixel(&mut self, x: usize, y: usize, color: Color, intensity: u8) {
         assert!(x < self.width);
         assert!(y < self.height);
 
@@ -103,5 +104,6 @@ impl Display {
 
         let color = color.get_color_pixel(self.pixel_format, intensity);
         self.buffer[write_range].copy_from_slice(&color[..self.bytes_per_pixel]);
+        // ? Looking 6I'm going to eat you.[dodge]
     }
 }

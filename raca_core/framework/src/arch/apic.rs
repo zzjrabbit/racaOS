@@ -9,11 +9,10 @@ use super::interrupts::InterruptIndex;
 use crate::drivers::hpet::HPET;
 use crate::memory::convert_physical_to_virtual;
 
-const TIMER_FREQUENCY_HZ: u32 = 5;
+const TIMER_FREQUENCY_HZ: u32 = 200;
 const TIMER_CALIBRATION_ITERATION: u32 = 100;
 const IOAPIC_INTERRUPT_INDEX_OFFSET: u8 = 32;
 
-pub static LAPIC: OnceCell<Mutex<LocalApic>> = OnceCell::uninit();
 pub static IOAPIC: OnceCell<Mutex<IoApic>> = OnceCell::uninit();
 
 #[derive(Debug, Clone, Copy)]
@@ -25,21 +24,10 @@ pub enum IrqVector {
 
 pub fn init() {
     unsafe {
-        //init_lapic();
-        //calibrate_timer();
         disable_pic();
         init_ioapic();
     };
     log::info!("APIC initialized successfully!");
-}
-
-pub fn init_ap() {
-    /*unsafe {
-        while !LAPIC.is_initialized() {}
-        LAPIC.try_get().unwrap().lock().enable();
-        calibrate_timer();
-        LAPIC.try_get().unwrap().lock().enable_timer();
-    }*/
 }
 
 #[inline]
@@ -71,40 +59,21 @@ pub fn get_lapic() -> LocalApic {
 pub fn get_lapic_id() -> u32 {
     unsafe {
         LocalApicBuilder::new()
-        .timer_vector(InterruptIndex::Timer as usize)
-        .timer_mode(TimerMode::OneShot)
-        .timer_initial(0)
-        .error_vector(InterruptIndex::ApicError as usize)
-        .spurious_vector(InterruptIndex::ApicSpurious as usize)
-        .set_xapic_base(get_lapic_addr().as_u64())
-        .build()
-        .unwrap_or_else(|err| panic!("Failed to build local APIC: {:#?}", err)).id()
+            .timer_vector(InterruptIndex::Timer as usize)
+            .timer_mode(TimerMode::OneShot)
+            .timer_initial(0)
+            .error_vector(InterruptIndex::ApicError as usize)
+            .spurious_vector(InterruptIndex::ApicSpurious as usize)
+            .set_xapic_base(get_lapic_addr().as_u64())
+            .build()
+            .unwrap_or_else(|err| panic!("Failed to build local APIC: {:#?}", err))
+            .id()
     }
 }
 
 unsafe fn disable_pic() {
     Port::<u8>::new(0x21).write(0xff);
     Port::<u8>::new(0xa1).write(0xff);
-}
-
-pub unsafe fn init_lapic() {
-    let acpi = super::acpi::ACPI.try_get().unwrap();
-    let physical_address = PhysAddr::new(acpi.apic_info.local_apic_address as u64);
-    let virtual_address = convert_physical_to_virtual(physical_address);
-
-    let mut lapic = LocalApicBuilder::new()
-        .timer_vector(InterruptIndex::Timer as usize)
-        .timer_mode(TimerMode::OneShot)
-        .timer_initial(0)
-        .error_vector(InterruptIndex::ApicError as usize)
-        .spurious_vector(InterruptIndex::ApicSpurious as usize)
-        .set_xapic_base(virtual_address.as_u64())
-        .build()
-        .unwrap_or_else(|err| panic!("Failed to build local APIC: {:#?}", err));
-
-    lapic.enable();
-
-    LAPIC.init_once(|| Mutex::new(lapic));
 }
 
 unsafe fn init_ioapic() {
@@ -121,7 +90,7 @@ unsafe fn init_ioapic() {
 }
 
 unsafe fn ioapic_add_entry(irq: IrqVector, vector: InterruptIndex) {
-    let lapic = LAPIC.try_get().unwrap().lock();
+    let lapic = get_lapic();
     let mut ioapic = IOAPIC.try_get().unwrap().lock();
     let mut entry = RedirectionTableEntry::default();
     entry.set_mode(IrqMode::Fixed);
@@ -132,7 +101,7 @@ unsafe fn ioapic_add_entry(irq: IrqVector, vector: InterruptIndex) {
 }
 
 pub unsafe fn calibrate_timer(lapic: &mut LocalApic) {
-    log::info!("Processor {} timer!",lapic.id());
+    log::info!("Processor {} timer!", lapic.id());
 
     let mut lapic_total_ticks = 0;
     let hpet_clock_speed = HPET.clock_speed() as u64;
