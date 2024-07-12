@@ -36,6 +36,7 @@ pub fn init_framework() {
     arch::apic::init();
     drivers::mouse::init();
     drivers::keyboard::init();
+    //drivers::pci::init();
     user::init();
     task::scheduler::init();
 }

@@ -8,7 +8,7 @@ rust_output = ["device"]
 rust_copy_to = ["RACA/system64/core.sys"]
 rust_target_file = ["none"]
 asm_files = []
-apps = ["hello1"]
+apps = ["hello1" ,"hello2"]
 in_test = [False,False]
 
 def run_command(command):

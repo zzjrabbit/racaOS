@@ -35,7 +35,7 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     crate::println!("Processor: {} after calibrate_timer", smp_info.id);
 
     while !SCHEDULER_INIT.load(Ordering::Relaxed) {}
-    SCHEDULERS.write().insert(smp_info.id, Scheduler::new());
+    SCHEDULERS.lock().insert(smp_info.id, Scheduler::new());
     crate::println!("Processor: {} after SCHEDULER_INIT", smp_info.id);
 
     user::init();

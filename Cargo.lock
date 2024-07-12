@@ -76,11 +76,15 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 name = "device"
 version = "0.1.0"
 dependencies = [
+ "bit_field",
+ "bitflags 2.6.0",
  "conquer-once",
  "framework",
  "limine",
  "log",
+ "pci",
  "spin",
+ "volatile 0.3.0",
  "x86_64 0.15.1",
 ]
 
@@ -105,6 +109,7 @@ dependencies = [
  "noto-sans-mono-bitmap",
  "object",
  "pc-keyboard",
+ "pci",
  "spin",
  "uart_16550",
  "x2apic",
@@ -180,6 +185,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed089a1fbffe3337a1a345501c981f1eb1e47e69de5a40e852433e12953c3174"
 
 [[package]]
+name = "pci"
+version = "0.0.1"
+source = "git+https://gitee.com/rcore-os/pci-rs/#a4e7cea640f8a92ae4b51c6c51fee3f1f0317af2"
+dependencies = [
+ "bitflags 1.3.2",
+]
+
+[[package]]
 name = "raw-cpuid"
 version = "10.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -222,6 +235,12 @@ dependencies = [
 
 [[package]]
 name = "volatile"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8e76fae08f03f96e166d2dfda232190638c10e0383841252416f9cfe2ae60e6"
+
+[[package]]
+name = "volatile"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "442887c63f2c839b346c192d047a7c87e73d0689c9157b00b53dcc27dd5ea793"
@@ -259,7 +278,7 @@ dependencies = [
  "bit_field",
  "bitflags 2.6.0",
  "rustversion",
- "volatile",
+ "volatile 0.4.6",
 ]
 
 [[package]]
@@ -271,5 +290,5 @@ dependencies = [
  "bit_field",
  "bitflags 2.6.0",
  "rustversion",
- "volatile",
+ "volatile 0.4.6",
 ]

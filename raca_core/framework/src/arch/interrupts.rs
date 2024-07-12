@@ -54,7 +54,7 @@ extern "x86-interrupt" fn timer_interrupt(_frame: InterruptStackFrame) {
         super::apic::end_of_interrupt();
         let id = get_lapic_id();
         SCHEDULERS
-            .write()
+            .lock()
             .get_mut(&id)
             .expect(&format!("Failed to find Processor {}!", id))
             .schedule(context)

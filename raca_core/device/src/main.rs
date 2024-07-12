@@ -3,10 +3,7 @@
 
 use alloc::vec;
 use framework::{
-    arch::apic::get_lapic_id,
-    init_framework, println,
-    task::{scheduler::SCHEDULERS, Process},
-    user::regist_syscall_handler,
+    arch::apic::get_lapic_id, init_framework, task::{scheduler::SCHEDULERS, Process}, user::regist_syscall_handler
 };
 use limine::BaseRevision;
 use x86_64::VirtAddr;
@@ -17,12 +14,21 @@ extern crate alloc;
 #[link_section = ".requests"]
 static BASE_REVISION: BaseRevision = BaseRevision::with_revision(1);
 
+pub mod drivers;
+
 #[no_mangle]
 pub extern "C" fn _start() {
     init_framework();
+    //drivers::ahci::init();
+    
     regist_syscall_handler(syscall_handler);
     Process::new_user_process("Hello1", include_bytes!("../../../apps/hello1.rae"));
-    println!("Hello, Frame Kernel!");
+    Process::new_user_process("Hello2", include_bytes!("../../../apps/hello2.rae"));
+    
+    let mut buf = [0u8;512];
+    //drivers::ahci::read_block(0, 0, &mut buf).unwrap();
+
+    framework::serial_println!("Hello, Frame Kernel! {:?}",buf);
     framework::start_schedule();
     loop {}
 }
@@ -44,7 +50,7 @@ pub fn syscall_handler(
             let mut buf = vec![0; buf_len];
 
             if let Err(_) = SCHEDULERS
-                .read()
+                .lock()
                 .get(&get_lapic_id())
                 .unwrap()
                 .current_thread
