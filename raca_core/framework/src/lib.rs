@@ -15,7 +15,6 @@ pub mod memory;
 pub mod task;
 pub mod user;
 
-static GLOBAL_MUTEX: spin::Mutex<()> = spin::Mutex::new(());
 static START_SCHEDULE: AtomicBool = AtomicBool::new(false);
 
 pub fn init_framework() {
@@ -36,7 +35,7 @@ pub fn init_framework() {
     arch::apic::init();
     drivers::mouse::init();
     drivers::keyboard::init();
-    //drivers::pci::init();
+    drivers::pci::init();
     user::init();
     task::scheduler::init();
 }

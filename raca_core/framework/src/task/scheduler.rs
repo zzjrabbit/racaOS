@@ -27,7 +27,7 @@ pub fn init() {
 
     //x86_64::instructions::interrupts::enable();
     SCHEDULER_INIT.store(true, Ordering::Relaxed);
-    log::info!("Scheduler initialized, interrupts enabled!");
+    log::info!("Scheduler initialized!");
 }
 
 #[inline]
@@ -40,7 +40,6 @@ pub fn add_process(process: SharedProcess) {
 #[inline]
 pub fn add_thread(thread: WeakSharedThread) {
     interrupts::without_interrupts(|| {
-        log::info!("Add {}", thread.upgrade().unwrap().read().id.0);
         THREADS.lock().push(thread);
     });
 }
@@ -75,7 +74,7 @@ impl Scheduler {
     pub fn schedule(&mut self, context: VirtAddr) -> VirtAddr {
         //let _lock = crate::GLOBAL_MUTEX.lock();
 
-        assert!(self.current_thread.read().state == ThreadState::Running);
+        assert_eq!(self.current_thread.read().state, ThreadState::Running);
 
         let last_thread = {
             let mut thread = self.current_thread.write();

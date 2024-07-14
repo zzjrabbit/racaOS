@@ -34,7 +34,11 @@ struct SuperBlock {
 
 impl fmt::Debug for SuperBlock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SuperBlock {{ s_inodes_count: {}, s_blocks_count: {}, s_magic: 0x{:X} }}", self.s_inodes_count, self.s_blocks_count, self.s_magic)
+        write!(
+            f,
+            "SuperBlock {{ s_inodes_count: {}, s_blocks_count: {}, s_magic: 0x{:X} }}",
+            self.s_inodes_count, self.s_blocks_count, self.s_magic
+        )
     }
 }
 
@@ -53,7 +57,11 @@ struct GroupDesc {
 
 impl fmt::Debug for GroupDesc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "GroupDesc {{ bg_block_bitmap: {}, bg_inode_bitmap: {}, bg_inode_table: {} }}", self.bg_block_bitmap, self.bg_inode_bitmap, self.bg_inode_table)
+        write!(
+            f,
+            "GroupDesc {{ bg_block_bitmap: {}, bg_inode_bitmap: {}, bg_inode_table: {} }}",
+            self.bg_block_bitmap, self.bg_inode_bitmap, self.bg_inode_table
+        )
     }
 }
 
@@ -82,7 +90,11 @@ struct Inode {
 
 impl fmt::Debug for Inode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Inode {{ i_mode: {}, i_uid: {}, i_size: {}, i_blocks: {} }}", self.i_mode, self.i_uid, self.i_size, self.i_blocks)
+        write!(
+            f,
+            "Inode {{ i_mode: {}, i_uid: {}, i_size: {}, i_blocks: {} }}",
+            self.i_mode, self.i_uid, self.i_size, self.i_blocks
+        )
     }
 }
 

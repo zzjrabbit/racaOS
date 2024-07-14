@@ -47,7 +47,8 @@ impl Fat32 {
     }
 
     fn read_cluster(&self, cluster: u32) -> &[u8] {
-        let cluster_size = self.boot_sector.bytes_per_sector as usize * self.boot_sector.sectors_per_cluster as usize;
+        let cluster_size = self.boot_sector.bytes_per_sector as usize
+            * self.boot_sector.sectors_per_cluster as usize;
         let start = (cluster as usize - 2) * cluster_size;
         let end = start + cluster_size;
         &self.data[start..end]

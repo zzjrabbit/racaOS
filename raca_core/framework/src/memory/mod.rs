@@ -52,15 +52,13 @@ pub fn create_page_table_from_kernel() -> GeneralPageTable {
 }
 
 pub fn read_from_addr<T>(addr: VirtAddr) -> T {
-    unsafe {addr.as_ptr::<T>().read()}
+    unsafe { addr.as_ptr::<T>().read() }
 }
 
 pub fn addr_to_mut_ref<T>(addr: VirtAddr) -> &'static mut T {
-    unsafe {&mut (*addr.as_mut_ptr())}
+    unsafe { &mut (*addr.as_mut_ptr()) }
 }
 
 pub fn addr_to_array<T>(addr: VirtAddr, len: usize) -> &'static mut [T] {
-    unsafe {
-        core::slice::from_raw_parts_mut(addr.as_mut_ptr(), len)
-    }
+    unsafe { core::slice::from_raw_parts_mut(addr.as_mut_ptr(), len) }
 }

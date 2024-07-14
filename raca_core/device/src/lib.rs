@@ -5,4 +5,5 @@ extern crate alloc;
 
 //mod fs;
 
-mod drivers;
+pub mod drivers;
+pub mod fs;

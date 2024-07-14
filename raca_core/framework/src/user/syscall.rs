@@ -6,8 +6,6 @@ use x86_64::registers::rflags::RFlags;
 use x86_64::VirtAddr;
 
 use crate::arch::gdt::Selectors;
-use crate::arch::smp::CPUS;
-use crate::task::scheduler::SCHEDULERS;
 
 pub fn init() {
     let handler_addr = syscall_handler as *const () as u64;

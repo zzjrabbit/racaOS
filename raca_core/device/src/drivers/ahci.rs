@@ -6,7 +6,7 @@
 
 // 来自rCore的AHCI驱动 见https://gitee.com/rcore-os/isomorphic_drivers/
 
-use alloc::vec::Vec;
+use alloc::{collections::BTreeMap, vec::Vec};
 use framework::{
     drivers::{alloc_for_dma, dealloc_for_dma, pci::find_device_with_class},
     memory::{addr_to_array, addr_to_mut_ref, convert_physical_to_virtual, read_from_addr},
@@ -15,14 +15,11 @@ use framework::{
 //use alloc::vec::Vec;
 use bit_field::*;
 use bitflags::*;
-use core::{
-    mem::size_of,
-    slice::{from_raw_parts, from_raw_parts_mut}, sync::atomic::{AtomicUsize, Ordering},
-};
-use pci::{PCIDevice, BAR};
+use core::mem::size_of;
+use pci::BAR;
 use spin::Mutex;
 use volatile::*;
-use x86_64::{structures::paging::FrameAllocator, PhysAddr, VirtAddr};
+use x86_64::{PhysAddr, VirtAddr};
 
 ///
 #[allow(dead_code)]
@@ -317,7 +314,7 @@ struct ATAIdentifyPacket {
 
 impl AHCI {
     pub fn new(header: usize, _size: usize) -> Option<Self> {
-        let ghc = read_from_addr(VirtAddr::new(header as u64));
+        let ghc = addr_to_mut_ref(VirtAddr::new(header as u64));
 
         let (rfis_pa, rfis_va) = alloc_for_dma();
 
@@ -327,11 +324,14 @@ impl AHCI {
 
         let (data_pa, data_va) = alloc_for_dma();
 
+        //log::info!("Allocated for AHCI");
+
         let received_fis = read_from_addr(rfis_va);
         let cmd_list = addr_to_array(cmd_list_va, 4096 / size_of::<AHCICommandHeader>());
         let cmd_table = addr_to_mut_ref(cmd_table_va);
         //let identify_data = unsafe { &*(data_va as *mut ATAIdentifyPacket) };
         let data = addr_to_array(data_va, BLOCK_SIZE);
+        //log::info!("Read for AHCI");
         //let np = ghc.num_ports();
         let mut ahci = AHCI {
             ghc,
@@ -516,7 +516,13 @@ impl AHCI {
 }
 
 impl Drop for AHCI {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        dealloc_for_dma(VirtAddr::from_ptr(self.ghc as *const _));
+        dealloc_for_dma(VirtAddr::from_ptr(self.cmd_list.as_ptr()));
+        dealloc_for_dma(VirtAddr::from_ptr(self.cmd_table as *const _));
+        dealloc_for_dma(VirtAddr::from_ptr(self.data.as_ptr()));
+        dealloc_for_dma(VirtAddr::from_ptr(self.received_fis as *const _));
+    }
 }
 
 pub const BLOCK_SIZE: usize = 512;
@@ -532,17 +538,14 @@ pub const BLOCK_SIZE: usize = 512;
 }*/
 
 static AHCI_CONS: Mutex<Vec<AHCI>> = Mutex::new(Vec::new());
-static DISK_START: Mutex<Vec<usize>> = Mutex::new(Vec::new());
-static DISK_NUM: AtomicUsize = AtomicUsize::new(0);
+pub static DISK_TO_CON: Mutex<BTreeMap<usize, usize>> = Mutex::new(BTreeMap::new());
 
 pub fn init() {
     let devices = find_device_with_class(0x01, 0x06);
 
     let mut ahci_cons = AHCI_CONS.lock();
 
-    log::info!("AHCI: found {} devices", ahci_cons.len());
-
-    for (device_idx, device) in devices.iter().enumerate() {
+    for device in devices.iter() {
         if let Some(BAR::Memory(addr, len, _, _)) = device.bars[5] {
             assert!(len as usize <= 4096);
             let header = convert_physical_to_virtual(PhysAddr::new(addr)).as_u64() as usize;
@@ -550,59 +553,52 @@ pub fn init() {
 
             framework::drivers::pci::enable_device(device);
 
+            log::info!("OK");
+
             if let Some(ahci) = AHCI::new(header, size) {
                 ahci_cons.push(ahci);
             }
         }
     }
 
-    let mut disk_num = 0;
-    let mut disk_start = DISK_START.lock();
+    log::info!("AHCI: found {} devices", ahci_cons.len());
 
-    for ahci_con in ahci_cons.iter() {
-        disk_start.push(disk_num);
+    let mut disk_num = 0;
+
+    for (idx, ahci_con) in ahci_cons.iter().enumerate() {
+        for i in disk_num..disk_num + ahci_con.port.len() {
+            DISK_TO_CON.lock().insert(i, idx);
+        }
         disk_num += ahci_con.port.len();
     }
 
     log::info!("AHCI OK! Hard Disk Number:{}", disk_num);
-
-    DISK_NUM.store(disk_num, Ordering::Relaxed);
 }
 
 fn find_hd(hd_id: usize) -> Option<usize> {
-    let mut ahci_con_id = 0;
-    let mut found = false;
-    for (con_id, start) in DISK_START.lock().iter().enumerate().rev() {
-        if hd_id >= *start {
-            ahci_con_id = con_id;
-            found = true;
-            break;
-        }
+    if let Some(con) = DISK_TO_CON.lock().get(&hd_id) {
+        Some(*con)
+    } else {
+        None
     }
-
-    if !found {
-        return None;
-    }
-
-    Some(ahci_con_id)
 }
 
 pub fn read_block(hd: usize, start_sec: u64, buf: &mut [u8]) -> Option<()> {
-    assert!(buf.len()%512 == 0);
+    assert!(buf.len() % 512 == 0);
     let port_id = find_hd(hd)?;
-    AHCI_CONS.lock()[port_id].read_block(hd, start_sec, buf.len()/512, buf);
+    AHCI_CONS.lock()[port_id].read_block(hd, start_sec, buf.len() / 512, buf);
     Some(())
 }
 
 pub fn write_block(hd: usize, start_sec: u64, buf: &[u8]) -> Option<()> {
-    assert!(buf.len()%512 == 0);
+    assert!(buf.len() % 512 == 0);
     let port_id = find_hd(hd)?;
-    AHCI_CONS.lock()[port_id].write_block(hd, start_sec, buf.len()/512, buf);
+    AHCI_CONS.lock()[port_id].write_block(hd, start_sec, buf.len() / 512, buf);
     Some(())
 }
 
 pub fn get_hd_num() -> usize {
-    DISK_NUM.load(Ordering::Relaxed)
+    DISK_TO_CON.lock().len()
 }
 
 pub fn get_hd_size(hd: usize) -> Option<usize> {

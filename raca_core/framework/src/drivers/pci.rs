@@ -105,7 +105,7 @@ unsafe fn enable(loc: Location) -> Option<usize> {
 }
 
 pub fn enable_device(device: &PCIDevice) -> Option<usize> {
-    unsafe {enable(device.loc)}
+    unsafe { enable(device.loc) }
 }
 
 static PCI_DEVICES: Mutex<Vec<PCIDevice>> = Mutex::new(Vec::new());
@@ -115,7 +115,6 @@ pub fn init() {
     for dev in pci_iter {
         pci_devices.push(dev.clone());
     }
-    //log::ifno
     drop(pci_devices);
 }
 

@@ -2,8 +2,12 @@
 #![no_main]
 
 use alloc::vec;
+use device::fs;
 use framework::{
-    arch::apic::get_lapic_id, init_framework, task::{scheduler::SCHEDULERS, Process}, user::regist_syscall_handler
+    arch::apic::get_lapic_id,
+    init_framework,
+    task::{scheduler::SCHEDULERS, Process},
+    user::regist_syscall_handler,
 };
 use limine::BaseRevision;
 use x86_64::VirtAddr;
@@ -19,16 +23,18 @@ pub mod drivers;
 #[no_mangle]
 pub extern "C" fn _start() {
     init_framework();
-    //drivers::ahci::init();
-    
+    fs::init();
+
     regist_syscall_handler(syscall_handler);
     Process::new_user_process("Hello1", include_bytes!("../../../apps/hello1.rae"));
     Process::new_user_process("Hello2", include_bytes!("../../../apps/hello2.rae"));
-    
-    let mut buf = [0u8;512];
-    //drivers::ahci::read_block(0, 0, &mut buf).unwrap();
 
-    framework::serial_println!("Hello, Frame Kernel! {:?}",buf);
+    //let mut buf = [0u8; 512];
+    //drivers::ahci::read_block(0, 0, &mut buf).unwrap();
+    //framework::serial_println!("Hello, Frame Kernel! {:?}", buf);
+
+    //framework::serial_println!("{:?}",crate::drivers::ahci::DISK_START);
+
     framework::start_schedule();
     loop {}
 }
@@ -68,7 +74,7 @@ pub fn syscall_handler(
             framework::print!("{}", core::str::from_utf8(buf.as_slice()).unwrap());
         }
         1 => {
-            framework::print!("[{}]",framework::arch::apic::get_lapic_id());
+            framework::print!("[{}]", framework::arch::apic::get_lapic_id());
             // 在这里输出当前线程所在的CPU的lapic id
         }
         _ => {}
