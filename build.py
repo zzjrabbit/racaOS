@@ -68,17 +68,19 @@ def main():
 
         end_time = time.perf_counter_ns()
 
+        run_command("cd disk_image;cargo run -- ../esp/efi/boot/bootx64.efi ../esp/RACA/system64/core.sys ../esp/limine.cfg ")
+
         print(f"构建时间:{(end_time-start_time)/1000000000:.2f}s")
 
     time.sleep(1)
 
     if args.to_vmware:
-        run_command("RACA_SYSTEM_LOOP=$(sudo losetup -P -f --show system.img);sudo mount ${RACA_SYSTEM_LOOP}p1 /mnt/raca_system --mkdir;sudo cp -rf esp/system/* /mnt/raca_system;sudo cp -rf esp/boot/* /mnt/raca_system;sudo umount /mnt/raca_system;sudo losetup -d $RACA_SYSTEM_LOOP")
+        # run_command("RACA_SYSTEM_LOOP=$(sudo losetup -P -f --show system.img);sudo mount ${RACA_SYSTEM_LOOP}p1 /mnt/raca_system --mkdir;sudo cp -rf esp/system/* /mnt/raca_system;sudo cp -rf esp/boot/* /mnt/raca_system;sudo umount /mnt/raca_system;sudo losetup -d $RACA_SYSTEM_LOOP")
 
         #run_command(f"sudo mount system.img /mnt/raca_system --mkdir")
         #run_command(f"sudo cp -rf esp/* /mnt/raca_system")
         #run_command(f"sudo umount /mnt/raca_system")
-        run_command(f"qemu-img convert -f raw -O vmdk system.img ./vmware/racaOS/racaOS-0.vmdk")
+        run_command(f"qemu-img convert -f raw -O vmdk ./disk_image/boot_img.img ./vmware/racaOS/racaOS-0.vmdk")
 
     if args.install != "":
         path = args.install
@@ -93,7 +95,7 @@ def main():
         ahci = "-device ahci,id=ahci"
 
         uefi = "-drive file=ovmf/x86_64.fd,format=raw,if=pflash"
-        boot_disk = "-drive file=fat:rw:esp,format=raw"
+        boot_disk = "-drive file=./disk_image/boot_img.img,format=raw"
         disk1 = "-drive file=disk.img,id=disk1,if=none,format=raw -device ide-hd,drive=disk1,bus=ahci.2"
         disk2 = "-drive file=data.img,id=disk2,if=none,format=raw -device nvme,drive=disk2,serial=1234"
 

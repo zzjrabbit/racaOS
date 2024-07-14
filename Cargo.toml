@@ -1,5 +1,6 @@
 [workspace]
 members = [ "raca_core/device","raca_core/framework"]
+exclude = ["disk_image"]
 resolver="2"
 
 [profile.dev]
