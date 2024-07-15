@@ -20,7 +20,7 @@ static SMP_REQUEST: SmpRequest = SmpRequest::new();
 pub static CPUS: Lazy<Mutex<Cpus>> = Lazy::new(|| Mutex::new(Cpus::new()));
 
 unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
-    CPUS.lock().get_cpu(smp_info.id as usize).load();
+    CPUS.lock().get_cpu(smp_info.lapic_id as usize).load();
     IDT.load();
 
     while !HPET_INIT.load(Ordering::Relaxed) {}
@@ -31,7 +31,7 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     lapic.enable_timer();
 
     while !SCHEDULER_INIT.load(Ordering::Relaxed) {}
-    SCHEDULERS.lock().insert(smp_info.id, Scheduler::new());
+    SCHEDULERS.lock().insert(smp_info.lapic_id, Scheduler::new());
 
     user::init();
 
@@ -70,7 +70,7 @@ impl Cpus {
         let response = SMP_REQUEST.get_response().unwrap();
 
         for cpu in response.cpus() {
-            if cpu.id != self.bsp_lapic_id {
+            if cpu.lapic_id != self.bsp_lapic_id {
                 let info = CpuInfo::new();
                 self.ap_infos.insert(cpu.lapic_id, info);
 

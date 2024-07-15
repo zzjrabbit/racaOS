@@ -29,12 +29,6 @@ pub extern "C" fn _start() {
     Process::new_user_process("Hello1", include_bytes!("../../../apps/hello1.rae"));
     Process::new_user_process("Hello2", include_bytes!("../../../apps/hello2.rae"));
 
-    //let mut buf = [0u8; 512];
-    //drivers::ahci::read_block(0, 0, &mut buf).unwrap();
-    //framework::serial_println!("Hello, Frame Kernel! {:?}", buf);
-
-    //framework::serial_println!("{:?}",crate::drivers::ahci::DISK_START);
-
     framework::start_schedule();
     loop {}
 }

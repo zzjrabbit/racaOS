@@ -4,6 +4,7 @@ use std::{
     io::{self, Seek},
     path::{Path, PathBuf},
 };
+use flate2::{Compression, GzBuilder};
 
 fn main() {
     // take efi file path as command line argument
@@ -19,6 +20,15 @@ fn main() {
             .expect("path to kernel file must be given as argument"),
     );
 
+    let compressed_kernel_path = PathBuf::from(
+        "core.sys"
+    );
+
+    let mut compressed_kernel = GzBuilder::new().read(std::fs::File::open(kernel_path.clone()).unwrap(), Compression::best());
+    
+    
+    io::copy(&mut compressed_kernel, &mut std::fs::File::create(compressed_kernel_path.clone()).unwrap()).unwrap();
+
     let config_path = PathBuf::from(
         args.next()
             .expect("path to config file must be given as argument"),
@@ -27,7 +37,7 @@ fn main() {
     let fat_path = PathBuf::from("boot_img.fat");
     let disk_path = PathBuf::from("boot_img.img");
 
-    create_fat_filesystem(&fat_path, &efi_path, &kernel_path,  &config_path);
+    create_fat_filesystem(&fat_path, &efi_path, &compressed_kernel_path,  &config_path);
     create_gpt_disk(&disk_path, &fat_path);
 }
 

@@ -33,10 +33,6 @@ impl Inode for BlockInode {
 
     fn when_umounted(&self) {}
 
-    fn mount(&self, _node: crate::fs::vfs::inode::InodeRef, _name: alloc::string::String) {
-        unimplemented!()
-    }
-
     fn get_path(&self) -> alloc::string::String {
         self.path.clone()
     }
@@ -63,16 +59,31 @@ impl Inode for BlockInode {
         for i in 0..(end - start) {
             buf[i] = tmp[i + start_sector_read_start];
         }
+    }
 
-        /*let mut tmp = [0; 512];
-        crate::drivers::ahci::read_block(self.hd, part_read_sectors.0 as u64, &mut tmp);
-        for i in (512 - start_part_size - 1)..512 {
-            buf[i - (512 - start_part_size - 1)] = tmp[i];
+    fn write_at(&self, offset: usize, buf: &[u8]) {
+        let start = offset;
+        let end = start + buf.len();
+
+        let start_sector_read_start = start % 512;
+        //let end_sector_read_end = end % 512;
+
+        let start_sector_id = start / 512;
+        let end_sector_id = (end - 1) / 512;
+
+        let buffer_size = (end_sector_id - start_sector_id + 1) * 512;
+        let mut tmp = Vec::new();
+        for _ in 0..buffer_size {
+            tmp.push(0);
+        }
+        let tmp = tmp.leak();
+
+        crate::drivers::ahci::read_block(self.hd, start_sector_id as u64, tmp).unwrap();
+
+        for i in 0..(end - start) {
+            tmp[i + start_sector_read_start] = buf[i];
         }
 
-        crate::drivers::ahci::read_block(self.hd, part_read_sectors.1 as u64, &mut tmp);
-        for i in 0..end_part_size {
-            buf[i + end_sector * 512 + start_part_size] = tmp[i];
-        }*/
+        crate::drivers::ahci::write_block(self.hd, start_sector_id as u64, tmp).unwrap();
     }
 }

@@ -1,6 +1,7 @@
 use alloc::{string::String, sync::Arc};
+use spin::RwLock;
 
-pub type InodeRef = Arc<dyn Inode>;
+pub type InodeRef = Arc<RwLock<dyn Inode>>;
 
 pub trait Inode: Sync + Send {
     fn when_mounted(&self, path: String, father: Option<InodeRef>);
@@ -8,12 +9,19 @@ pub trait Inode: Sync + Send {
 
     fn get_path(&self) -> String;
 
-    fn mount(&self, node: InodeRef, name: String);
+    fn mount(&self, _node: InodeRef, _name: String) {
+        unimplemented!()
+    }
 
-    fn read_at(&self, offset: usize, buf: &mut [u8]);
+    fn read_at(&self, _offset: usize, _buf: &mut [u8]) {
+        unimplemented!()
+    }
+    fn write_at(&self, _offset: usize, _buf: &[u8]) {
+        unimplemented!()
+    }
 }
 
 pub fn mount_to(node: InodeRef, to: InodeRef, name: String) {
-    to.mount(node.clone(), name.clone());
-    node.when_mounted(to.get_path() + &name + "/", Some(to.clone()));
+    to.read().mount(node.clone(), name.clone());
+    node.read().when_mounted(to.read().get_path() + &name + "/", Some(to.clone()));
 }

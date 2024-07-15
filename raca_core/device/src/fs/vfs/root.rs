@@ -24,16 +24,12 @@ impl Inode for RootFS {
 
     fn when_umounted(&self) {
         for (_, node) in self.nodes.iter() {
-            node.when_umounted();
+            node.read().when_umounted();
         }
     }
 
     fn mount(&self, node: InodeRef, name: String) {
         ref_to_mut(self).nodes.insert(name, node);
-    }
-
-    fn read_at(&self, _offset: usize, _buf: &mut [u8]) {
-        unimplemented!()
     }
 
     fn get_path(&self) -> String {

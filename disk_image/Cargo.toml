@@ -8,4 +8,5 @@ forced-target = "x86_64-unknown-linux-gnu"
 
 [dependencies]
 fatfs = "0.3.5"
+flate2 = "1.0.30"
 gpt = "2.0.0"
