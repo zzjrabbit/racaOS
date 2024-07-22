@@ -46,7 +46,11 @@ impl Inode for Terminal {
     fn read_at(&self, _offset: usize, buf: &mut [u8]) {
         let mut write = 0;
         while write < buf.len() {
-            while !has_scancode() {}
+            while !has_scancode() {
+                for _ in 0..10000 {
+                    x86_64::instructions::nop();
+                }
+            }
             if let Some(scan_code) = get_scancode() {
                 if let Ok(Some(key_event)) = ref_to_mut(self).keyboard.add_byte(scan_code) {
                     if let Some(key) = ref_to_mut(self).keyboard.process_keyevent(key_event) {

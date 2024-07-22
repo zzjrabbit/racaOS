@@ -115,15 +115,17 @@ extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, error_code: u
 }
 
 extern "x86-interrupt" fn keyboard_interrupt(_frame: InterruptStackFrame) {
+    crate::print!(".");
     let scancode: u8 = unsafe { PortReadOnly::new(0x60).read() };
-    crate::drivers::keyboard::add_scancode(scancode);
     super::apic::end_of_interrupt();
+    crate::drivers::keyboard::add_scancode(scancode);
 }
 
 extern "x86-interrupt" fn mouse_interrupt(_frame: InterruptStackFrame) {
+    crate::print!(".");
     let packet = unsafe { PortReadOnly::new(0x60).read() };
-    crate::drivers::mouse::MOUSE.lock().process_packet(packet);
     super::apic::end_of_interrupt();
+    crate::drivers::mouse::MOUSE.lock().process_packet(packet);
 }
 
 extern "x86-interrupt" fn page_fault(frame: InterruptStackFrame, error_code: PageFaultErrorCode) {
