@@ -101,8 +101,6 @@ unsafe fn ioapic_add_entry(irq: IrqVector, vector: InterruptIndex) {
 }
 
 pub unsafe fn calibrate_timer(lapic: &mut LocalApic) {
-    log::info!("Processor {} timer!", lapic.id());
-
     let mut lapic_total_ticks = 0;
     let hpet_clock_speed = HPET.clock_speed() as u64;
     let hpet_tick_per_ms = 1_000_000_000_000 / hpet_clock_speed;
@@ -115,7 +113,6 @@ pub unsafe fn calibrate_timer(lapic: &mut LocalApic) {
     }
 
     let average_clock_per_ms = lapic_total_ticks / TIMER_CALIBRATION_ITERATION;
-    log::debug!("Calibrated clock per ms: {}", average_clock_per_ms);
 
     lapic.set_timer_mode(TimerMode::Periodic);
     lapic.set_timer_initial(average_clock_per_ms * 1000 / TIMER_FREQUENCY_HZ);

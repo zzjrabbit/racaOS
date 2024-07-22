@@ -1,0 +1,37 @@
+[package]
+name = "builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+flate2 = "1.0.30"
+argh = "0.1.12"
+anyhow = "1.0.32"
+tempfile = "3.3.0"
+gpt = "3.0.0"
+walkdir = "2.5.0"
+
+[dependencies.fatfs]
+version = "0.3.4"
+default-features = false
+features = ["std", "alloc"]
+
+[dependencies.device]
+path = "../raca_core/device"
+artifact = "bin"
+target = "x86_64-unknown-none"
+
+[dependencies.hello1]
+path = "../apps/hello1"
+artifact = "bin"
+target = "x86_64-unknown-none"
+
+[dependencies.hello2]
+path = "../apps/hello2"
+artifact = "bin"
+target = "x86_64-unknown-none"
+
+[dependencies.init]
+path = "../apps/init"
+artifact = "bin"
+target = "x86_64-unknown-none"

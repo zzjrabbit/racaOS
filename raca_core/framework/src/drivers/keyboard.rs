@@ -1,20 +1,21 @@
-use conquer_once::spin::OnceCell;
 use crossbeam_queue::ArrayQueue;
+use spin::Lazy;
 
 const SCANCODE_QUEUE_SIZE: usize = 128;
 
-static SCANCODE_QUEUE: OnceCell<ArrayQueue<u8>> = OnceCell::uninit();
+static SCANCODE_QUEUE: Lazy<ArrayQueue<u8>> =
+    Lazy::new(|| ArrayQueue::new(SCANCODE_QUEUE_SIZE));
 
 pub fn add_scancode(scancode: u8) {
-    if let Ok(queue) = SCANCODE_QUEUE.try_get() {
-        if let Err(_) = queue.push(scancode) {
-            crate::println!("Scancode queue full, dropping keyboard input!");
-        }
-    } else {
-        crate::println!("Scancode queue not initialized!");
+    if let Err(_) = SCANCODE_QUEUE.push(scancode) {
+        crate::println!("Scancode queue full, dropping keyboard input!");
     }
 }
 
-pub fn init() {
-    SCANCODE_QUEUE.init_once(|| ArrayQueue::new(SCANCODE_QUEUE_SIZE));
+pub fn get_scancode() -> Option<u8> {
+    SCANCODE_QUEUE.pop()
+}
+
+pub fn has_scancode() -> bool {
+    !SCANCODE_QUEUE.is_empty()
 }

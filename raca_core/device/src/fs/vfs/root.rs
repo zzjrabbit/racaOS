@@ -35,4 +35,8 @@ impl Inode for RootFS {
     fn get_path(&self) -> String {
         self.path.clone()
     }
+
+    fn open(&self, name: String) -> Option<InodeRef> {
+        self.nodes.get(&name).cloned()
+    }
 }

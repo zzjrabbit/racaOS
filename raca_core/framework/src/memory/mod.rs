@@ -7,10 +7,12 @@ mod frame;
 mod kernel_heap;
 mod manager;
 mod page_table;
+mod user_heap;
 
 pub use kernel_heap::init;
 pub use manager::MemoryManager;
-pub use page_table::GeneralPageTable;
+pub use page_table::*;
+pub use user_heap::*;
 
 #[used]
 #[link_section = ".requests"]

@@ -2,46 +2,26 @@
 #![no_main]
 #![feature(naked_functions)]
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop{}
-}
-
-#[naked]
-pub extern "C" fn syscall2(_rax: u64, _rdi: *const u8, _rsi: usize) -> usize {
-    unsafe {
-        core::arch::asm!(
-            "mov rax, rdi",
-            "mov rdi, rsi",
-            "mov rsi, rdx",
-            "syscall",
-            "ret",
-            options(noreturn)
-        )
-    }
-}
-
-#[naked]
-pub extern "C" fn syscall3(_rax: u64) {
-    unsafe {
-        core::arch::asm!(
-            "mov rax, rdi",
-            "syscall",
-            "ret",
-            options(noreturn)
-        )
-    }
-}
-
-pub fn write(buffer: *const u8, length: usize) -> usize {
-    const WRITE_SYSCALL_NUMBER: u64 = 0;
-    syscall2(WRITE_SYSCALL_NUMBER, buffer, length)
-}
-
 #[no_mangle]
-pub fn _start() {
+pub fn main() {
+    //let fd = raca_std::fs::open("/RACA/app64/hello2.rae", raca_std::fs::OpenMode::Read).unwrap();
+    raca_std::println!("OK");
+    //let mut buf = [0;8192];
+    //let buf = [b'H',b'e',b'l',b'l',b'o',b',',b'y',b'o',b'u',b'r',b' ',b'd',b'i',b's',b'k',b' ',b'i',b's',b' ',b'b',b'r',b'o',b'k',b'e',b'n',b'!'];
+    //write2(fd,buf.as_ptr(),buf.len());
+    //let len = buf.len();
+    //let mut buf = [0u8;40];
+    //raca_std::fs::lseek(fd, 0);
+    //raca_std::fs::read(fd,&mut buf);
+    //raca_std::fs::close(fd);
+    //raca_std::debug::dump_hex_buffer(&buf);
+    //for i in 0..buf.len() {
+    //    buf[i] += b'0';
+    //}
+    //raca_std::dump_hex_buffer(buf.as_ptr(), buf.len());
+    //raca_std::task::create_process("Hello2",&buf);
     loop {
         //write("[racaOS]".as_ptr(),6);
-        syscall3(1);
+        //syscall3(1);
     }
 }

@@ -100,6 +100,74 @@ impl BitmapFrameAllocator {
             next_frame,
         }
     }
+
+    pub fn allocate_frames(&mut self, cnt: usize) -> Option<u64> {
+        //log::info!("allocate_frames cnt: {}", cnt);
+        if cnt > self.usable_frames {
+            log::error!("no more usable frames");
+            return None;
+        }
+
+        self.usable_frames -= cnt;
+
+        let mut next = self.next_frame;
+        let mut frame_cnt = 0;
+        let mut found = false;
+        while next < self.bitmap.len() && self.bitmap.get(next) {
+            next += 1;
+            frame_cnt += 1;
+            if frame_cnt == cnt {
+                found = true;
+                break;
+            }
+        }
+        if found {
+            self.next_frame = next;
+
+            let addr = (next - cnt) * 4096;
+
+            for i in next - cnt..next {
+                self.bitmap.set(i, false);
+            }
+
+            //log::info!("found!");
+
+            return Some(addr as u64);
+        }
+
+        loop {
+            //log::info!("next: {}", next);
+            if next >= self.bitmap.len() {
+                self.usable_frames += cnt;
+                return None;
+            }
+            while next < self.bitmap.len() && !self.bitmap.get(next) {
+                next += 1;
+            }
+
+            let mut frame_cnt = 0;
+
+            found = false;
+            while next < self.bitmap.len() && self.bitmap.get(next) {
+                next += 1;
+                frame_cnt += 1;
+                if frame_cnt == cnt {
+                    found = true;
+                    break;
+                }
+            }
+
+            if found {
+                let addr = (next - cnt) * 4096;
+
+                for i in next - cnt..next {
+                    self.bitmap.set(i, false);
+                }
+
+                return Some(addr as u64);
+            }
+        }
+    }
 }
 
 unsafe impl FrameAllocator<Size4KiB> for BitmapFrameAllocator {

@@ -7,3 +7,4 @@ extern crate alloc;
 
 pub mod drivers;
 pub mod fs;
+pub mod user;

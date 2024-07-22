@@ -316,13 +316,13 @@ impl AHCI {
     pub fn new(header: usize, _size: usize) -> Option<Self> {
         let ghc = addr_to_mut_ref(VirtAddr::new(header as u64));
 
-        let (rfis_pa, rfis_va) = alloc_for_dma();
+        let (rfis_pa, rfis_va) = alloc_for_dma(1);
 
-        let (cmd_list_pa, cmd_list_va) = alloc_for_dma();
+        let (cmd_list_pa, cmd_list_va) = alloc_for_dma(1);
 
-        let (cmd_table_pa, cmd_table_va) = alloc_for_dma();
+        let (cmd_table_pa, cmd_table_va) = alloc_for_dma(1);
 
-        let (data_pa, data_va) = alloc_for_dma();
+        let (data_pa, data_va) = alloc_for_dma(1);
 
         //log::info!("Allocated for AHCI");
 
@@ -517,11 +517,11 @@ impl AHCI {
 
 impl Drop for AHCI {
     fn drop(&mut self) {
-        dealloc_for_dma(VirtAddr::from_ptr(self.ghc as *const _));
-        dealloc_for_dma(VirtAddr::from_ptr(self.cmd_list.as_ptr()));
-        dealloc_for_dma(VirtAddr::from_ptr(self.cmd_table as *const _));
-        dealloc_for_dma(VirtAddr::from_ptr(self.data.as_ptr()));
-        dealloc_for_dma(VirtAddr::from_ptr(self.received_fis as *const _));
+        dealloc_for_dma(VirtAddr::from_ptr(self.ghc as *const _), 1);
+        dealloc_for_dma(VirtAddr::from_ptr(self.cmd_list.as_ptr()), 1);
+        dealloc_for_dma(VirtAddr::from_ptr(self.cmd_table as *const _), 1);
+        dealloc_for_dma(VirtAddr::from_ptr(self.data.as_ptr()), 1);
+        dealloc_for_dma(VirtAddr::from_ptr(self.received_fis as *const _), 1);
     }
 }
 

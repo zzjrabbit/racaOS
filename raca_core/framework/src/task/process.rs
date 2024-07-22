@@ -12,7 +12,7 @@ use x86_64::VirtAddr;
 use super::thread::{SharedThread, Thread};
 use crate::memory::GeneralPageTable;
 use crate::memory::MemoryManager;
-use crate::memory::{create_page_table_from_kernel, KERNEL_PAGE_TABLE};
+use crate::memory::{create_page_table_from_kernel, HeapType, ProcessHeap};
 use crate::task::scheduler::add_process;
 
 pub(super) type SharedProcess = Arc<RwLock<Process>>;
@@ -21,7 +21,7 @@ pub(super) type WeakSharedProcess = Weak<RwLock<Process>>;
 const KERNEL_PROCESS_NAME: &str = "kernel";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct ProcessId(pub u64);
+pub struct ProcessId(pub u64);
 
 impl ProcessId {
     fn new() -> Self {
@@ -32,31 +32,40 @@ impl ProcessId {
 
 #[allow(dead_code)]
 pub struct Process {
-    id: ProcessId,
+    pub id: ProcessId,
     name: String,
     pub page_table: GeneralPageTable,
     pub threads: VecDeque<SharedThread>,
+    pub heap: ProcessHeap,
 }
 
 impl Process {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, heap_type: HeapType) -> Self {
+        let page_table = create_page_table_from_kernel();
         let process = Process {
             id: ProcessId::new(),
             name: String::from(name),
-            page_table: create_page_table_from_kernel(),
+            page_table,
             threads: Default::default(),
+            heap: ProcessHeap::new(heap_type),
         };
 
         process
     }
 
     pub fn new_kernel_process() -> SharedProcess {
-        Arc::new(RwLock::new(Self::new(KERNEL_PROCESS_NAME)))
+        let process = Arc::new(RwLock::new(Self::new(
+            KERNEL_PROCESS_NAME,
+            HeapType::Kernel,
+        )));
+        process.read().heap.init(Arc::downgrade(&process));
+        process
     }
 
     pub fn new_user_process(name: &str, elf_data: &'static [u8]) -> SharedProcess {
         let binary = ProcessBinary::parse(elf_data);
-        let process = Arc::new(RwLock::new(Self::new(name)));
+        let process = Arc::new(RwLock::new(Self::new(name, HeapType::User)));
+        process.read().heap.init(Arc::downgrade(&process));
         ProcessBinary::map_segments(&binary, &mut process.write().page_table);
         log::info!("User Entry Point: {:x}", binary.entry());
         Thread::new_user_thread(Arc::downgrade(&process), binary.entry() as usize);
@@ -73,8 +82,7 @@ impl ProcessBinary {
     }
 
     fn map_segments(elf_file: &File, page_table: &mut GeneralPageTable) {
-        interrupts::without_interrupts(|| unsafe {
-            page_table.switch();
+        interrupts::without_interrupts(|| {
             for segment in elf_file.segments() {
                 let segment_address = VirtAddr::new(segment.address() as u64);
 
@@ -86,10 +94,9 @@ impl ProcessBinary {
                     .expect("Failed to allocate memory for ELF segment!");
 
                 if let Ok(data) = segment.data() {
-                    core::ptr::copy(data.as_ptr(), segment.address() as *mut u8, data.len());
+                    page_table.write(data, segment_address).unwrap();
                 }
             }
-            KERNEL_PAGE_TABLE.lock().switch();
         });
     }
 }

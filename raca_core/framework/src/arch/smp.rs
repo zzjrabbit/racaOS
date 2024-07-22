@@ -31,12 +31,13 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     lapic.enable_timer();
 
     while !SCHEDULER_INIT.load(Ordering::Relaxed) {}
-    SCHEDULERS.lock().insert(smp_info.lapic_id, Scheduler::new());
+    SCHEDULERS
+        .lock()
+        .insert(smp_info.lapic_id, Scheduler::new());
 
     user::init();
 
     while !START_SCHEDULE.load(Ordering::Relaxed) {}
-    log::info!("Start Schedule!");
     x86_64::instructions::interrupts::enable();
 
     loop {

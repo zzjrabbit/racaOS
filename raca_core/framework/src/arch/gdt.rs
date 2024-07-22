@@ -29,7 +29,6 @@ impl CpuInfo {
     pub fn init(&mut self) {
         let stack_start = self.double_fault_stack.as_ptr() as u64;
         let stack_end = VirtAddr::new(stack_start + self.double_fault_stack.len() as u64);
-        log::warn!("stack_end: {:#x}", stack_end.as_u64());
 
         self.tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = stack_end;
         self.selectors = Some(Selectors::new(&mut self.gdt, &self.tss));
@@ -73,7 +72,6 @@ impl Selectors {
         let user_code_selector = gdt.append(USER_CODE_SELECTOR);
 
         let tss_ptr: *const _ = tss;
-        log::warn!("tss_ptr: {:#x}", tss_ptr as u64);
         let tss_selector = gdt.append(Descriptor::tss_segment(unsafe { &*tss_ptr }));
 
         let selectors = Self {

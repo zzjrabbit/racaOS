@@ -27,8 +27,6 @@ pub fn init() {
     unsafe {
         Efer::write(Efer::read() | EferFlags::SYSTEM_CALL_EXTENSIONS);
     }
-
-    log::info!("Syscall handler initialized!");
 }
 
 #[naked]
@@ -71,11 +69,11 @@ pub extern "C" fn syscall_handle_fn(
     arg4: usize,
     arg5: usize,
     arg6: usize,
-) {
+) -> usize {
     let syscall_number_raw: usize;
     unsafe { asm!("mov {0}, rax", out(reg) syscall_number_raw) };
 
-    SYSCALL_HANDLER.lock()(syscall_number_raw, arg1, arg2, arg3, arg4, arg5, arg6);
+    SYSCALL_HANDLER.lock()(syscall_number_raw, arg1, arg2, arg3, arg4, arg5, arg6)
 }
 
 fn tmp_syscall_handler(
@@ -86,11 +84,19 @@ fn tmp_syscall_handler(
     _arg4: usize,
     _arg5: usize,
     _arg6: usize,
-) {
+) -> usize {
+    0
 }
 
-pub type SyscallHandlerFn =
-    fn(idx: usize, arg1: usize, arg2: usize, arg3: usize, arg4: usize, arg5: usize, arg6: usize);
+pub type SyscallHandlerFn = fn(
+    idx: usize,
+    arg1: usize,
+    arg2: usize,
+    arg3: usize,
+    arg4: usize,
+    arg5: usize,
+    arg6: usize,
+) -> usize;
 
 static SYSCALL_HANDLER: Mutex<SyscallHandlerFn> = Mutex::new(tmp_syscall_handler);
 

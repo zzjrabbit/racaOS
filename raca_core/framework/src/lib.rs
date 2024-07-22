@@ -13,15 +13,16 @@ pub mod console;
 pub mod drivers;
 pub mod memory;
 pub mod task;
+pub mod terminal;
 pub mod user;
 
 static START_SCHEDULE: AtomicBool = AtomicBool::new(false);
 
 pub fn init_framework() {
+    memory::init();
     console::init();
     arch::smp::CPUS.lock().init_bsp();
     arch::interrupts::IDT.load();
-    memory::init();
     arch::smp::CPUS.lock().init_ap();
     arch::acpi::init();
     drivers::hpet::init();
@@ -34,7 +35,6 @@ pub fn init_framework() {
 
     arch::apic::init();
     drivers::mouse::init();
-    drivers::keyboard::init();
     drivers::pci::init();
     user::init();
     task::scheduler::init();
@@ -43,7 +43,6 @@ pub fn init_framework() {
 #[inline]
 pub fn start_schedule() {
     START_SCHEDULE.store(true, Ordering::Relaxed);
-    log::info!("Start schedule");
     x86_64::instructions::interrupts::enable();
 }
 
@@ -57,4 +56,14 @@ pub fn ref_to_mut<T>(reffer: &T) -> &mut T {
 
 pub fn ref_to_static<T>(reffer: &T) -> &'static T {
     unsafe { &*(addr_of(reffer) as *const T) }
+}
+
+#[macro_export]
+macro_rules! unsafe_trait_impl {
+    ($struct: ident, $trait: ident) => {
+        unsafe impl $trait for $struct {}
+    };
+    ($struct: ident, $trait: ident, $life: tt) => {
+        unsafe impl<$life> $trait for $struct<$life> {}
+    };
 }

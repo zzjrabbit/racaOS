@@ -1,7 +1,7 @@
 [workspace]
-members = [ "raca_core/device","raca_core/framework"]
-exclude = ["disk_image"]
+members = [ "builder","crates/fatfs","raca_core/device","raca_core/framework", "raca_std" ,"apps/hello1", "apps/hello2", "apps/init"]
 resolver="2"
+default-members = ["builder"]
 
 [profile.dev]
 panic = "abort"

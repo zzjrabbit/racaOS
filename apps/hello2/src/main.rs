@@ -4,7 +4,7 @@
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop{}
+    loop {}
 }
 
 #[naked]
@@ -23,14 +23,7 @@ pub extern "C" fn syscall2(_rax: u64, _rdi: *const u8, _rsi: usize) -> usize {
 
 #[naked]
 pub extern "C" fn syscall3(_rax: u64) {
-    unsafe {
-        core::arch::asm!(
-            "mov rax, rdi",
-            "syscall",
-            "ret",
-            options(noreturn)
-        )
-    }
+    unsafe { core::arch::asm!("mov rax, rdi", "syscall", "ret", options(noreturn)) }
 }
 
 pub fn write(buffer: *const u8, length: usize) -> usize {
@@ -41,7 +34,7 @@ pub fn write(buffer: *const u8, length: usize) -> usize {
 #[no_mangle]
 pub fn _start() {
     loop {
-        write("[racaOS]".as_ptr(),8);
+        write("[racaOS]".as_ptr(), 8);
         //syscall3(1);
     }
 }

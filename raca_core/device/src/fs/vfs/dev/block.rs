@@ -1,22 +1,45 @@
 use alloc::{string::String, vec::Vec};
 use framework::ref_to_mut;
 
-use crate::fs::vfs::{
-    cache::{Cache512B, CacheManager},
-    inode::Inode,
+use crate::{
+    drivers::ahci::get_hd_size,
+    fs::vfs::{
+        cache::{BlockDeviceInterface, Cache512B, CacheManager},
+        inode::Inode,
+    },
 };
 
+struct BlockDevice {
+    id: usize,
+}
+
+impl BlockDevice {
+    pub fn new(id: usize) -> Self {
+        Self { id }
+    }
+}
+
+impl BlockDeviceInterface for BlockDevice {
+    fn read(&self, block_id: usize, buf: &mut [u8]) {
+        crate::drivers::ahci::read_block(self.id, block_id as u64, buf);
+    }
+
+    fn write(&self, block_id: usize, buf: &[u8]) {
+        crate::drivers::ahci::write_block(self.id, block_id as u64, buf);
+    }
+}
+
 pub struct BlockInode {
-    pub hd: usize,
-    pub cache_manager: CacheManager<Cache512B>,
-    pub path: String,
+    hd: usize,
+    cache_manager: CacheManager<Cache512B, BlockDevice>,
+    path: String,
 }
 
 impl BlockInode {
     pub fn new(hd: usize) -> Self {
         Self {
             hd,
-            cache_manager: CacheManager::new(),
+            cache_manager: CacheManager::new(BlockDevice::new(hd)),
             path: String::new(),
         }
     }
@@ -37,6 +60,10 @@ impl Inode for BlockInode {
         self.path.clone()
     }
 
+    fn size(&self) -> usize {
+        get_hd_size(self.hd).unwrap()
+    }
+
     fn read_at(&self, offset: usize, buf: &mut [u8]) {
         let start = offset;
         let end = start + buf.len();
@@ -54,7 +81,10 @@ impl Inode for BlockInode {
         }
         let tmp = tmp.leak();
 
-        crate::drivers::ahci::read_block(0, 0, tmp).unwrap();
+        //crate::drivers::ahci::read_block(self.hd, start_sector_id as u64, tmp).unwrap();
+        ref_to_mut(self)
+            .cache_manager
+            .read_from_cache(start_sector_id, tmp);
 
         for i in 0..(end - start) {
             buf[i] = tmp[i + start_sector_read_start];
@@ -78,12 +108,18 @@ impl Inode for BlockInode {
         }
         let tmp = tmp.leak();
 
-        crate::drivers::ahci::read_block(self.hd, start_sector_id as u64, tmp).unwrap();
+        ref_to_mut(self)
+            .cache_manager
+            .read_from_cache(start_sector_id, tmp);
 
         for i in 0..(end - start) {
             tmp[i + start_sector_read_start] = buf[i];
         }
 
-        crate::drivers::ahci::write_block(self.hd, start_sector_id as u64, tmp).unwrap();
+        ref_to_mut(self)
+            .cache_manager
+            .write_to_cache(start_sector_id, tmp);
+
+        ref_to_mut(self).cache_manager.flush_cache();
     }
 }

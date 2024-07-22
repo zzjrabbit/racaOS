@@ -39,7 +39,7 @@ impl<S: PageSize> MemoryManager<S> {
         Ok(())
     }
 
-    fn map_frame_to_page(
+    pub fn map_frame_to_page(
         frame: PhysFrame<S>,
         page: Page<S>,
         flags: PageTableFlags,

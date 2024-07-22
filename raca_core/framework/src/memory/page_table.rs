@@ -21,6 +21,7 @@ impl GeneralPageTable {
             PhysFrame::containing_address(physical_address)
         };
         if page_table_frame != Cr3::read().0 {
+            //log::info!("OK");
             Cr3::write(page_table_frame, Cr3::read().1);
         }
     }
@@ -200,53 +201,42 @@ impl CleanUp for GeneralPageTable {
 }
 
 impl GeneralPageTable {
-    pub fn read(&self, addr: VirtAddr, len: usize, buf: &mut [u8]) -> Result<(), ()> {
-        let start_addr = addr;
-        let end_addr = addr + len as u64;
+    pub fn read(&self, address: VirtAddr, len: usize, buffer: &mut [u8]) -> Result<(), ()> {
+        //let start_addr = addr;
+        //let end_addr = addr + len as u64;
 
-        let mut idx = 0;
+        for offset in 0..len {
+            let src_address = address + offset as u64;
 
-        for addr in start_addr..end_addr {
-            let phys_addr = if let Some(addr) = self.translate_addr(addr) {
-                addr
-            } else {
-                return Err(());
-            };
+            let physical_address = self.translate_addr(src_address).ok_or(())?;
 
-            let kernel_virt_addr = convert_physical_to_virtual(phys_addr);
+            let virtual_address = convert_physical_to_virtual(physical_address);
 
-            let reffer = kernel_virt_addr.as_u64() as *const u8;
-            buf[idx] = unsafe { reffer.read() };
-
-            idx += 1;
+            let reffer = virtual_address.as_u64() as *const u8;
+            buffer[offset] = unsafe { reffer.read() };
         }
 
         Ok(())
     }
 
-    pub fn write(&self, buf: &[u8], addr: VirtAddr) -> Result<(), ()> {
-        let start_addr = addr;
-        let end_addr = addr + buf.len() as u64;
-
-        let mut idx = 0;
-
-        for addr in start_addr..end_addr {
-            let phys_addr = if let Some(addr) = self.translate_addr(addr) {
-                addr
-            } else {
-                return Err(());
-            };
-
-            let kernel_virt_addr = convert_physical_to_virtual(phys_addr);
-
-            let reffer = kernel_virt_addr.as_u64() as *mut u8;
+    pub fn write(&self, buffer: &[u8], address: VirtAddr) -> Result<(), ()> {
+        for (offset, &byte) in buffer.iter().enumerate() {
+            let target_address = address + offset as u64;
+            let physical_address = self.translate_addr(target_address).ok_or(())?;
+            let virtual_address = convert_physical_to_virtual(physical_address);
             unsafe {
-                reffer.write(buf[idx]);
+                (virtual_address.as_u64() as *mut u8).write(byte);
             }
-
-            idx += 1;
         }
-
         Ok(())
+    }
+}
+
+pub fn write_for_syscall(addr: VirtAddr, buf: &[u8]) {
+    let reffer: *mut u8 = addr.as_mut_ptr();
+    for (idx, byte) in buf.iter().enumerate() {
+        unsafe {
+            reffer.add(idx).write(*byte);
+        }
     }
 }
