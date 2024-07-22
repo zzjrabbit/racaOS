@@ -84,7 +84,7 @@ fn main() {
                     // 删除前4个字符，即"esp/"
                     path.remove(0);
                 }
-                path.replace("\\", "/");
+                let path = path.replace("\\", "/");
 
                 files.insert(path.clone(), entry.path().to_path_buf());
             }
