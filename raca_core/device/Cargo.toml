@@ -19,7 +19,7 @@ usb-device = "0.3.2"
 pc-keyboard = "0.7.0"
 
 [dependencies.fatfs]
-path = "../../crates/fatfs"
+path = "../../crates/good-fatfs"
 features = ["lfn","alloc","unicode"]
 default-features = false
 
