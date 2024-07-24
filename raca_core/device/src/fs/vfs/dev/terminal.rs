@@ -1,14 +1,28 @@
 use crate::fs::vfs::inode::Inode;
+use crate::user::{get_current_thread, sleep};
 use alloc::string::String;
+use alloc::sync::{Arc, Weak};
+use alloc::vec::Vec;
 use crossbeam_queue::ArrayQueue;
-use framework::drivers::keyboard::{get_scancode, has_scancode};
+use framework::drivers::keyboard::get_scancode;
 use framework::ref_to_mut;
-use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
-use spin::Lazy;
+use framework::task::thread::ThreadState;
+use framework::task::Thread;
+use pc_keyboard::{layouts, DecodedKey, HandleControl, KeyCode, Keyboard, ScancodeSet1};
+use spin::{Lazy, Mutex, RwLock};
 
 static BYTES: Lazy<ArrayQueue<char>> = Lazy::new(|| ArrayQueue::new(1024));
+static WAIT_LIST: Mutex<Vec<Weak<RwLock<Thread>>>> = Mutex::new(Vec::new());
 
 pub fn keyboard_parse_thread() {
+    fn push_char(ch: char) {
+        BYTES.push(ch).expect("Buffer full");
+        for thread in WAIT_LIST.lock().iter() {
+            thread.upgrade().unwrap().write().state = ThreadState::Ready;
+        }
+        WAIT_LIST.lock().clear();
+    }
+
     let mut keyboard = Keyboard::new(
         ScancodeSet1::new(),
         layouts::Us104Key,
@@ -20,8 +34,12 @@ pub fn keyboard_parse_thread() {
             if let Ok(Some(key_event)) = keyboard.add_byte(scan_code) {
                 if let Some(key) = keyboard.process_keyevent(key_event) {
                     match key {
-                        DecodedKey::RawKey(_) => {}
-                        DecodedKey::Unicode(ch) => BYTES.push(ch).expect("Buffer full"),
+                        DecodedKey::RawKey(raw_key) => match raw_key {
+                            KeyCode::Backspace => push_char(8 as char),
+                            KeyCode::Oem7 => push_char('\\'),
+                            _ => {}
+                        },
+                        DecodedKey::Unicode(ch) => push_char(ch),
                     }
                 }
             }
@@ -61,19 +79,19 @@ impl Inode for Terminal {
     fn read_at(&self, _offset: usize, buf: &mut [u8]) {
         let mut write = 0;
         while write < buf.len() {
-            while !has_scancode() {
-                for _ in 0..10000 {
-                    x86_64::instructions::nop();
-                }
-            }
             if let Some(byte) = BYTES.pop() {
                 buf[write] = byte as u8;
-                write +=1;
-            }
-            for _ in 0..10000 {
-                x86_64::instructions::nop();
+                write += 1;
+            } else {
+                //return ;
+                //framework::task::schedule();
+                let thread = Arc::downgrade(&get_current_thread());
+                WAIT_LIST.lock().push(thread);
+                sleep();
             }
         }
+        //loop {}
+        //buf[0] = b' ';
     }
 
     fn write_at(&self, _offset: usize, buf: &[u8]) {

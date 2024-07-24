@@ -2,11 +2,14 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use alloc::{collections::BTreeMap, string::String, sync::Arc};
 use framework::{ref_to_mut, task::process::ProcessId};
-use spin::Mutex;
+use spin::{Mutex, RwLock};
 
 use crate::user::get_current_process_id;
 
-use super::{vfs::inode::InodeRef, ROOT};
+use super::{
+    vfs::{inode::InodeRef, pipe::Pipe},
+    ROOT,
+};
 
 static FILE_DESCRIPTOR_MANAGERS: Mutex<BTreeMap<ProcessId, Arc<FileDescriptorManager>>> =
     Mutex::new(BTreeMap::new());
@@ -40,6 +43,26 @@ pub fn init_file_descriptor_manager(pid: ProcessId) {
     );
 }
 
+pub fn init_file_descriptor_manager_with_stdin_stdout(
+    pid: ProcessId,
+    stdin: InodeRef,
+    stdout: InodeRef,
+) {
+    let mut file_descriptor_managers = FILE_DESCRIPTOR_MANAGERS.lock();
+
+    let mut file_descriptors = BTreeMap::new();
+    file_descriptors.insert(0, (stdin.clone(), OpenMode::Read, 0));
+    file_descriptors.insert(1, (stdout.clone(), OpenMode::Write, 0));
+
+    file_descriptor_managers.insert(
+        pid,
+        Arc::new(FileDescriptorManager {
+            file_descriptors,
+            file_descriptor_allocator: AtomicUsize::new(3), // 0, 1, and 2 are reserved for stdin, stdout, and stderr
+        }),
+    );
+}
+
 fn get_inode_by_path(path: String) -> Option<InodeRef> {
     let root = ROOT.lock().clone();
 
@@ -62,6 +85,16 @@ fn get_inode_by_path(path: String) -> Option<InodeRef> {
 
 pub fn kernel_open(path: String) -> Option<InodeRef> {
     get_inode_by_path(path)
+}
+
+pub fn get_inode_by_fd(file_descriptor: usize) -> Option<InodeRef> {
+    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+
+    let (inode, _, _) = current_file_descriptor_manager
+        .file_descriptors
+        .get(&file_descriptor)?;
+
+    Some(inode.clone())
 }
 
 pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
@@ -120,5 +153,48 @@ pub fn close(fd: FileDescriptor) -> Option<()> {
     ref_to_mut(current_file_descriptor_manager.as_ref())
         .file_descriptors
         .remove(&fd)?;
+    Some(())
+}
+
+pub fn fsize(fd: FileDescriptor) -> Option<usize> {
+    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+
+    let (inode, _, _) = ref_to_mut(current_file_descriptor_manager.as_ref())
+        .file_descriptors
+        .get_mut(&fd)?;
+
+    let size = inode.read().size();
+
+    Some(size)
+}
+
+pub fn open_pipe(buffer: &mut [usize]) -> Option<()> {
+    if buffer.len() != 2 {
+        return None;
+    }
+    
+    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+    let file_descriptor_read = current_file_descriptor_manager
+        .file_descriptor_allocator
+        .fetch_add(1, Ordering::Relaxed);
+    let file_descriptor_write = current_file_descriptor_manager
+        .file_descriptor_allocator
+        .fetch_add(1, Ordering::Relaxed);
+
+    let inode = Arc::new(RwLock::new(Pipe::new()));
+
+    ref_to_mut(current_file_descriptor_manager.as_ref())
+        .file_descriptors
+        .insert(file_descriptor_read, (inode.clone(), OpenMode::Read, 0));
+
+    ref_to_mut(current_file_descriptor_manager.as_ref())
+        .file_descriptors
+        .insert(file_descriptor_write, (inode.clone(), OpenMode::Write, 0));
+
+    buffer[0] = file_descriptor_read;
+    buffer[1] = file_descriptor_write;
+    
+    log::info!("{:?}",buffer);
+
     Some(())
 }

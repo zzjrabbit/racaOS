@@ -19,7 +19,7 @@ pub enum HeapType {
 }
 
 pub const HEAP_START: u64 = 20 * 1024 * 1024 * 1024 * 1024; // 20TB(用户程序空间18TB~20TB)
-pub const USER_HEAP_INIT_SIZE: usize = 32768; // 32KB
+pub const USER_HEAP_INIT_SIZE: usize = 32 * 1024; // 32KB
 
 pub struct Heap(Mutex<Vec<(u64, usize)>>);
 
@@ -93,6 +93,7 @@ impl ProcessHeap {
     pub fn init(&self, process: Weak<RwLock<Process>>) {
         match self.heap_type {
             HeapType::User => {
+                ref_to_mut(self).process = Some(process.clone());
                 let mut frame_allocator = FRAME_ALLOCATOR.lock();
                 for page in 0..USER_HEAP_INIT_SIZE / 4096 {
                     let frame = frame_allocator.allocate_frame().unwrap();
@@ -123,9 +124,10 @@ impl ProcessHeap {
             _ => {}
         }
         if self.usable_size < layout.size() {
-            let size = layout.size() + 4096;
+            let size = layout.size() * 2;
             let page_cnt = (size + 4095) / 4096;
             self.allocator.add(HEAP_START as usize + self.size, size);
+            log::info!("need {}", size);
             for _ in 0..page_cnt {
                 let frame = FRAME_ALLOCATOR.lock().allocate_frame().unwrap();
                 let page = Page::containing_address(VirtAddr::new(HEAP_START + self.size as u64));

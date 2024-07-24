@@ -5,7 +5,11 @@ use device::{
     fs::{self, operation::init_file_descriptor_manager},
     user::syscall::syscall_handler,
 };
-use framework::{init_framework, task::Process, user::regist_syscall_handler};
+use framework::{
+    init_framework,
+    task::{Process, Thread},
+    user::regist_syscall_handler,
+};
 use limine::BaseRevision;
 
 extern crate alloc;
@@ -29,6 +33,8 @@ pub extern "C" fn _start() {
     let size = hello1.read().size();
     let buf = alloc::vec![0; size].leak();
     hello1.read().read_at(0, buf);
+
+    Thread::new_kernel_thread(device::fs::vfs::dev::terminal::keyboard_parse_thread);
 
     let process = Process::new_user_process("init", buf);
     init_file_descriptor_manager(process.read().id);

@@ -5,6 +5,7 @@ pub extern crate alloc;
 
 pub mod debug;
 pub mod fs;
+pub mod io;
 pub mod mm;
 pub mod task;
 
@@ -13,7 +14,8 @@ pub use core::*;
 use x86_64::instructions::hlt;
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    println!("User Panic:{}",info);
     loop {}
 }
 

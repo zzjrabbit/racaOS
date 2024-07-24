@@ -32,12 +32,14 @@ pub fn syscall_handler(
         }
         6 => {
             // create a new app
-            task::create_process(arg1, arg2, arg3, arg4)
+            task::create_process(arg1)
         }
         7 => mm::malloc(arg1, arg2),
         8 => mm::free(arg1, arg2, arg3),
         9 => fs::close(arg1),
         10 => fs::lseek(arg1, arg2),
+        11 => fs::fsize(arg1),
+        12 => fs::open_pipe(arg1),
         _ => 0,
     }
 }

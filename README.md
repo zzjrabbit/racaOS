@@ -29,8 +29,8 @@ Please look at \
 - [x] Real machine x2APIC interrupts
 - [x] Memory management
 - [x] SMP
-- [ ] AHCI driver
-- [ ] File system
+- [x] AHCI driver
+- [x] File system
 - [ ] Start time calculation
 - [ ] Chinese display
 - [ ] Perfect GUI

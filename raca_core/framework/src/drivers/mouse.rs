@@ -18,8 +18,8 @@ pub fn init() {
     }
 }
 
-fn mouse_complete_handler(mouse_state: MouseState) {
-    crate::println!("{:?}", mouse_state);
+fn mouse_complete_handler(_mouse_state: MouseState) {
+    //crate::println!("{:?}", mouse_state);
 }
 
 bitflags! {

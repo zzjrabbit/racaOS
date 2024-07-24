@@ -2,10 +2,14 @@
 #![no_main]
 #![feature(naked_functions)]
 
+use raca_std::{fs::FileDescriptor, print};
+
+use core::fmt::Write;
+
 #[no_mangle]
 pub fn main() {
     //let fd = raca_std::fs::open("/RACA/app64/hello2.rae", raca_std::fs::OpenMode::Read).unwrap();
-    raca_std::println!("OK");
+    //raca_std::println!("OK");
     //let mut buf = [0;8192];
     //let buf = [b'H',b'e',b'l',b'l',b'o',b',',b'y',b'o',b'u',b'r',b' ',b'd',b'i',b's',b'k',b' ',b'i',b's',b' ',b'b',b'r',b'o',b'k',b'e',b'n',b'!'];
     //write2(fd,buf.as_ptr(),buf.len());
@@ -21,7 +25,8 @@ pub fn main() {
     //raca_std::dump_hex_buffer(buf.as_ptr(), buf.len());
     //raca_std::task::create_process("Hello2",&buf);
     loop {
-        //write("[racaOS]".as_ptr(),6);
+        //write!(FileDescriptor::stdout(),"[hello]").unwrap();
+        //print!("[racaOS]");
         //syscall3(1);
     }
 }

@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use framework::{
     arch::apic::get_lapic_id,
-    task::{process::ProcessId, scheduler::SCHEDULERS, Process, Thread},
+    task::{process::ProcessId, scheduler::SCHEDULERS, thread::ThreadState, Process, Thread},
 };
 use spin::RwLock;
 
@@ -22,4 +22,10 @@ pub fn get_current_process() -> Arc<RwLock<Process>> {
 
 pub fn get_current_process_id() -> ProcessId {
     get_current_process().read().id
+}
+
+pub fn sleep() {
+    get_current_thread().write().state = ThreadState::Blocked;
+    framework::task::schedule();
+    while get_current_thread().read().state == ThreadState::Blocked {}
 }

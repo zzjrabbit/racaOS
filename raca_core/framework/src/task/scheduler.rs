@@ -74,7 +74,7 @@ impl Scheduler {
     pub fn schedule(&mut self, context: VirtAddr) -> VirtAddr {
         //let _lock = crate::GLOBAL_MUTEX.lock();
 
-        assert_eq!(self.current_thread.read().state, ThreadState::Running);
+        //assert_eq!(self.current_thread.read().state, ThreadState::Running);
 
         let last_thread = {
             let mut thread = self.current_thread.write();

@@ -51,13 +51,15 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
 #[naked]
 extern "x86-interrupt" fn timer_interrupt(_frame: InterruptStackFrame) {
     fn timer_handler(context: VirtAddr) -> VirtAddr {
-        super::apic::end_of_interrupt();
+        
         let id = get_lapic_id();
-        SCHEDULERS
+        let address =SCHEDULERS
             .lock()
             .get_mut(&id)
             .expect(&format!("Failed to find Processor {}!", id))
-            .schedule(context)
+            .schedule(context);
+        super::apic::end_of_interrupt();
+        address
     }
 
     unsafe {
@@ -115,14 +117,12 @@ extern "x86-interrupt" fn double_fault(frame: InterruptStackFrame, error_code: u
 }
 
 extern "x86-interrupt" fn keyboard_interrupt(_frame: InterruptStackFrame) {
-    crate::print!(".");
     let scancode: u8 = unsafe { PortReadOnly::new(0x60).read() };
     crate::drivers::keyboard::add_scancode(scancode);
     super::apic::end_of_interrupt();
 }
 
 extern "x86-interrupt" fn mouse_interrupt(_frame: InterruptStackFrame) {
-    crate::print!(".");
     let packet = unsafe { PortReadOnly::new(0x60).read() };
     crate::drivers::mouse::MOUSE.lock().process_packet(packet);
     super::apic::end_of_interrupt();

@@ -1,6 +1,6 @@
 use crate::{fs::operation::OpenMode, user::get_current_process};
 use alloc::{string::String, vec};
-use framework::memory::write_for_syscall;
+use framework::memory::{addr_to_array, write_for_syscall};
 
 use x86_64::VirtAddr;
 
@@ -81,6 +81,23 @@ pub fn lseek(fd: usize, offset: usize) -> usize {
     if let Some(_) = crate::fs::operation::lseek(fd, offset) {
         1
     } else {
+        0
+    }
+}
+
+pub fn fsize(fd: usize) -> usize {
+    if let Some(size) = crate::fs::operation::fsize(fd) {
+        size
+    } else {
+        0
+    }
+}
+
+pub fn open_pipe(buf_addr: usize) -> usize {
+    let buffer: &mut [usize] = addr_to_array::<usize>(VirtAddr::new(buf_addr as u64), 2);
+    if let Some(_) = crate::fs::operation::open_pipe(buffer) {
+        1
+    }else {
         0
     }
 }

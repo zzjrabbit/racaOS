@@ -145,6 +145,7 @@ dependencies = [
  "hello1",
  "hello2",
  "init",
+ "shell",
  "tempfile",
  "walkdir",
 ]
@@ -322,6 +323,12 @@ dependencies = [
  "libc",
  "windows-sys",
 ]
+
+[[package]]
+name = "escape-bytes"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bfcf67fea2815c2fc3b90873fae90957be12ff417335dfadc7f52927feb03b2"
 
 [[package]]
 name = "fastrand"
@@ -770,6 +777,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.71",
+]
+
+[[package]]
+name = "shell"
+version = "0.1.0"
+dependencies = [
+ "escape-bytes",
+ "raca_std",
 ]
 
 [[package]]

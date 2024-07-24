@@ -31,6 +31,7 @@ pub fn init_framework() {
     unsafe {
         lapic.enable();
         arch::apic::calibrate_timer(&mut lapic);
+        lapic.enable_timer();
     }
 
     arch::apic::init();

@@ -32,7 +32,6 @@ pub fn init() {
         };
         let xhci_device = xhci_device();
         if let Some(xhci_device) = xhci_device {
-
             let bar = if let Some(bar) = xhci_device.bars[0] {
                 bar
             } else {
