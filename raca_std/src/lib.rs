@@ -15,7 +15,7 @@ use x86_64::instructions::hlt;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    println!("User Panic:{}",info);
+    println!("User Panic:{}", info);
     loop {}
 }
 

@@ -138,7 +138,7 @@ impl<'a, IO: ReadWriteSeek, TP, OCC> File<'a, IO, TP, OCC> {
         }
     }
 
-    fn flush_dir_entry(&mut self) -> Result<(), Error<IO::Error>> {
+    pub fn flush_dir_entry(&mut self) -> Result<(), Error<IO::Error>> {
         if let Some(ref mut e) = self.entry {
             e.flush(self.fs)?;
         }
@@ -178,10 +178,17 @@ impl<'a, IO: ReadWriteSeek, TP, OCC> File<'a, IO, TP, OCC> {
         }
     }
 
-    fn size(&self) -> Option<u32> {
+    pub fn size(&self) -> Option<u32> {
         match self.entry {
             Some(ref e) => e.inner().size(),
             None => None,
+        }
+    }
+    
+    pub fn set_size(&mut self, size: u32) {
+        match self.entry {
+            Some(ref mut e) => e.set_size(size),
+            _ => {}
         }
     }
 

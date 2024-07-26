@@ -16,6 +16,7 @@ use crate::file::File;
 use crate::fs::{FatType, FileSystem, OemCpConverter, ReadWriteSeek};
 use crate::io::{self, Read, ReadLeExt, Write, WriteLeExt};
 use crate::time::{Date, DateTime};
+use crate::{Seek, SeekFrom};
 
 bitflags! {
     /// A FAT file attributes.
@@ -128,7 +129,7 @@ impl ShortName {
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, Default)]
-pub(crate) struct DirFileEntryData {
+pub struct DirFileEntryData {
     name: [u8; SFN_SIZE],
     attrs: FileAttributes,
     reserved_0: u8,
@@ -252,7 +253,8 @@ impl DirFileEntryData {
         self.modify_time = date_time.time.encode().0;
     }
 
-    pub(crate) fn serialize<W: Write>(&self, wrt: &mut W) -> Result<(), W::Error> {
+    pub fn serialize<W: Write+Seek>(&self, wrt: &mut W) -> Result<(), W::Error> {
+        wrt.seek(SeekFrom::Current(28))?;
         wrt.write_all(&self.name)?;
         wrt.write_u8(self.attrs.bits())?;
         wrt.write_u8(self.reserved_0)?;
@@ -367,7 +369,7 @@ pub(crate) enum DirEntryData {
 }
 
 impl DirEntryData {
-    pub(crate) fn serialize<E: IoError, W: Write<Error = Error<E>>>(&self, wrt: &mut W) -> Result<(), Error<E>> {
+    pub(crate) fn serialize<E: IoError, W: Write<Error = Error<E>>+Seek>(&self, wrt: &mut W) -> Result<(), Error<E>> {
         trace!("DirEntryData::serialize");
         match self {
             DirEntryData::File(file) => file.serialize(wrt),
@@ -456,9 +458,9 @@ impl DirEntryData {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct DirEntryEditor {
+pub struct DirEntryEditor {
     data: DirFileEntryData,
-    pos: u64,
+    pub pos: u64,
     dirty: bool,
 }
 
@@ -533,7 +535,7 @@ impl DirEntryEditor {
 /// `DirEntry` is returned by `DirIter` when reading a directory.
 #[derive(Clone)]
 pub struct DirEntry<'a, IO: ReadWriteSeek, TP, OCC> {
-    pub(crate) data: DirFileEntryData,
+    pub data: DirFileEntryData,
     pub(crate) short_name: ShortName,
     #[cfg(feature = "lfn")]
     pub(crate) lfn_utf16: LfnBuffer,

@@ -31,28 +31,14 @@ struct Args {
 }
 
 fn main() {
-    let hello1_path = env!("CARGO_BIN_FILE_HELLO1_hello1");
-    let hello2_path = env!("CARGO_BIN_FILE_HELLO2_hello2");
     let init_path = env!("CARGO_BIN_FILE_INIT_init");
     let shell_path = env!("CARGO_BIN_FILE_SHELL_shell");
 
     let app_path = "esp/RACA/app64/".to_string();
 
-    let hello1_dest = app_path.clone() + "hello1.rae";
-    let hello2_dest = app_path.clone() + "hello2.rae";
     let init_dest = app_path.clone() + "init.rae";
     let shell_dest = app_path.clone() + "shell.rae";
 
-    io::copy(
-        &mut File::open(Path::new(hello1_path)).unwrap(),
-        &mut File::create(hello1_dest).unwrap(),
-    )
-    .unwrap();
-    io::copy(
-        &mut File::open(Path::new(hello2_path)).unwrap(),
-        &mut File::create(hello2_dest).unwrap(),
-    )
-    .unwrap();
     io::copy(
         &mut File::open(Path::new(init_path)).unwrap(),
         &mut File::create(init_dest).unwrap(),
@@ -64,7 +50,7 @@ fn main() {
     )
     .unwrap();
 
-    let raca_core_path = env!("CARGO_BIN_FILE_DEVICE_device");
+    let raca_core_path = env!("CARGO_BIN_FILE_RACA_CORE_raca_core");
     println!(
         "Building UEFI disk image for kernel at {:#?}",
         &raca_core_path

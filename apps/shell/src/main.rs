@@ -2,12 +2,14 @@
 #![no_main]
 
 use alloc::{
-    format,
     string::{String, ToString},
     vec,
 };
 use core::fmt::Write;
-use raca_std::{fs::{FileDescriptor, OpenMode}, task::Process};
+use raca_std::{
+    fs::{FileDescriptor, OpenMode},
+    task::Process,
+};
 
 extern crate alloc;
 
@@ -34,9 +36,7 @@ fn shell_read_line(fd: &mut FileDescriptor, buf: &mut String) {
 pub fn cat(stdin: FileDescriptor, file_path: String) {
     if let Ok(fd) = FileDescriptor::open(file_path.as_str(), OpenMode::Read) {
         let size = fd.size();
-        stdin.write(format!("size {}\n", size).as_bytes());
         let mut buf = vec![0; size];
-        stdin.write("Reading\n".as_bytes());
         fd.read(buf.as_mut_slice());
         stdin.write(&buf);
         stdin.write(&[b'\n']);
@@ -76,7 +76,7 @@ pub fn main() {
         let input =
             String::from_utf8(escape_bytes::unescape(input_buf.as_bytes()).unwrap()).unwrap();
 
-        if input == "Avada Kedavra" {
+        if input == "Avada Kedavra!" {
             writeln!(
                 fd,
                 "Oh! Don't try to kill anyone! We must be a good guy you know."
@@ -111,22 +111,23 @@ pub fn main() {
                 string.remove(0);
             }
             writeln!(fd, "{}", string).unwrap();
-        }else if input.starts_with("run "){
+        } else if input.starts_with("run ") {
             if let Some(path) = input.split(" ").nth(1) {
-                if let Ok(mut file) = FileDescriptor::open(path, OpenMode::Read){
-                    let mut buf = vec![0;file.size()];
+                if let Ok(mut file) = FileDescriptor::open(path, OpenMode::Read) {
+                    let mut buf = vec![0; file.size()];
                     file.read(&mut buf);
                     file.close();
                     //let (pipe1_read,pipe1_write) = FileDescriptor::open_pipe().unwrap();
                     //let (pipe2_read,pipe2_write) = FileDescriptor::open_pipe().unwrap();
-                    
-                    let process = Process::new(&buf, "temp", 0,0);
+
+                    let process = Process::new(&buf, "temp", 0, 0);
                     process.run();
                     //loop {
                     //    let mut buf = [0;1];
                     //    pipe2_read.read(&mut buf);
                     //    write!(fd, "{}", buf[0] as char).unwrap();
                     //}
+                    loop {}
                 }
             } else {
                 writeln!(fd, "Expected a argument.").unwrap();

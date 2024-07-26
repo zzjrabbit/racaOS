@@ -28,34 +28,27 @@ impl FileDescriptor {
             Ok(Self(fd, false))
         }
     }
-    
+
     /// this opens a pipe, the first FileDescriptor is the read side, and the next one is the write side.
     /// You can use one of them as stdin or stdout stream for the sub process.
-    pub fn open_pipe() -> Result<(Self,Self), ()> {
+    pub fn open_pipe() -> Result<(Self, Self), ()> {
         const OPEN_SYSCALL_ID: u64 = 12;
-        let mut buf = [0usize;2];
-        let code = crate::syscall(
-            OPEN_SYSCALL_ID,
-            buf.as_mut_ptr() as usize,
-            0,
-            0,
-            0,
-            0,
-        );
-        println!("{:?}",buf);
+        let mut buf = [0usize; 2];
+        let code = crate::syscall(OPEN_SYSCALL_ID, buf.as_mut_ptr() as usize, 0, 0, 0, 0);
+        println!("{:?}", buf);
         if code == 0 {
             Err(())
         } else {
-            Ok((Self(buf[0], false),Self(buf[1],false)))
+            Ok((Self(buf[0], false), Self(buf[1], false)))
         }
     }
-    
+
     pub fn stdin() -> Self {
-        Self(0,false)
+        Self(0, false)
     }
-    
+
     pub fn stdout() -> Self {
-        Self(1,false)
+        Self(1, false)
     }
 
     pub fn read(&self, buffer: &mut [u8]) -> usize {

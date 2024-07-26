@@ -16,18 +16,8 @@ version = "0.3.4"
 default-features = false
 features = ["std", "alloc"]
 
-[dependencies.device]
-path = "../raca_core/device"
-artifact = "bin"
-target = "x86_64-unknown-none"
-
-[dependencies.hello1]
-path = "../apps/hello1"
-artifact = "bin"
-target = "x86_64-unknown-none"
-
-[dependencies.hello2]
-path = "../apps/hello2"
+[dependencies.raca_core]
+path = "../raca_core"
 artifact = "bin"
 target = "x86_64-unknown-none"
 
