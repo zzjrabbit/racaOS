@@ -184,7 +184,7 @@ impl<'a, IO: ReadWriteSeek, TP, OCC> File<'a, IO, TP, OCC> {
             None => None,
         }
     }
-    
+
     pub fn set_size(&mut self, size: u32) {
         match self.entry {
             Some(ref mut e) => e.set_size(size),

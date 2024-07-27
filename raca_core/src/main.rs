@@ -1,16 +1,16 @@
 #![no_std]
 #![no_main]
 
-use raca_core::{
-    fs::{self, operation::init_file_descriptor_manager},
-    user::syscall::syscall_handler,
-};
 use framework::{
     init_framework,
     task::{Process, Thread},
     user::regist_syscall_handler,
 };
 use limine::BaseRevision;
+use raca_core::{
+    fs::{self, operation::init_file_descriptor_manager},
+    user::syscall::syscall_handler,
+};
 
 extern crate alloc;
 

@@ -1,9 +1,9 @@
-use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc};
+use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 use fatfs::*;
 use framework::{ref_to_mut, ref_to_static, unsafe_trait_impl};
 use spin::RwLock;
 
-use super::vfs::inode::{Inode, InodeRef, InodeTy};
+use super::{operation::kernel_open, vfs::inode::{FileInfo, Inode, InodeRef, InodeTy}};
 
 type FatDir = Dir<'static, InodeRefIO, NullTimeProvider, LossyOemCpConverter>;
 type FatFile = File<'static, InodeRefIO, NullTimeProvider, LossyOemCpConverter>;
@@ -64,24 +64,31 @@ pub struct Fat32Volume {
 }
 
 impl Fat32Volume {
-    pub fn new(dev: InodeRef) -> Self {
+    pub fn new(dev: InodeRef) -> InodeRef {
         let io = InodeRefIO::new(dev);
         let vol = Box::leak(Box::new(FileSystem::new(io, FsOptions::new()).unwrap()));
 
-        Self {
+        let inode = Self {
             vol,
             virtual_inodes: BTreeMap::new(),
             path: String::new(),
-        }
+        };
+        let inode_ref = Arc::new(RwLock::new(inode));
+        ref_to_mut(&*inode_ref.read()).virtual_inodes.insert(".".into(), inode_ref.clone());
+        inode_ref
     }
 }
 
 impl Inode for Fat32Volume {
-    fn when_mounted(&self, path: alloc::string::String, _father: Option<InodeRef>) {
-        ref_to_mut(self).path = path;
+    fn when_mounted(&mut self, path: alloc::string::String, father: Option<InodeRef>) {
+        self.path.clear();
+        self.path.push_str(path.as_str());
+        if let Some(father) = father {
+            self.virtual_inodes.insert("..".into(), father);
+        }
     }
 
-    fn when_umounted(&self) {}
+    fn when_umounted(&mut self) {}
 
     fn get_path(&self) -> alloc::string::String {
         self.path.clone()
@@ -96,24 +103,30 @@ impl Inode for Fat32Volume {
     fn open(&self, name: String) -> Option<InodeRef> {
         let cluster_size = self.vol.cluster_size() as usize;
         let dir = ref_to_static(self).vol.root_dir();
-        
-        if let Ok(dir) = dir.open_dir(name.as_str()) {
-            return Some(Arc::new(RwLock::new(Fat32Dir::new(
+
+        let self_inode = kernel_open(self.get_path());
+
+        if let Some(inode) = self.virtual_inodes.get(&name) {
+            return Some(inode.clone());
+        } else if let Ok(dir) = dir.open_dir(name.as_str()) {
+            let inode = Fat32Dir::new(
                 Arc::new(dir),
                 cluster_size,
-            ))));
+            );
+            inode.write().when_mounted(self.get_path()+name.as_str()+"/", self_inode);
+            return Some(inode);
         } else if let Ok(file) = dir.open_file(name.as_str()) {
-            return Some(Arc::new(RwLock::new(Fat32File::new(
+            let inode = Arc::new(RwLock::new(Fat32File::new(
                 Arc::new(file),
                 cluster_size,
-            ))));
-        } else if let Some(inode) = self.virtual_inodes.get(&name) {
-            return Some(inode.clone());
+            )));
+            inode.write().when_mounted(self.get_path()+name.as_str(), self_inode);
+            return Some(inode);
         }
         //dir.
         None
     }
-    
+
     fn create(&self, name: String, ty: super::vfs::inode::InodeTy) -> Option<InodeRef> {
         match ty {
             InodeTy::Dir => {
@@ -125,51 +138,98 @@ impl Inode for Fat32Volume {
         }
         self.open(name)
     }
+
+    fn inode_type(&self) -> InodeTy {
+        InodeTy::Dir
+    }
+
+    fn list(&self) -> alloc::vec::Vec<FileInfo> {
+        let mut vec = Vec::new();
+        for (name, inode) in self.virtual_inodes.iter() {
+            vec.push(FileInfo::new(name.clone(), inode.read().inode_type()));
+        }
+        for entry in self.vol.root_dir().iter() {
+            if let Ok(entry) = entry {
+                vec.push(FileInfo::new(
+                    entry.file_name().clone(),
+                    if entry.is_dir() {
+                        InodeTy::Dir
+                    } else {
+                        InodeTy::File
+                    },
+                ))
+            }
+        }
+        vec
+    }
 }
 
 pub struct Fat32Dir {
     dir: Arc<FatDir>,
     path: String,
     cluster_size: usize,
+    virtual_inodes: BTreeMap<String, InodeRef>,
 }
 
 impl Fat32Dir {
-    pub(self) fn new(dir: Arc<FatDir>, cluster_size: usize) -> Self {
-        Self {
+    pub(self) fn new(dir: Arc<FatDir>, cluster_size: usize) -> InodeRef{
+        let inode = Self {
             dir,
             path: String::new(),
             cluster_size,
-        }
+            virtual_inodes: BTreeMap::new(),
+        };
+        let inode_ref = Arc::new(RwLock::new(inode));
+        ref_to_mut(&*inode_ref.read()).virtual_inodes.insert(".".into(), inode_ref.clone());
+        inode_ref
     }
 }
 
 impl Inode for Fat32Dir {
-    fn when_mounted(&self, path: alloc::string::String, _father: Option<InodeRef>) {
-        ref_to_mut(self).path = path;
+    fn when_mounted(&mut self, path: alloc::string::String, father: Option<InodeRef>) {
+        self.path.clear();
+        self.path.push_str(path.as_str());
+        if let Some(father) = father {
+            self.virtual_inodes.insert("..".into(),father);
+        }
     }
 
-    fn when_umounted(&self) {}
+    fn when_umounted(&mut self) {}
 
     fn get_path(&self) -> alloc::string::String {
         self.path.clone()
     }
 
+    fn mount(&self, node: InodeRef, name: String) {
+        ref_to_mut(self)
+            .virtual_inodes
+            .insert(name.clone(), node.clone());
+    }
+
     fn open(&self, name: String) -> Option<InodeRef> {
-        if let Ok(dir) = self.dir.open_dir(name.as_str()) {
-            return Some(Arc::new(RwLock::new(Fat32Dir::new(
+        let self_inode = kernel_open(self.get_path());
+
+        if let Some(inode) = self.virtual_inodes.get(&name) {
+            return Some(inode.clone());
+        }else if let Ok(dir) = self.dir.open_dir(name.as_str()) {
+            let inode = Fat32Dir::new(
                 Arc::new(dir),
                 self.cluster_size,
-            ))));
+            );
+            inode.write().when_mounted(self.get_path()+name.as_str()+"/", self_inode);
+            return Some(inode);
         } else if let Ok(file) = self.dir.open_file(name.as_str()) {
-            return Some(Arc::new(RwLock::new(Fat32File::new(
+            let inode = Arc::new(RwLock::new(Fat32File::new(
                 Arc::new(file),
                 self.cluster_size,
-            ))));
-        }
+            )));
+            inode.write().when_mounted(self.get_path()+name.as_str(), self_inode);
+            return Some(inode);
+        } 
         //dir.
         None
     }
-    
+
     fn create(&self, name: String, ty: super::vfs::inode::InodeTy) -> Option<InodeRef> {
         match ty {
             InodeTy::Dir => {
@@ -180,6 +240,32 @@ impl Inode for Fat32Dir {
             }
         }
         self.open(name)
+    }
+
+    fn inode_type(&self) -> InodeTy {
+        InodeTy::Dir
+    }
+
+    fn list(&self) -> alloc::vec::Vec<FileInfo> {
+        let mut vec = Vec::new();
+        for (name, inode) in self.virtual_inodes.iter() {
+            vec.push(FileInfo::new(name.clone(), inode.read().inode_type()));
+        }
+        for entry in self.dir.iter() {
+            if let Ok(entry) = entry {
+                if entry.file_name() != "." && entry.file_name() != ".." {
+                    vec.push(FileInfo::new(
+                        entry.file_name().clone(),
+                        if entry.is_dir() {
+                            InodeTy::Dir
+                        } else {
+                            InodeTy::File
+                        },
+                    ))
+                }
+            }
+        }
+        vec
     }
 }
 
@@ -200,11 +286,12 @@ impl Fat32File {
 }
 
 impl Inode for Fat32File {
-    fn when_mounted(&self, path: alloc::string::String, _father: Option<InodeRef>) {
-        ref_to_mut(self).path = path;
+    fn when_mounted(&mut self, path: alloc::string::String, _father: Option<InodeRef>) {
+        self.path.clear();
+        self.path.push_str(path.as_str());
     }
 
-    fn when_umounted(&self) {}
+    fn when_umounted(&mut self) {}
 
     fn get_path(&self) -> alloc::string::String {
         self.path.clone()
@@ -255,7 +342,7 @@ impl Inode for Fat32File {
                 .write(&buf[write_cnt * self.cluster_size..])
                 .unwrap();
         }
-        
+
         ref_to_mut(self.file.as_ref()).flush().unwrap();
     }
 

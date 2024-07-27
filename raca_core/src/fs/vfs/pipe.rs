@@ -31,11 +31,12 @@ impl Pipe {
 }
 
 impl Inode for Pipe {
-    fn when_mounted(&self, path: alloc::string::String, _father: Option<super::inode::InodeRef>) {
-        ref_to_mut(self).path = path;
+    fn when_mounted(&mut self, path: alloc::string::String, _father: Option<super::inode::InodeRef>) {
+        self.path.clear();
+        self.path.push_str(path.as_str());
     }
-    fn when_umounted(&self) {
-        ref_to_mut(self).path.clear();
+    fn when_umounted(&mut self) {
+        self.path.clear();
     }
 
     fn get_path(&self) -> String {

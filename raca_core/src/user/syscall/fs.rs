@@ -1,6 +1,17 @@
-use crate::{fs::operation::OpenMode, user::get_current_process};
-use alloc::{string::String, vec};
-use framework::memory::{addr_to_array, write_for_syscall};
+use core::alloc::Layout;
+
+use crate::{
+    fs::{
+        operation::OpenMode,
+        vfs::inode::{FileInfo, InodeTy},
+    },
+    user::get_current_process,
+};
+use alloc::{string::String, vec, vec::Vec};
+use framework::{
+    memory::{addr_to_array, addr_to_mut_ref, write_for_syscall},
+    ref_to_mut,
+};
 
 use x86_64::VirtAddr;
 
@@ -101,3 +112,103 @@ pub fn open_pipe(buf_addr: usize) -> usize {
         0
     }
 }
+
+pub fn dir_item_num(path_addr: usize, path_len: usize) -> usize {
+    let mut buf = vec![0; path_len];
+
+    if let Err(_) = get_current_process().read().page_table.read(
+        VirtAddr::new(path_addr as u64),
+        path_len,
+        &mut buf,
+    ) {
+        panic!("Read error at {:x}!", path_addr);
+    }
+
+    let path = String::from(core::str::from_utf8(buf.as_slice()).unwrap());
+
+    let file_infos = crate::fs::operation::list_dir(path);
+
+    file_infos.len()
+}
+
+pub fn list_dir(path_addr: usize, path_len: usize, buf_addr: usize) -> usize {
+    let mut buf = vec![0; path_len];
+
+    if let Err(_) = get_current_process().read().page_table.read(
+        VirtAddr::new(path_addr as u64),
+        path_len,
+        &mut buf,
+    ) {
+        panic!("Read error at {:x}!", path_addr);
+    }
+
+    let path = String::from(core::str::from_utf8(buf.as_slice()).unwrap());
+
+    #[derive(Clone)]
+    #[allow(dead_code)]
+    struct TemporyInfo {
+        name: &'static [u8],
+        ty: InodeTy,
+    }
+
+    let file_infos: Vec<TemporyInfo> = {
+        let infos = crate::fs::operation::list_dir(path);
+        let mut new_infos = Vec::new();
+        for info in infos.iter() {
+            let FileInfo { name, ty } = info;
+            let new_name = ref_to_mut(&*get_current_process().read())
+                .heap
+                .allocate(Layout::from_size_align(name.len(), 8).unwrap())
+                .unwrap();
+            let new_name = addr_to_array(VirtAddr::new(new_name), name.len());
+            new_name[..name.len()].copy_from_slice(name.as_bytes());
+            new_infos.push(TemporyInfo {
+                name: new_name,
+                ty: *ty,
+            });
+        }
+        new_infos
+    };
+
+    write_for_syscall(VirtAddr::new(buf_addr as u64), file_infos.as_slice());
+
+    0
+}
+
+pub fn change_cwd(path_addr: usize, path_len: usize) -> usize {
+    let mut buf = vec![0; path_len];
+
+    if let Err(_) = get_current_process().read().page_table.read(
+        VirtAddr::new(path_addr as u64),
+        path_len,
+        &mut buf,
+    ) {
+        panic!("Read error at {:x}!", path_addr);
+    }
+
+    let path = String::from(core::str::from_utf8(buf.as_slice()).unwrap());
+
+    crate::fs::operation::change_cwd(path);
+
+    0
+}
+
+pub fn get_cwd() -> usize {
+    let path = crate::fs::operation::get_cwd();
+    let new_path_ptr = ref_to_mut(&*get_current_process().read())
+                .heap
+                .allocate(Layout::from_size_align(path.len(), 8).unwrap())
+                .unwrap();
+    let new_path = addr_to_array(VirtAddr::new(new_path_ptr), path.len());
+    new_path[..path.len()].copy_from_slice(path.as_bytes());
+    let ret_struct_ptr = ref_to_mut(&*get_current_process().read())
+                .heap
+                .allocate(Layout::from_size_align(16, 8).unwrap())
+                .unwrap();
+    let path_ptr = addr_to_mut_ref(VirtAddr::new(ret_struct_ptr));
+    *path_ptr = new_path_ptr;
+    let len_ptr = addr_to_mut_ref(VirtAddr::new(ret_struct_ptr + 8));
+    *len_ptr = path.len();
+    ret_struct_ptr as usize
+}
+

@@ -40,6 +40,10 @@ pub fn syscall_handler(
         10 => fs::lseek(arg1, arg2),
         11 => fs::fsize(arg1),
         12 => fs::open_pipe(arg1),
+        13 => fs::list_dir(arg1, arg2, arg3),
+        14 => fs::dir_item_num(arg1, arg2),
+        15 => fs::change_cwd(arg1, arg2),
+        16 => fs::get_cwd(),
         _ => 0,
     }
 }

@@ -253,7 +253,7 @@ impl DirFileEntryData {
         self.modify_time = date_time.time.encode().0;
     }
 
-    pub fn serialize<W: Write+Seek>(&self, wrt: &mut W) -> Result<(), W::Error> {
+    pub fn serialize<W: Write + Seek>(&self, wrt: &mut W) -> Result<(), W::Error> {
         wrt.seek(SeekFrom::Current(28))?;
         wrt.write_all(&self.name)?;
         wrt.write_u8(self.attrs.bits())?;
@@ -369,7 +369,7 @@ pub(crate) enum DirEntryData {
 }
 
 impl DirEntryData {
-    pub(crate) fn serialize<E: IoError, W: Write<Error = Error<E>>+Seek>(&self, wrt: &mut W) -> Result<(), Error<E>> {
+    pub(crate) fn serialize<E: IoError, W: Write<Error = Error<E>> + Seek>(&self, wrt: &mut W) -> Result<(), Error<E>> {
         trace!("DirEntryData::serialize");
         match self {
             DirEntryData::File(file) => file.serialize(wrt),

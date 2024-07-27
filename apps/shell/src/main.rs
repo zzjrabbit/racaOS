@@ -2,12 +2,11 @@
 #![no_main]
 
 use alloc::{
-    string::{String, ToString},
-    vec,
+    format, string::{String, ToString}, vec
 };
 use core::fmt::Write;
 use raca_std::{
-    fs::{FileDescriptor, OpenMode},
+    fs::{change_cwd, get_cwd, FileDescriptor, FileInfo, FileType, OpenMode},
     task::Process,
 };
 
@@ -33,6 +32,10 @@ fn shell_read_line(fd: &mut FileDescriptor, buf: &mut String) {
     }
 }
 
+fn get_prompt() -> String {
+    format!("\x1b[36m[\x1b[34mroot@raca \x1b[33m{}\x1b[36m]\x1b[34m:) \x1b[0m",get_cwd())
+}
+
 pub fn cat(stdin: FileDescriptor, file_path: String) {
     if let Ok(fd) = FileDescriptor::open(file_path.as_str(), OpenMode::Read) {
         let size = fd.size();
@@ -53,6 +56,17 @@ pub fn write(stdin: FileDescriptor, file_path: String, text: String) {
     }
 }
 
+pub fn ls(mut stdin: FileDescriptor,folder: String) {
+    let infos = FileInfo::list(folder);
+    for info in infos.iter() {
+        match info.ty {
+            FileType::Dir => write!(stdin, "\x1b[42m{}\x1b[0m ",info.name).unwrap(),
+            FileType::File => write!(stdin, "\x1b[32m{}\x1b[0m ",info.name).unwrap(),
+        }
+    }
+    writeln!(stdin).unwrap();
+}
+
 #[no_mangle]
 pub fn main() {
     let mut fd = FileDescriptor::open("/dev/terminal", raca_std::fs::OpenMode::Write).unwrap();
@@ -65,9 +79,7 @@ pub fn main() {
 
     let mut input_buf = String::new();
 
-    let prompt = "\x1b[36m[\x1b[34mroot@raca \x1b[33m/\x1b[36m]\x1b[34m:) \x1b[0m";
-
-    write!(fd, "{}", prompt).unwrap();
+    write!(fd, "{}", get_prompt()).unwrap();
 
     loop {
         shell_read_line(&mut fd, &mut input_buf);
@@ -132,9 +144,17 @@ pub fn main() {
             } else {
                 writeln!(fd, "Expected a argument.").unwrap();
             }
+        } else if input.starts_with("ls") {
+            ls(fd, get_cwd());
+        } else if input.starts_with("cd ") {
+            if let Some(path) = input.split(" ").nth(1) {
+                change_cwd(String::from(path));
+            } else {
+                writeln!(fd, "Expected a argument.").unwrap();
+            }
         } else {
             writeln!(fd, "\x1b[31mBad Command: \x1b[0m{}\x1b[0m", input).unwrap();
         }
-        write!(fd, "\x1b[0m{}", prompt).unwrap();
+        write!(fd, "\x1b[0m{}", get_prompt()).unwrap();
     }
 }

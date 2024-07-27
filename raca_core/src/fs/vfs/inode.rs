@@ -1,16 +1,30 @@
-use alloc::{string::String, sync::Arc};
+use alloc::{string::String, sync::Arc, vec::Vec};
 use spin::RwLock;
 
 pub type InodeRef = Arc<RwLock<dyn Inode>>;
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum InodeTy {
-    Dir,
-    File,
+    Dir = 0,
+    File = 1,
+}
+
+#[repr(C)]
+#[derive(Clone)]
+pub struct FileInfo {
+    pub name: String,
+    pub ty: InodeTy,
+}
+
+impl FileInfo {
+    pub fn new(name: String, ty: InodeTy) -> Self {
+        Self { name, ty }
+    }
 }
 
 pub trait Inode: Sync + Send {
-    fn when_mounted(&self, path: String, father: Option<InodeRef>);
-    fn when_umounted(&self);
+    fn when_mounted(&mut self, path: String, father: Option<InodeRef>);
+    fn when_umounted(&mut self);
 
     fn get_path(&self) -> String;
     fn size(&self) -> usize {
@@ -37,10 +51,17 @@ pub trait Inode: Sync + Send {
     fn create(&self, _name: String, _ty: InodeTy) -> Option<InodeRef> {
         unimplemented!()
     }
+    fn list(&self) -> Vec<FileInfo> {
+        Vec::new()
+    }
+
+    fn inode_type(&self) -> InodeTy {
+        InodeTy::File
+    }
 }
 
 pub fn mount_to(node: InodeRef, to: InodeRef, name: String) {
     to.read().mount(node.clone(), name.clone());
-    node.read()
+    node.write()
         .when_mounted(to.read().get_path() + &name + "/", Some(to.clone()));
 }

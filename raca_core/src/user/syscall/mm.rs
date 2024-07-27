@@ -1,12 +1,14 @@
 use core::alloc::Layout;
 
+use framework::ref_to_mut;
+
 use crate::user::get_current_process;
 
 pub fn malloc(size: usize, align: usize) -> usize {
     let layout = Layout::from_size_align(size, align);
     if let Ok(layout) = layout {
         let process = get_current_process();
-        let addr = process.write().heap.allocate(layout);
+        let addr = ref_to_mut(&*process.read()).heap.allocate(layout);
         if let Some(addr) = addr {
             addr as usize
         } else {

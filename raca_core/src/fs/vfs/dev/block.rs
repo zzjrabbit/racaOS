@@ -47,14 +47,15 @@ impl BlockInode {
 
 impl Inode for BlockInode {
     fn when_mounted(
-        &self,
+        &mut self,
         path: alloc::string::String,
         _father: Option<crate::fs::vfs::inode::InodeRef>,
     ) {
-        ref_to_mut(self).path = path;
+        self.path.clear();
+        self.path.push_str(path.as_str());
     }
 
-    fn when_umounted(&self) {}
+    fn when_umounted(&mut self) {}
 
     fn get_path(&self) -> alloc::string::String {
         self.path.clone()

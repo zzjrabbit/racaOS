@@ -1,7 +1,8 @@
-use alloc::{collections::BTreeMap, string::String};
+use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 use framework::ref_to_mut;
+use spin::RwLock;
 
-use super::inode::{Inode, InodeRef};
+use super::inode::{FileInfo, Inode, InodeRef};
 
 pub struct RootFS {
     nodes: BTreeMap<String, InodeRef>,
@@ -9,22 +10,33 @@ pub struct RootFS {
 }
 
 impl RootFS {
-    pub const fn new() -> Self {
-        Self {
+    pub fn new() -> InodeRef {
+        let inode = Arc::new(RwLock::new(Self {
             nodes: BTreeMap::new(),
             path: String::new(),
-        }
+        }));
+        ref_to_mut(&*inode.read()).nodes.insert(".".into(),inode.clone());
+        inode.clone()
     }
 }
 
 impl Inode for RootFS {
-    fn when_mounted(&self, path: String, _father: Option<InodeRef>) {
-        ref_to_mut(self).path = path;
+    fn when_mounted(&mut self, path: String, father: Option<InodeRef>) {
+        log::info!("mount to {}", path);
+        self.path.clear();
+        self.path.push_str(path.as_str());
+        if let Some(father) = father {
+            self.nodes.insert("..".into(), father.clone());
+        }
+        
     }
 
-    fn when_umounted(&self) {
-        for (_, node) in self.nodes.iter() {
-            node.read().when_umounted();
+    fn when_umounted(&mut self) {
+        //loop{}
+        for (name, node) in self.nodes.iter() {
+            if name != "." && name != ".." {
+                node.write().when_umounted();
+            }
         }
     }
 
@@ -38,5 +50,17 @@ impl Inode for RootFS {
 
     fn open(&self, name: String) -> Option<InodeRef> {
         self.nodes.get(&name).cloned()
+    }
+
+    fn inode_type(&self) -> super::inode::InodeTy {
+        super::inode::InodeTy::Dir
+    }
+
+    fn list(&self) -> alloc::vec::Vec<super::inode::FileInfo> {
+        let mut vec = Vec::new();
+        for (name, inode) in self.nodes.iter() {
+            vec.push(FileInfo::new(name.clone(), inode.read().inode_type()));
+        }
+        vec
     }
 }

@@ -67,7 +67,7 @@ pub fn create_process(info_addr: usize) -> usize {
         } else {
             init_file_descriptor_manager(pid);
         }
-        
+
         x86_64::instructions::interrupts::enable();
 
         0

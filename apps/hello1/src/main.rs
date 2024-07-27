@@ -10,6 +10,5 @@
 
 #[no_mangle]
 pub fn main() {
-    loop {
-    }
+    loop {}
 }

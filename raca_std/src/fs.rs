@@ -1,5 +1,7 @@
 use core::fmt;
 
+use alloc::{string::String, vec::Vec};
+
 use crate::println;
 
 #[repr(C)]
@@ -109,4 +111,89 @@ impl fmt::Write for FileDescriptor {
             Ok(())
         }
     }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Default)]
+pub enum FileType {
+    Dir = 0,
+    #[default]
+    File = 1,
+}
+
+#[repr(C)]
+#[derive(Clone, Debug)]
+pub struct FileInfo {
+    pub name: String,
+    pub ty: FileType,
+}
+
+impl Default for FileInfo {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            ty: FileType::Dir,
+        }
+    }
+}
+
+impl FileInfo {
+    pub fn list(path: String) -> Vec<Self> {
+        fn dir_item_num(path: String) -> usize {
+            const DIR_ITEM_NUM_SYSCALL: u64 = 14;
+            crate::syscall(
+                DIR_ITEM_NUM_SYSCALL,
+                path.as_ptr() as usize,
+                path.len(),
+                0,
+                0,
+                0,
+            )
+        }
+
+        #[derive(Default, Clone)]
+        struct TemporyInfo {
+            name: &'static [u8],
+            ty: FileType,
+        }
+
+        let len = dir_item_num(path.clone());
+        let buf = alloc::vec![TemporyInfo::default();len];
+
+        const LIST_DIR_SYSCALL: u64 = 13;
+        crate::syscall(
+            LIST_DIR_SYSCALL,
+            path.as_ptr() as usize,
+            path.len(),
+            buf.as_ptr() as usize,
+            0,
+            0,
+        );
+
+        let mut infos = Vec::new();
+        for info in buf.iter() {
+            infos.push(FileInfo {
+                name: String::from_utf8(info.name.to_vec()).unwrap(),
+                ty: info.ty,
+            })
+        }
+        infos
+    }
+}
+
+pub fn change_cwd(path: String) {
+    const CHANGE_CWD_SYSCALL: u64 = 15;
+    crate::syscall(CHANGE_CWD_SYSCALL, path.as_ptr() as usize, path.len(), 0, 0, 0);
+}
+
+pub fn get_cwd() -> String {
+    const GET_CWD_SYSCALL: u64 = 16;
+    let ptr = crate::syscall(GET_CWD_SYSCALL, 0, 0, 0, 0, 0);
+    let path_buf_ptr = unsafe {
+        (ptr as *const u64).read()
+    };
+    let path_buf_len = unsafe {
+        (ptr as *const usize).add(1).read()
+    };
+    let path_buf = unsafe {core::slice::from_raw_parts(path_buf_ptr as *const u8, path_buf_len)};
+    String::from_utf8(path_buf.to_vec()).unwrap()
 }

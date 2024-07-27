@@ -23,7 +23,7 @@ features = ["lfn","alloc","unicode"]
 default-features = false
 
 # [dependencies.nvme_driver]
-# path = "../../crates/nvme_driver"
+# path = "../crates/nvme_driver"
 
 [dependencies.pci]
 package = "pci-for-framework"
@@ -39,7 +39,7 @@ default-features = false
 
 [dependencies.framework]
 package = "good-os-framework"
-version = "0.1.2"
+version = "0.1.12"
 
 [dependencies.conquer-once]
 version = "0.4.0"

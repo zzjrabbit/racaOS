@@ -107,7 +107,10 @@ fn main() {
         cmd.arg("-device").arg("qemu-xhci,id=xhci");
         cmd.arg("-drive")
             .arg("format=raw,file=disk.img,if=none,id=disk1");
-        cmd.arg("-device").arg("usb-storage,drive=disk1,bus=xhci.0");
+        cmd.arg("-device").arg("ide-hd,drive=disk1,bus=ahci.2");
+        cmd.arg("-drive")
+            .arg("format=raw,file=data.img,if=none,id=disk2");
+        cmd.arg("-device").arg("nvme,drive=disk2,serial=1234");
 
         if args.kvm {
             cmd.arg("--enable-kvm");

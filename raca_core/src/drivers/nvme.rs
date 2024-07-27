@@ -59,7 +59,7 @@ pub fn init() {
     let nvme_device = &nvme_device[0];
     log::info!("NVME Bars :{:?}", nvme_device.bars);
     if let Some(BAR::Memory(addr, _, _, _)) = nvme_device.bars[0] {
-        log::info!("OK");
+        log::info!("OK!");
         //assert!(len as usize <= 4096);
         let header = /*convert_physical_to_virtual(PhysAddr::new(addr)).as_u64() as usize*/ addr as usize;
         //let size = len as usize;
@@ -79,10 +79,10 @@ pub fn init() {
 
         framework::drivers::pci::enable_device(nvme_device);
 
-        log::info!("OK");
+        log::info!("OK !");
 
         let nvme = NvmeInterface::<DmaAllocatorImp, IrqControllerImp>::new(header);
-        log::info!("OK");
+        log::info!("OK D");
         for i in 0..5 {
             let mut read_buf = [0u8; 512];
             let buff = [i as u8; 512];

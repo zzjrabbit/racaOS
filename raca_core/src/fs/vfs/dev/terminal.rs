@@ -5,7 +5,6 @@ use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use crossbeam_queue::ArrayQueue;
 use framework::drivers::keyboard::get_scancode;
-use framework::ref_to_mut;
 use framework::task::thread::ThreadState;
 use framework::task::Thread;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, KeyCode, Keyboard, ScancodeSet1};
@@ -61,15 +60,16 @@ impl Terminal {
 
 impl Inode for Terminal {
     fn when_mounted(
-        &self,
+        &mut self,
         path: alloc::string::String,
         _father: Option<crate::fs::vfs::inode::InodeRef>,
     ) {
-        ref_to_mut(self).path = path;
+        self.path.clear();
+        self.path.push_str(path.as_str());
     }
 
-    fn when_umounted(&self) {
-        ref_to_mut(self).path = String::new();
+    fn when_umounted(&mut self) {
+        self.path.clear();
     }
 
     fn get_path(&self) -> String {

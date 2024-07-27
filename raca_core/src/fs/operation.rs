@@ -1,13 +1,16 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use alloc::{collections::BTreeMap, string::String, sync::Arc};
+use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 use framework::{ref_to_mut, task::process::ProcessId};
 use spin::{Mutex, RwLock};
 
 use crate::user::get_current_process_id;
 
 use super::{
-    vfs::{inode::InodeRef, pipe::Pipe},
+    vfs::{
+        inode::{FileInfo, InodeRef, InodeTy},
+        pipe::Pipe,
+    },
     ROOT,
 };
 
@@ -25,6 +28,7 @@ type FileTuple = (InodeRef, OpenMode, usize);
 struct FileDescriptorManager {
     file_descriptors: BTreeMap<FileDescriptor, FileTuple>,
     file_descriptor_allocator: AtomicUsize,
+    cwd: Mutex<InodeRef>,
 }
 
 impl FileDescriptorManager {
@@ -32,6 +36,7 @@ impl FileDescriptorManager {
         Self {
             file_descriptors,
             file_descriptor_allocator: AtomicUsize::new(3), // 0, 1, and 2 are reserved for stdin, stdout, and stderr
+            cwd: Mutex::new(ROOT.lock().clone()),
         }
     }
 
@@ -46,6 +51,14 @@ impl FileDescriptorManager {
             .file_descriptors
             .insert(new_fd, (inode, mode, 0));
         new_fd
+    }
+
+    pub fn change_cwd(&self, path: String) {
+        *self.cwd.lock() = get_inode_by_path(path).unwrap();
+    }
+
+    pub fn get_cwd(&self) -> String {
+        self.cwd.lock().read().get_path()
     }
 }
 
@@ -111,7 +124,15 @@ pub fn get_inode_by_fd(file_descriptor: usize) -> Option<InodeRef> {
 pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
     let current_file_descriptor_manager = get_file_descriptor_manager()?;
 
-    let inode = get_inode_by_path(path.clone())?;
+    let inode = if path.starts_with("/") {
+        get_inode_by_path(path.clone())?
+    } else {
+        get_inode_by_path(alloc::format!(
+            "{}{}",
+            current_file_descriptor_manager.get_cwd(),
+            path.clone()
+        ))?
+    };
 
     let file_descriptor = current_file_descriptor_manager.add_inode(inode, open_mode);
 
@@ -195,4 +216,33 @@ pub fn open_pipe(buffer: &mut [usize]) -> Option<()> {
     log::info!("{:?}", buffer);
 
     Some(())
+}
+
+pub fn list_dir(path: String) -> Vec<FileInfo> {
+    if let Some(inode) = get_inode_by_path(path) {
+        if inode.read().inode_type() == InodeTy::Dir {
+            return inode.read().list();
+        }
+    }
+    Vec::new()
+}
+
+pub fn change_cwd(path: String) {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
+        if path.starts_with("/") {
+            current_file_descriptor_manager.change_cwd(path);
+        } else {
+            let current = current_file_descriptor_manager.get_cwd();
+            let new = alloc::format!("{}{}",current,path);
+            current_file_descriptor_manager.change_cwd(new);
+        }
+    }
+}
+
+pub fn get_cwd() -> String {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager(){
+        current_file_descriptor_manager.get_cwd()
+    }else {
+        String::from("/")
+    }
 }

@@ -41,7 +41,7 @@ fn provide_hard_disks(dev_fs: InodeRef) {
 pub fn init() {
     crate::drivers::ahci::init();
 
-    let dev_fs = Arc::new(RwLock::new(RootFS::new()));
+    let dev_fs = RootFS::new();
     mount_to(dev_fs.clone(), ROOT.lock().clone(), "dev".to_string());
 
     let terminal = Arc::new(RwLock::new(Terminal::new()));
