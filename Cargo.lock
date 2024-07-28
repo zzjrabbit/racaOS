@@ -365,9 +365,9 @@ dependencies = [
 
 [[package]]
 name = "good-os-framework"
-version = "0.1.12"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "839c70d5a83a610017895e804fcd38aaa02678daa090196c9e797c1d85c0bea0"
+checksum = "5812e50ef791ffcbe409935835d74c3ec64a74f0b32a19a848da6c66525a6858"
 dependencies = [
  "acpi",
  "bit_field",

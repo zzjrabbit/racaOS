@@ -39,7 +39,8 @@ default-features = false
 
 [dependencies.framework]
 package = "good-os-framework"
-version = "0.1.12"
+version = "0.2.1"
+# path = "../../good_os_framework"
 
 [dependencies.conquer-once]
 version = "0.4.0"

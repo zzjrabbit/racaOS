@@ -54,7 +54,11 @@ impl FileDescriptorManager {
     }
 
     pub fn change_cwd(&self, path: String) {
-        *self.cwd.lock() = get_inode_by_path(path).unwrap();
+        if let Some(inode) = get_inode_by_path(path){
+            if inode.read().inode_type() == InodeTy::Dir {
+                *self.cwd.lock() = inode;
+            }
+        }
     }
 
     pub fn get_cwd(&self) -> String {
