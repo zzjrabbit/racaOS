@@ -20,6 +20,7 @@ features = ["std", "alloc"]
 path = "../raca_core"
 artifact = "bin"
 target = "x86_64-unknown-none"
+target-feature = "+sse"
 
 [dependencies.init]
 path = "../apps/init"

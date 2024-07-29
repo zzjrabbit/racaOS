@@ -2,15 +2,15 @@
 #![no_main]
 
 use alloc::{
-    format, string::{String, ToString}, vec
+    collections::btree_map::BTreeMap, format, string::{String, ToString}, vec::Vec
 };
 use core::fmt::Write;
-use raca_std::{
-    fs::{change_cwd, get_cwd, FileDescriptor, FileInfo, FileType, OpenMode},
-    task::Process,
-};
+use raca_std::fs::{get_cwd, FileDescriptor};
 
 extern crate alloc;
+
+mod commands;
+mod run;
 
 fn shell_read_line(fd: &mut FileDescriptor, buf: &mut String) {
     buf.clear(); // make sure that the buf is clean
@@ -36,39 +36,22 @@ fn get_prompt() -> String {
     format!("\x1b[36m[\x1b[34mroot@raca \x1b[33m{}\x1b[36m]\x1b[34m:) \x1b[0m",get_cwd())
 }
 
-pub fn cat(stdin: FileDescriptor, file_path: String) {
-    if let Ok(fd) = FileDescriptor::open(file_path.as_str(), OpenMode::Read) {
-        let size = fd.size();
-        let mut buf = vec![0; size];
-        fd.read(buf.as_mut_slice());
-        stdin.write(&buf);
-        stdin.write(&[b'\n']);
-    } else {
-        stdin.write("Can't find the file.\n".as_bytes());
-    }
-}
-
-pub fn write(stdin: FileDescriptor, file_path: String, text: String) {
-    if let Ok(fd) = FileDescriptor::open(file_path.as_str(), OpenMode::Write) {
-        fd.write(text.as_bytes());
-    } else {
-        stdin.write("Can't find the file.\n".as_bytes());
-    }
-}
-
-pub fn ls(mut stdin: FileDescriptor,folder: String) {
-    let infos = FileInfo::list(folder);
-    for info in infos.iter() {
-        match info.ty {
-            FileType::Dir => write!(stdin, "\x1b[42m{}\x1b[0m ",info.name).unwrap(),
-            FileType::File => write!(stdin, "\x1b[32m{}\x1b[0m ",info.name).unwrap(),
-        }
-    }
-    writeln!(stdin).unwrap();
-}
+type CommandFunction = fn(stdio: &mut FileDescriptor, args: Vec<String>);
 
 #[no_mangle]
 pub fn main() {
+    let mut command_function_list = BTreeMap::<&str, CommandFunction>::new();
+
+    {
+        use commands::*;
+        command_function_list.insert("cat", cat);
+        command_function_list.insert("cd", cd);
+        command_function_list.insert("echo", echo);
+        command_function_list.insert("ls", ls);
+        command_function_list.insert("write", write);
+    }
+
+
     let mut fd = FileDescriptor::open("/dev/terminal", raca_std::fs::OpenMode::Write).unwrap();
     writeln!(fd, "\n\x1b[34mRACA-Shell \x1b[31mv0.1.0").unwrap();
     writeln!(
@@ -88,73 +71,17 @@ pub fn main() {
         let input =
             String::from_utf8(escape_bytes::unescape(input_buf.as_bytes()).unwrap()).unwrap();
 
-        if input == "Avada Kedavra!" {
-            writeln!(
-                fd,
-                "Oh! Don't try to kill anyone! We must be a good guy you know."
-            )
-            .unwrap();
-        } else if input.starts_with("cat ") {
-            if let Some(path) = input.split(" ").nth(1) {
-                cat(fd, path.to_string());
-            } else {
-                writeln!(fd, "Expected a argument.").unwrap();
-            }
-        } else if input.starts_with("write ") {
-            let mut input = input.split(" ");
+        let args = input.split(" ").map(|x| x.to_string()).collect::<Vec::<_>>();
+        
+        let function = command_function_list.get(&args[0].as_str());
 
-            input.next();
-
-            if let Some(path) = input.next() {
-                let mut text = String::new();
-
-                for i in input {
-                    text += i;
-                    text += " ";
-                }
-
-                write(fd, path.to_string(), text);
-            } else {
-                writeln!(fd, "Expected a argument.").unwrap();
-            }
-        } else if input.starts_with("echo ") {
-            let mut string = input.clone();
-            for _ in 0..5 {
-                string.remove(0);
-            }
-            writeln!(fd, "{}", string).unwrap();
-        } else if input.starts_with("run ") {
-            if let Some(path) = input.split(" ").nth(1) {
-                if let Ok(mut file) = FileDescriptor::open(path, OpenMode::Read) {
-                    let mut buf = vec![0; file.size()];
-                    file.read(&mut buf);
-                    file.close();
-                    //let (pipe1_read,pipe1_write) = FileDescriptor::open_pipe().unwrap();
-                    //let (pipe2_read,pipe2_write) = FileDescriptor::open_pipe().unwrap();
-
-                    let process = Process::new(&buf, "temp", 0, 0);
-                    process.run();
-                    //loop {
-                    //    let mut buf = [0;1];
-                    //    pipe2_read.read(&mut buf);
-                    //    write!(fd, "{}", buf[0] as char).unwrap();
-                    //}
-                    loop {}
-                }
-            } else {
-                writeln!(fd, "Expected a argument.").unwrap();
-            }
-        } else if input.starts_with("ls") {
-            ls(fd, get_cwd());
-        } else if input.starts_with("cd ") {
-            if let Some(path) = input.split(" ").nth(1) {
-                change_cwd(String::from(path));
-            } else {
-                writeln!(fd, "Expected a argument.").unwrap();
-            }
-        } else {
-            writeln!(fd, "\x1b[31mBad Command: \x1b[0m{}\x1b[0m", input).unwrap();
+        if let Some(function) = function {
+            function(&mut fd, args);
+        } else if let None = run::try_run(args[0].clone()) {
+            writeln!(fd, "rash: command not found: \x1b[31m{}\x1b[0m",args[0]).unwrap();
         }
+
+
         write!(fd, "\x1b[0m{}", get_prompt()).unwrap();
     }
 }

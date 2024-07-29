@@ -26,6 +26,7 @@ pub extern "C" fn _start() {
     //raca_core::drivers::nvme::init();
     raca_core::drivers::xhci::init();
     fs::init();
+    raca_core::ui::init();
 
     regist_syscall_handler(syscall_handler);
 

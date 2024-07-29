@@ -197,3 +197,20 @@ pub fn get_cwd() -> String {
     let path_buf = unsafe {core::slice::from_raw_parts(path_buf_ptr as *const u8, path_buf_len)};
     String::from_utf8(path_buf.to_vec()).unwrap()
 }
+
+pub fn create(path: String, ty: FileType) -> Result<FileDescriptor, ()> {
+    const CREATE_SYSCALL_ID: u64 = 17;
+    let fd = crate::syscall(
+        CREATE_SYSCALL_ID,
+        path.as_ptr() as usize,
+        path.len(),
+        ty as usize,
+        0,
+        0,
+    );
+    if fd == 0 {
+        Err(())
+    } else {
+        Ok(FileDescriptor(fd, false))
+    }
+}

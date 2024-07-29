@@ -13,6 +13,7 @@ pub mod block;
 pub mod gpt_parser;
 pub mod partition;
 pub mod terminal;
+//pub mod tty;
 
 pub static ROOT_PARTITION: Mutex<Option<InodeRef>> = Mutex::new(None);
 

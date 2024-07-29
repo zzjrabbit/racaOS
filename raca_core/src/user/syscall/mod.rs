@@ -44,6 +44,7 @@ pub fn syscall_handler(
         14 => fs::dir_item_num(arg1, arg2),
         15 => fs::change_cwd(arg1, arg2),
         16 => fs::get_cwd(),
+        17 => fs::create(arg1, arg2, arg3),
         _ => 0,
     }
 }

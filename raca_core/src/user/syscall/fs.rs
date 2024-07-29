@@ -97,11 +97,7 @@ pub fn lseek(fd: usize, offset: usize) -> usize {
 }
 
 pub fn fsize(fd: usize) -> usize {
-    if let Some(size) = crate::fs::operation::fsize(fd) {
-        size
-    } else {
-        0
-    }
+    crate::fs::operation::fsize(fd).unwrap_or(0)
 }
 
 pub fn open_pipe(buf_addr: usize) -> usize {
@@ -212,3 +208,23 @@ pub fn get_cwd() -> usize {
     ret_struct_ptr as usize
 }
 
+
+pub fn create(path_addr: usize, path_len: usize, ty: usize) -> usize {
+    let mut buf = vec![0; path_len];
+
+    if let Err(_) = get_current_process().read().page_table.read(
+        VirtAddr::new(path_addr as u64),
+        path_len,
+        &mut buf,
+    ) {
+        panic!("Read error at {:x}!", path_addr);
+    }
+
+    let path = String::from(core::str::from_utf8(buf.as_slice()).unwrap());
+    let ty = match ty {
+        0 => InodeTy::Dir,
+        1 => InodeTy::File,
+        _ => return 0,
+    };
+    crate::fs::operation::create(path, ty).unwrap_or(0)
+}

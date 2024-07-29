@@ -250,3 +250,28 @@ pub fn get_cwd() -> String {
         String::from("/")
     }
 }
+
+pub fn create(path: String,ty: InodeTy) -> Option<FileDescriptor> {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager(){
+        if path.starts_with("/") {
+            let mut name = String::new();
+            let parrent_path = {
+                let mut path = path.clone();
+                while !path.ends_with("/") {
+                    name.push(path.pop().unwrap());
+                }
+                path
+            };
+            let parent = get_inode_by_path(parrent_path)?;
+            parent.read().create(name.clone(), ty)?;
+            open(path, OpenMode::Write)
+        }else {
+            let cwd = current_file_descriptor_manager.get_cwd();
+            let parent = get_inode_by_path(cwd.clone())?;
+            parent.read().create(path.clone(), ty)?;
+            open(cwd+path.as_str(), OpenMode::Write)
+        }
+    }else {
+        None
+    }
+}
