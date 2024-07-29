@@ -8,18 +8,20 @@
 
 use alloc::{collections::BTreeMap, vec::Vec};
 use framework::{
-    drivers::{alloc_for_dma, dealloc_for_dma, pci::find_device_with_class},
-    memory::{addr_to_array, addr_to_mut_ref, convert_physical_to_virtual, read_from_addr},
+    drivers::{
+        alloc_for_dma, dealloc_for_dma,
+        pci::{get_pci_device_structure_mut, PCI_DEVICE_LINKEDLIST},
+    },
+    memory::{addr_to_array, addr_to_mut_ref, read_from_addr},
 };
 //use alloc::string::String;
 //use alloc::vec::Vec;
 use bit_field::*;
 use bitflags::*;
 use core::mem::size_of;
-use pci::BAR;
 use spin::Mutex;
 use volatile::*;
-use x86_64::{PhysAddr, VirtAddr};
+use x86_64::VirtAddr;
 
 ///
 #[allow(dead_code)]
@@ -541,20 +543,35 @@ static AHCI_CONS: Mutex<Vec<AHCI>> = Mutex::new(Vec::new());
 pub static DISK_TO_CON: Mutex<BTreeMap<usize, usize>> = Mutex::new(BTreeMap::new());
 
 pub fn init() {
-    let devices = find_device_with_class(0x01, 0x06);
+    let mut list = PCI_DEVICE_LINKEDLIST.write();
+    let mut devices = get_pci_device_structure_mut(&mut list, 0x01, 0x06);
 
     let mut ahci_cons = AHCI_CONS.lock();
 
-    for device in devices.iter() {
-        if let Some(BAR::Memory(addr, len, _, _)) = device.bars[5] {
-            assert!(len as usize <= 4096);
-            let header = convert_physical_to_virtual(PhysAddr::new(addr)).as_u64() as usize;
-            let size = len as usize;
+    log::info!("NUM : {}",devices.len());
 
-            framework::drivers::pci::enable_device(device);
+    for device in devices.iter_mut() {
+        if let None = device.bar_init() {
+            continue;
+        }
+        if let Ok(bar) = device
+            .as_standard_device()
+            .unwrap()
+            .standard_device_bar
+            .get_bar(5)
+        {
+            if let Some((_, len)) = bar.memory_address_size() {
+                assert!(len as usize <= 4096);
+                let header = bar.virtual_address().unwrap() as usize;
+                let size = len as usize;
 
-            if let Some(ahci) = AHCI::new(header, size) {
-                ahci_cons.push(ahci);
+                device.as_mut().enable_master();
+
+                log::info!("OK");
+
+                if let Some(ahci) = AHCI::new(header, size) {
+                    ahci_cons.push(ahci);
+                }
             }
         }
     }

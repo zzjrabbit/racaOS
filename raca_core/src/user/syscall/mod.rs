@@ -45,6 +45,7 @@ pub fn syscall_handler(
         15 => fs::change_cwd(arg1, arg2),
         16 => fs::get_cwd(),
         17 => fs::create(arg1, arg2, arg3),
+        19 => fs::get_type(arg1),
         _ => 0,
     }
 }

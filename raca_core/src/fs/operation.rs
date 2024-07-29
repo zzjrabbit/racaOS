@@ -275,3 +275,13 @@ pub fn create(path: String,ty: InodeTy) -> Option<FileDescriptor> {
         None
     }
 }
+
+pub fn get_type(fd: FileDescriptor) -> Option<InodeTy> {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager(){
+        
+        let (inode, _, _) = current_file_descriptor_manager.file_descriptors.get(&fd)?;
+        Some(inode.read().inode_type())
+    }else {
+        None
+    }
+}

@@ -1,8 +1,12 @@
 use alloc::{string::String, vec};
-use raca_std::{fs::{FileDescriptor, OpenMode}, task::Process};
+use raca_std::{fs::{FileDescriptor, FileType, OpenMode}, task::Process};
 
 pub fn try_run(path: String) -> Option<()> {
     if let Ok(mut file) = FileDescriptor::open(&path, OpenMode::Read) {
+        if file.get_type() == FileType::Dir {
+            return None;
+        }
+
         let mut buf = vec![0; file.size()];
         file.read(&mut buf);
         file.close();

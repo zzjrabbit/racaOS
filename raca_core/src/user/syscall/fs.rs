@@ -228,3 +228,10 @@ pub fn create(path_addr: usize, path_len: usize, ty: usize) -> usize {
     };
     crate::fs::operation::create(path, ty).unwrap_or(0)
 }
+
+pub fn get_type(fd: usize) -> usize {
+    match crate::fs::operation::get_type(fd) {
+        Some(ty) => ty as usize,
+        None => usize::MAX,
+    }
+}

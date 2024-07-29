@@ -393,9 +393,9 @@ dependencies = [
 
 [[package]]
 name = "good-os-framework"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e041adbb89ebcba5adb75f8e98974f4adc3ecc9466bcc68d7d64307131aaba8e"
+checksum = "fa31ada021009b90a24af06ab3357847a9040b9d58962030c717d5164aac3065"
 dependencies = [
  "acpi",
  "bit_field",
@@ -723,7 +723,6 @@ dependencies = [
  "limine",
  "log",
  "pc-keyboard",
- "pci-for-framework",
  "spin",
  "usb-device",
  "uuid",

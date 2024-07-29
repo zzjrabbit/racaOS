@@ -101,6 +101,16 @@ impl FileDescriptor {
         const CLOSE_SYSCALL_ID: u64 = 9;
         crate::syscall(CLOSE_SYSCALL_ID, self.0, 0, 0, 0, 0);
     }
+
+    pub fn get_type(&self) -> FileType {
+        const GET_TYPE_SYSCALL_ID: u64 = 19;
+        let ty = crate::syscall(GET_TYPE_SYSCALL_ID, self.0, 0, 0, 0, 0) as usize;
+        match ty {
+            0 => FileType::Dir,
+            1 => FileType::File,
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl fmt::Write for FileDescriptor {

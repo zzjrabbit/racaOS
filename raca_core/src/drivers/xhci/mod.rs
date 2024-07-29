@@ -1,46 +1,43 @@
-use framework::drivers::{pci::find_device_with_class, xhci::get_xhci};
-use pci::BAR;
+use framework::drivers::{
+    pci::{get_pci_device_structure, PciDeviceStructure, PCI_DEVICE_LINKEDLIST},
+    xhci::get_xhci,
+};
 
 pub mod device;
 
 pub fn init() {
-    let xhci_devices = find_device_with_class(0x0C, 0x03);
+    let mut list = PCI_DEVICE_LINKEDLIST.read();
+    let xhci_devices = get_pci_device_structure(&mut list, 0x0C, 0x03);
     if xhci_devices.len() > 0 {
         let xhci_device = || {
             for device in xhci_devices.iter() {
-                if device.id.prog_if != 0x30 {
-                    continue;
-                }
-                if device.bars[0].is_none() && device.bars[1].is_none() {
-                    continue;
-                }
-                if let Some(bar) = device.bars[0] {
-                    match bar {
-                        BAR::IO(_, _) => continue,
-                        _ => {}
+                if let Some(device) = device.as_standard_device() {
+                    let header = device.common_header();
+                    if header.prog_if != 0x30 {
+                        continue;
                     }
-                }
-                if let Some(bar) = device.bars[1] {
-                    match bar {
-                        BAR::IO(_, _) => continue,
-                        _ => {}
+                    let bars = &device.standard_device_bar;
+                    if bars.get_bar(0).is_err() && bars.get_bar(1).is_err() {
+                        continue;
                     }
+                    if bars.get_bar(0).unwrap().memory_address_size().is_none()
+                        || bars.get_bar(1).unwrap().memory_address_size().is_none()
+                    {
+                        continue;
+                    }
+                    return Some(device.clone());
                 }
-                return Some(device.clone());
             }
             return None;
         };
         let xhci_device = xhci_device();
         if let Some(xhci_device) = xhci_device {
-            let bar = if let Some(bar) = xhci_device.bars[0] {
+            let bar = if let Ok(bar) = xhci_device.standard_device_bar.get_bar(0) {
                 bar
             } else {
-                xhci_device.bars[1].unwrap()
+                xhci_device.standard_device_bar.get_bar(0).unwrap()
             };
-            let mmio = match bar {
-                BAR::Memory(addr, _, _, _) => addr,
-                _ => unreachable!(),
-            };
+            let mmio = bar.memory_address_size().unwrap().0;
             log::info!("MMIO address: {:x}", mmio);
             let mut xhci = get_xhci(mmio as usize);
             let operational = &mut xhci.operational;
