@@ -235,3 +235,36 @@ pub fn get_type(fd: usize) -> usize {
         None => usize::MAX,
     }
 }
+<<<<<<< HEAD
+=======
+
+pub fn mount(to_path_addr: usize, to_path_len: usize, p_path_addr: usize, p_path_len: usize) -> usize {
+    let mut to_buf = vec![0; to_path_len];
+    let mut p_buf = vec![0; p_path_len];
+
+    if let Err(_) = get_current_process().read().page_table.read(
+        VirtAddr::new(to_path_addr as u64),
+        to_path_len,
+        &mut to_buf,
+    ) {
+        panic!("Read error at {:x}!", to_path_addr);
+    }
+
+    if let Err(_) = get_current_process().read().page_table.read(
+        VirtAddr::new(p_path_addr as u64),
+        p_path_len,
+        &mut p_buf,
+    ) {
+        panic!("Read error at {:x}!", p_path_addr);
+    }
+
+    let to_path = String::from(core::str::from_utf8(to_buf.as_slice()).unwrap());
+    let p_path = String::from(core::str::from_utf8(p_buf.as_slice()).unwrap());
+
+    if let Some(_) = crate::fs::operation::mount(to_path, p_path) {
+        1
+    }else {
+        0
+    }
+}
+>>>>>>> 945d1b6 (add nvme and mount support)

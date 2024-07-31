@@ -2,3 +2,7 @@
 video
 .idea
 vmware
+<<<<<<< HEAD
+=======
+racaOS.vmdk
+>>>>>>> 945d1b6 (add nvme and mount support)

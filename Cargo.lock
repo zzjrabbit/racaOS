@@ -393,9 +393,13 @@ dependencies = [
 
 [[package]]
 name = "good-os-framework"
+<<<<<<< HEAD
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa31ada021009b90a24af06ab3357847a9040b9d58962030c717d5164aac3065"
+=======
+version = "0.5.1"
+>>>>>>> 945d1b6 (add nvme and mount support)
 dependencies = [
  "acpi",
  "bit_field",
@@ -653,9 +657,15 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "os-terminal"
+<<<<<<< HEAD
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4c0874e1e8110d73e813e0afbebf050e403e7c9c54d652860a33ca50df9f068"
+=======
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecb992ffd6e0ec7854536a05c5250cfb8e26dd0b15a22d4a0bc46f869e691730"
+>>>>>>> 945d1b6 (add nvme and mount support)
 dependencies = [
  "bitflags 2.6.0",
  "noto-sans-mono-bitmap",

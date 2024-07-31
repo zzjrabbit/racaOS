@@ -47,10 +47,18 @@ impl FatBuilder {
                     .len();
                 files_size += len;
             }
+<<<<<<< HEAD
             const ADDITIONAL_SPACE: u64 = 1024 * 64;
             files_size + ADDITIONAL_SPACE
         };
         fat_file.set_len(fat_size).unwrap();
+=======
+            const ADDITIONAL_SPACE: u64 = 1024 * 1024;
+            files_size + ADDITIONAL_SPACE
+        };
+        fat_file.set_len(fat_size).unwrap();
+        println!("Size:{}MB",fat_size/(1024*1024));
+>>>>>>> 945d1b6 (add nvme and mount support)
 
         let format_options = fatfs::FormatVolumeOptions::new();
         fatfs::format_volume(&fat_file, format_options).context("Failed to format FAT file")?;

@@ -7,11 +7,18 @@ use spin::{Mutex, RwLock};
 use crate::user::get_current_process_id;
 
 use super::{
+<<<<<<< HEAD
     vfs::{
         inode::{FileInfo, InodeRef, InodeTy},
         pipe::Pipe,
     },
     ROOT,
+=======
+    fat32::Fat32Volume, vfs::{
+        inode::{mount_to, FileInfo, InodeRef, InodeTy},
+        pipe::Pipe,
+    }, ROOT
+>>>>>>> 945d1b6 (add nvme and mount support)
 };
 
 static FILE_DESCRIPTOR_MANAGERS: Mutex<BTreeMap<ProcessId, Arc<FileDescriptorManager>>> =
@@ -285,3 +292,39 @@ pub fn get_type(fd: FileDescriptor) -> Option<InodeTy> {
         None
     }
 }
+<<<<<<< HEAD
+=======
+
+pub fn mount(to: String, partition_path: String) -> Option<()> {
+    let partition_inode = get_inode_by_path(partition_path)?;
+    let to_father_path = {
+        let mut path = to.clone();
+        if path.ends_with("/"){
+            path.pop().unwrap();
+        }
+
+        while!path.ends_with("/") {
+            path.pop().unwrap();
+        }
+        path
+    };
+    let to_father = get_inode_by_path(to_father_path)?;
+    let to = get_inode_by_path(to)?;
+
+    let to_name = {
+        let mut path = to.read().get_path();
+        let mut name = String::new();
+        if path.ends_with("/"){
+            path.pop().unwrap();
+        }
+        while !path.ends_with("/") {
+            name.push(path.pop().unwrap());
+        }
+        name.chars().rev().collect()
+    };
+
+    let volumne = Fat32Volume::new(partition_inode.clone());
+    mount_to(volumne, to_father, to_name);
+    Some(())
+}
+>>>>>>> 945d1b6 (add nvme and mount support)

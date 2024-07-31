@@ -221,6 +221,26 @@ pub fn create(path: String, ty: FileType) -> Result<FileDescriptor, ()> {
     if fd == 0 {
         Err(())
     } else {
+<<<<<<< HEAD
         Ok(FileDescriptor(fd, false))
     }
 }
+=======
+     
+        Ok(FileDescriptor(fd, false))
+    }
+}
+
+pub fn mount(path: String, partition: String) -> Result<(),()> {
+    const MOUNT_SYSCALL_ID: u64 = 20;
+    crate::syscall(
+        MOUNT_SYSCALL_ID,
+        path.as_ptr() as usize,
+        path.len(),
+        partition.as_ptr() as usize,
+        partition.len(),
+        0,
+    );
+    Ok(())
+}
+>>>>>>> 945d1b6 (add nvme and mount support)

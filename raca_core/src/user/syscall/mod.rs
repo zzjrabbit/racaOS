@@ -46,6 +46,10 @@ pub fn syscall_handler(
         16 => fs::get_cwd(),
         17 => fs::create(arg1, arg2, arg3),
         19 => fs::get_type(arg1),
+<<<<<<< HEAD
+=======
+        20 => fs::mount(arg1, arg2, arg3, arg4),
+>>>>>>> 945d1b6 (add nvme and mount support)
         _ => 0,
     }
 }

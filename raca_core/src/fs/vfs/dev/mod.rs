@@ -2,7 +2,11 @@ use alloc::{format, string::ToString, sync::Arc};
 use spin::{Mutex, RwLock};
 use terminal::Terminal;
 
+<<<<<<< HEAD
 use crate::{drivers::ahci::get_hd_num, fs::ROOT};
+=======
+use crate::{drivers::block::HD_LIST, fs::ROOT};
+>>>>>>> 945d1b6 (add nvme and mount support)
 
 use super::{
     inode::{mount_to, InodeRef},
@@ -34,13 +38,22 @@ fn provide_hard_disk(hd: usize, dev_fs: InodeRef) {
 }
 
 fn provide_hard_disks(dev_fs: InodeRef) {
+<<<<<<< HEAD
     for hd in 0..get_hd_num() {
+=======
+    let hd_num = HD_LIST.lock().len();
+    for hd in 0..hd_num {
+>>>>>>> 945d1b6 (add nvme and mount support)
         provide_hard_disk(hd, dev_fs.clone());
     }
 }
 
 pub fn init() {
     crate::drivers::ahci::init();
+<<<<<<< HEAD
+=======
+    crate::drivers::block::init();
+>>>>>>> 945d1b6 (add nvme and mount support)
 
     let dev_fs = RootFS::new();
     mount_to(dev_fs.clone(), ROOT.lock().clone(), "dev".to_string());
