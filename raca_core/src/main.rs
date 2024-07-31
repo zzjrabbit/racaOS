@@ -23,10 +23,6 @@ pub mod drivers;
 #[no_mangle]
 pub extern "C" fn _start() {
     init_framework();
-<<<<<<< HEAD
-    //raca_core::drivers::nvme::init();
-=======
->>>>>>> 945d1b6 (add nvme and mount support)
     raca_core::drivers::xhci::init();
     fs::init();
     raca_core::ui::init();

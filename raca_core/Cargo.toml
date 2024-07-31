@@ -28,14 +28,6 @@ path = "../crates/good-fatfs"
 features = ["lfn","alloc","unicode"]
 default-features = false
 
-<<<<<<< HEAD
-# [dependencies.nvme_driver]
-# path = "../crates/nvme_driver"
-=======
-#[dependencies.nvme_driver]
-#path = "../crates/nvme_driver"
->>>>>>> 945d1b6 (add nvme and mount support)
-
 [dependencies.limine]
 version = "0.2.0"
 features = ["uuid"]
@@ -46,15 +38,9 @@ default-features = false
 
 [dependencies.framework]
 package = "good-os-framework"
-<<<<<<< HEAD
-version = "0.4.0"
+version = "0.5.1"
 features = ["smp"]
 # path = "../../good_os_framework"
-=======
-# version = "0.5.1"
-features = ["smp"]
-path = "../../good_os_framework"
->>>>>>> 945d1b6 (add nvme and mount support)
 
 [dependencies.conquer-once]
 version = "0.4.0"

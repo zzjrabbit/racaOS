@@ -7,18 +7,10 @@ use spin::{Mutex, RwLock};
 use crate::user::get_current_process_id;
 
 use super::{
-<<<<<<< HEAD
-    vfs::{
-        inode::{FileInfo, InodeRef, InodeTy},
-        pipe::Pipe,
-    },
-    ROOT,
-=======
     fat32::Fat32Volume, vfs::{
         inode::{mount_to, FileInfo, InodeRef, InodeTy},
         pipe::Pipe,
     }, ROOT
->>>>>>> 945d1b6 (add nvme and mount support)
 };
 
 static FILE_DESCRIPTOR_MANAGERS: Mutex<BTreeMap<ProcessId, Arc<FileDescriptorManager>>> =
@@ -292,8 +284,6 @@ pub fn get_type(fd: FileDescriptor) -> Option<InodeTy> {
         None
     }
 }
-<<<<<<< HEAD
-=======
 
 pub fn mount(to: String, partition_path: String) -> Option<()> {
     let partition_inode = get_inode_by_path(partition_path)?;
@@ -327,4 +317,3 @@ pub fn mount(to: String, partition_path: String) -> Option<()> {
     mount_to(volumne, to_father, to_name);
     Some(())
 }
->>>>>>> 945d1b6 (add nvme and mount support)

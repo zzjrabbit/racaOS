@@ -2,11 +2,7 @@ use alloc::{string::String, vec::Vec};
 use framework::ref_to_mut;
 
 use crate::{
-<<<<<<< HEAD
-    drivers::ahci::get_hd_size,
-=======
     drivers::block::HD_LIST,
->>>>>>> 945d1b6 (add nvme and mount support)
     fs::vfs::{
         cache::{BlockDeviceInterface, Cache512B, CacheManager},
         inode::Inode,
@@ -25,19 +21,11 @@ impl BlockDevice {
 
 impl BlockDeviceInterface for BlockDevice {
     fn read(&self, block_id: usize, buf: &mut [u8]) {
-<<<<<<< HEAD
-        crate::drivers::ahci::read_block(self.id, block_id as u64, buf);
-    }
-
-    fn write(&self, block_id: usize, buf: &[u8]) {
-        crate::drivers::ahci::write_block(self.id, block_id as u64, buf);
-=======
         HD_LIST.lock()[self.id].read_block(block_id, buf);
     }
 
     fn write(&self, block_id: usize, buf: &[u8]) {
         HD_LIST.lock()[self.id].write_block(block_id, buf);
->>>>>>> 945d1b6 (add nvme and mount support)
     }
 }
 
@@ -74,11 +62,7 @@ impl Inode for BlockInode {
     }
 
     fn size(&self) -> usize {
-<<<<<<< HEAD
-        get_hd_size(self.hd).unwrap()
-=======
         HD_LIST.lock()[self.hd].get_size()
->>>>>>> 945d1b6 (add nvme and mount support)
     }
 
     fn read_at(&self, offset: usize, buf: &mut [u8]) {

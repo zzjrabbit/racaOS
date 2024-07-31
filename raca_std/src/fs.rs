@@ -221,11 +221,6 @@ pub fn create(path: String, ty: FileType) -> Result<FileDescriptor, ()> {
     if fd == 0 {
         Err(())
     } else {
-<<<<<<< HEAD
-        Ok(FileDescriptor(fd, false))
-    }
-}
-=======
      
         Ok(FileDescriptor(fd, false))
     }
@@ -243,4 +238,3 @@ pub fn mount(path: String, partition: String) -> Result<(),()> {
     );
     Ok(())
 }
->>>>>>> 945d1b6 (add nvme and mount support)

@@ -48,10 +48,7 @@ pub fn main() {
         command_function_list.insert("cd", cd);
         command_function_list.insert("echo", echo);
         command_function_list.insert("ls", ls);
-<<<<<<< HEAD
-=======
         command_function_list.insert("mount", mount);
->>>>>>> 945d1b6 (add nvme and mount support)
         command_function_list.insert("write", write);
     }
 

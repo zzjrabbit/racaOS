@@ -235,8 +235,6 @@ pub fn get_type(fd: usize) -> usize {
         None => usize::MAX,
     }
 }
-<<<<<<< HEAD
-=======
 
 pub fn mount(to_path_addr: usize, to_path_len: usize, p_path_addr: usize, p_path_len: usize) -> usize {
     let mut to_buf = vec![0; to_path_len];
@@ -267,4 +265,3 @@ pub fn mount(to_path_addr: usize, to_path_len: usize, p_path_addr: usize, p_path
         0
     }
 }
->>>>>>> 945d1b6 (add nvme and mount support)
