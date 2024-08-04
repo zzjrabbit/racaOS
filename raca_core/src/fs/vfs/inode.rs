@@ -10,10 +10,10 @@ pub enum InodeTy {
 }
 
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FileInfo {
-    pub name: String,
     pub ty: InodeTy,
+    pub name: String,
 }
 
 impl FileInfo {

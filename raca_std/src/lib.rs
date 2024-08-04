@@ -51,14 +51,16 @@ pub fn pause() {
 }
 
 extern "C" {
-    fn main();
+    fn main() -> usize;
 }
 
 #[no_mangle]
 pub unsafe extern "sysv64" fn _start() -> ! {
     //let _ = crate::io::open("/dev/console", crate::io::OpenType::Write);
+    //crate::print!("OK");
 
-    main();
+    task::exit(main());
 
-    loop {}
+    //main(10,10);
+
 }

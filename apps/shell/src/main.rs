@@ -39,7 +39,7 @@ fn get_prompt() -> String {
 type CommandFunction = fn(stdio: &mut FileDescriptor, args: Vec<String>);
 
 #[no_mangle]
-pub fn main() {
+pub fn main() -> usize {
     let mut command_function_list = BTreeMap::<&str, CommandFunction>::new();
 
     {
@@ -47,6 +47,7 @@ pub fn main() {
         command_function_list.insert("cat", cat);
         command_function_list.insert("cd", cd);
         command_function_list.insert("echo", echo);
+        command_function_list.insert("exit", exit);
         command_function_list.insert("ls", ls);
         command_function_list.insert("mount", mount);
         command_function_list.insert("write", write);
@@ -85,4 +86,7 @@ pub fn main() {
 
         write!(fd, "\x1b[0m{}", get_prompt()).unwrap();
     }
+    //loop {}
+    //raca_std::task::exit(0);
+    //raca_std::print!("OK");
 }

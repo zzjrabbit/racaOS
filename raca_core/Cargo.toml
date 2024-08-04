@@ -15,7 +15,7 @@ bit_field = "0.10.2"
 volatile = "0.3"
 gpt_disk_io = "0.16.0"
 xhci = "0.9.2"
-usb-device = "0.3.2"
+usb-device = "0.2.8"
 pc-keyboard = "0.7.0"
 
 [dependencies.fontdue]
@@ -38,9 +38,9 @@ default-features = false
 
 [dependencies.framework]
 package = "good-os-framework"
-version = "0.5.1"
+# version = "0.5.1"
 features = ["smp"]
-# path = "../../good_os_framework"
+path = "../../good_os_framework"
 
 [dependencies.conquer-once]
 version = "0.4.0"

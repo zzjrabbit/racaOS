@@ -192,22 +192,21 @@ pub fn change_cwd(path_addr: usize, path_len: usize) -> usize {
 pub fn get_cwd() -> usize {
     let path = crate::fs::operation::get_cwd();
     let new_path_ptr = ref_to_mut(&*get_current_process().read())
-                .heap
-                .allocate(Layout::from_size_align(path.len(), 8).unwrap())
-                .unwrap();
+        .heap
+        .allocate(Layout::from_size_align(path.len(), 8).unwrap())
+        .unwrap();
     let new_path = addr_to_array(VirtAddr::new(new_path_ptr), path.len());
     new_path[..path.len()].copy_from_slice(path.as_bytes());
     let ret_struct_ptr = ref_to_mut(&*get_current_process().read())
-                .heap
-                .allocate(Layout::from_size_align(16, 8).unwrap())
-                .unwrap();
+        .heap
+        .allocate(Layout::from_size_align(16, 8).unwrap())
+        .unwrap();
     let path_ptr = addr_to_mut_ref(VirtAddr::new(ret_struct_ptr));
     *path_ptr = new_path_ptr;
     let len_ptr = addr_to_mut_ref(VirtAddr::new(ret_struct_ptr + 8));
     *len_ptr = path.len();
     ret_struct_ptr as usize
 }
-
 
 pub fn create(path_addr: usize, path_len: usize, ty: usize) -> usize {
     let mut buf = vec![0; path_len];
@@ -236,7 +235,12 @@ pub fn get_type(fd: usize) -> usize {
     }
 }
 
-pub fn mount(to_path_addr: usize, to_path_len: usize, p_path_addr: usize, p_path_len: usize) -> usize {
+pub fn mount(
+    to_path_addr: usize,
+    to_path_len: usize,
+    p_path_addr: usize,
+    p_path_len: usize,
+) -> usize {
     let mut to_buf = vec![0; to_path_len];
     let mut p_buf = vec![0; p_path_len];
 
@@ -261,7 +265,7 @@ pub fn mount(to_path_addr: usize, to_path_len: usize, p_path_addr: usize, p_path
 
     if let Some(_) = crate::fs::operation::mount(to_path, p_path) {
         1
-    }else {
+    } else {
         0
     }
 }

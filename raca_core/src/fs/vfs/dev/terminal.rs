@@ -15,6 +15,7 @@ static WAIT_LIST: Mutex<Vec<Weak<RwLock<Thread>>>> = Mutex::new(Vec::new());
 
 pub fn keyboard_parse_thread() {
     fn push_char(ch: char) {
+        log::info!("Wake up, you lazy damn thing!");
         BYTES.push(ch).expect("Buffer full");
         for thread in WAIT_LIST.lock().iter() {
             thread.upgrade().unwrap().write().state = ThreadState::Ready;
@@ -79,6 +80,7 @@ impl Inode for Terminal {
     fn read_at(&self, _offset: usize, buf: &mut [u8]) {
         let mut write = 0;
         while write < buf.len() {
+            log::info!("READ");
             if let Some(byte) = BYTES.pop() {
                 buf[write] = byte as u8;
                 write += 1;

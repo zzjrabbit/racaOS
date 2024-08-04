@@ -1,13 +1,18 @@
+use core::alloc::Layout;
+
 use crate::{
     fs::operation::{
         get_inode_by_fd, init_file_descriptor_manager,
         init_file_descriptor_manager_with_stdin_stdout,
     },
-    user::get_current_process,
+    user::{get_current_process, get_current_thread},
 };
-use alloc::vec;
+use alloc::{sync::Arc, vec};
 
-use framework::{memory::addr_to_mut_ref, task::Process};
+use framework::{
+    memory::addr_to_mut_ref,
+    task::{signal::Signal, thread::ThreadState, Process},
+};
 use x86_64::VirtAddr;
 
 #[repr(C, packed)]
@@ -68,12 +73,64 @@ pub fn create_process(info_addr: usize) -> usize {
             init_file_descriptor_manager(pid);
         }
 
-        x86_64::instructions::interrupts::enable();
+        process.write().father = Some(Arc::downgrade(&get_current_process()));
 
-        0
+        pid.0 as usize
     };
 
     func()
 
     //x86_64::instructions::interrupts::without_interrupts(func)
+}
+
+pub fn exit(code: usize) -> usize {
+    let process = get_current_process();
+    if let Some(ref father) = process.read().father {
+        father
+            .upgrade()
+            .unwrap()
+            .write()
+            .signal_manager
+            .register_signal(
+                0,
+                Signal {
+                    ty: 0,
+                    data: [code as u64, 0, 0, 0, 0, 0, 0, 0],
+                },
+            );
+    }
+    framework::task::scheduler::exit();
+    return 0;
+}
+
+pub fn has_signal(ty: usize) -> usize {
+    let process = get_current_process();
+    let process = process.read();
+    process.signal_manager.has_signal(ty) as usize
+}
+
+pub fn start_wait_for_signal(ty: usize) -> usize {
+    let process = get_current_process();
+    process.write().signal_manager.register_wait_for(ty);
+    get_current_thread().write().state = ThreadState::Waiting;
+    return 0;
+}
+
+pub fn get_signal(ty: usize) -> usize {
+    let process = get_current_process();
+    let mut process = process.write();
+    if let Some(signal) = process.signal_manager.get_signal(ty) {
+        let new_signal_address = process.heap.allocate(Layout::from_size_align(size_of::<Signal>(), 8).unwrap()).unwrap();
+        let new_signal = addr_to_mut_ref(VirtAddr::new(new_signal_address));
+        *new_signal = signal;
+        new_signal_address as usize
+    } else {
+        0
+    }
+}
+
+pub fn done_signal(ty: usize) -> usize {
+    let process = get_current_process();
+    process.write().signal_manager.delete_signal(ty);
+    0
 }

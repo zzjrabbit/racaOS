@@ -25,7 +25,6 @@ pub extern "C" fn _start() {
     init_framework();
     raca_core::drivers::xhci::init();
     fs::init();
-    raca_core::ui::init();
 
     regist_syscall_handler(syscall_handler);
 
@@ -49,6 +48,8 @@ pub extern "C" fn _start() {
     framework::serial_println!();
     (100..=107).for_each(|index| framework::serial_print!("\x1b[{}m   \x1b[0m", index));
     framework::serial_println!();
+
+    raca_core::ui::init();
 
     framework::start_schedule();
     loop {}

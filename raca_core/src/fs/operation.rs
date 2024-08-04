@@ -224,7 +224,24 @@ pub fn open_pipe(buffer: &mut [usize]) -> Option<()> {
 pub fn list_dir(path: String) -> Vec<FileInfo> {
     if let Some(inode) = get_inode_by_path(path) {
         if inode.read().inode_type() == InodeTy::Dir {
-            return inode.read().list();
+            let mut list = inode.read().list();
+            list.sort();
+
+            let mut slow = 0;
+            for fast in 0..list.len(){
+                if list[fast] != list[slow] && fast != slow {
+                    list[slow] = list[fast].clone();
+                    slow += 1;
+                }
+                if slow == 0 {
+                    slow += 1;
+                }
+            }
+
+            let mut new = list[0..slow].to_vec();
+            new.sort();
+
+            return new;
         }
     }
     Vec::new()

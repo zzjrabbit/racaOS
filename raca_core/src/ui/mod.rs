@@ -14,9 +14,9 @@ pub fn init() {
 
     // Parse it into the font type.
     let fira_code = Font::from_bytes(font_buffer.as_slice(), fontdue::FontSettings::default()).unwrap();
-    let (metrics, bitmap) = fira_code.rasterize('A', 16.0);
+    let (metrics, bitmap) = fira_code.rasterize('R', 16.0);
     for (idx,byte) in bitmap.iter().enumerate() {
-        framework::print!("{}", if *byte > 200 { "A" } else { " " });
+        framework::print!("{}", if *byte > 128 { "R" } else { " " });
         if (idx + 1) % metrics.width == 0 {
             framework::println!();
         }
