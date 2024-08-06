@@ -1,5 +1,5 @@
 [workspace]
-members = [ "builder","crates/good-fatfs","raca_core","raca_std" ,"apps/hello1", "apps/hello2", "apps/init", "apps/shell"]
+members = [ "builder","crates/good-fatfs","raca_core","raca_std" ,"apps/hello1", "apps/hello2", "apps/init", "apps/shell", "tools/passwd"]
 resolver="2"
 default-members = ["builder"]
 

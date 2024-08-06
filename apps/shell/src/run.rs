@@ -14,7 +14,7 @@ pub fn try_run(path: String) -> Option<()> {
         //let (pipe2_read,pipe2_write) = FileDescriptor::open_pipe().unwrap();
 
         let process = Process::new(&buf, "temp", 0, 0);
-        let pid = process.run();
+        process.run();
         //loop {
         //    let mut buf = [0;1];
         //    pipe2_read.read(&mut buf);
@@ -22,6 +22,7 @@ pub fn try_run(path: String) -> Option<()> {
         //}
         //loop{}
         wait();
+        // loop{}
         Some(())
     }else {
         None

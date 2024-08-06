@@ -40,14 +40,14 @@ impl Inode for PartitionInode {
         self.size
     }
 
-    fn read_at(&self, offset: usize, buf: &mut [u8]) {
+    fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
         let offset = self.offset + offset;
-        self.drive.read().read_at(offset, buf);
+        self.drive.read().read_at(offset, buf)
     }
 
-    fn write_at(&self, offset: usize, buf: &[u8]) {
+    fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
         let offset = self.offset + offset;
-        self.drive.read().write_at(offset, buf);
+        self.drive.read().write_at(offset, buf)
     }
 
     fn flush(&self) {

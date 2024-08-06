@@ -67,6 +67,14 @@ impl FileDescriptor {
         )
     }
 
+    pub fn read_exact(&self, buffer: &mut [u8]) {
+        let mut readed = 0;
+        while readed < buffer.len() {
+            let read_size = self.read(&mut buffer[readed..]);
+            readed += read_size;
+        }
+    }
+
     pub fn write(&self, buffer: &[u8]) -> usize {
         assert_ne!(self.1, true, "This File Descriptor had been closed!");
 

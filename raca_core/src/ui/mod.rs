@@ -1,4 +1,5 @@
 use alloc::vec;
+use framework::console::set_font;
 
 use crate::fs::operation::kernel_open;
 
@@ -21,4 +22,6 @@ pub fn init() {
             framework::println!();
         }
     }
+
+    set_font(font_buffer.leak());
 }

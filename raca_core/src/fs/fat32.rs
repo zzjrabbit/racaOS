@@ -297,7 +297,9 @@ impl Inode for Fat32File {
         self.path.clone()
     }
 
-    fn read_at(&self, offset: usize, buf: &mut [u8]) {
+    fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
+        let mut size = 0;
+        
         ref_to_mut(self.file.as_ref())
             .seek(SeekFrom::Start(offset as u64))
             .unwrap();
@@ -307,7 +309,7 @@ impl Inode for Fat32File {
 
         for i in 0..read_cnt {
             let offset = self.cluster_size * i;
-            ref_to_mut(self.file.as_ref())
+            size += ref_to_mut(self.file.as_ref())
                 .read(&mut buf[offset..offset + self.cluster_size])
                 .unwrap();
         }
@@ -315,13 +317,15 @@ impl Inode for Fat32File {
         let remaining = read_size % self.cluster_size;
 
         if remaining > 0 && buf.len() <= self.size() {
-            ref_to_mut(self.file.as_ref())
+            size += ref_to_mut(self.file.as_ref())
                 .read(&mut buf[read_cnt * self.cluster_size..])
                 .unwrap();
         }
+        size
     }
 
-    fn write_at(&self, offset: usize, buf: &[u8]) {
+    fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
+        let mut size = 0;
         ref_to_mut(self.file.as_ref())
             .seek(SeekFrom::Start(offset as u64))
             .unwrap();
@@ -331,19 +335,20 @@ impl Inode for Fat32File {
 
         for i in 0..write_cnt {
             let offset = self.cluster_size * i;
-            ref_to_mut(self.file.as_ref())
+            size += ref_to_mut(self.file.as_ref())
                 .write(&buf[offset..offset + self.cluster_size])
                 .unwrap();
         }
 
         let remaining = write_size % self.cluster_size;
         if remaining > 0 {
-            ref_to_mut(self.file.as_ref())
+            size += ref_to_mut(self.file.as_ref())
                 .write(&buf[write_cnt * self.cluster_size..])
                 .unwrap();
         }
 
         ref_to_mut(self.file.as_ref()).flush().unwrap();
+        size
     }
 
     fn size(&self) -> usize {

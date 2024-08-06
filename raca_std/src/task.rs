@@ -1,5 +1,3 @@
-use crate::print;
-
 #[repr(C, packed)]
 #[derive(Clone, Copy, Debug)]
 pub struct Process {
@@ -37,18 +35,21 @@ impl Process {
 }
 
 pub fn exit(code: usize) -> ! {
-    print!("OK");
+    //print!("OK");
     const EXIT_SYSCALL_ID: u64 = 21;
     crate::syscall(EXIT_SYSCALL_ID, code, 0, 0, 0, 0);
-    print!("OK");
+    //print!("OK");
 
     loop {} // Never return
 }
 
 pub fn wait() -> usize {
-    start_wait_for_signal(0);
-    while !has_signal(0) {}
-    let signal = get_signal(0).unwrap();
+    start_wait_for_signal(1);
+    while !has_signal(1) {
+        //crate::print!("NO");
+    }
+    //crate::print!("YES");
+    let signal = get_signal(1).unwrap();
     done_signal(signal.ty);
     signal.data[0] as usize
 }

@@ -16,7 +16,7 @@ fn shell_read_line(fd: &mut FileDescriptor, buf: &mut String) {
     buf.clear(); // make sure that the buf is clean
 
     let mut tmp_buf = [0; 1];
-    fd.read(&mut tmp_buf);
+    fd.read_exact(&mut tmp_buf);
 
     while tmp_buf[0] != b'\n' {
         if tmp_buf[0] == 8 {
@@ -28,7 +28,7 @@ fn shell_read_line(fd: &mut FileDescriptor, buf: &mut String) {
             write!(fd, "{}", tmp_buf[0] as char).unwrap();
             buf.push(tmp_buf[0] as char);
         }
-        fd.read(&mut tmp_buf);
+        fd.read_exact(&mut tmp_buf);
     }
 }
 

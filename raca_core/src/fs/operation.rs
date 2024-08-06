@@ -7,10 +7,12 @@ use spin::{Mutex, RwLock};
 use crate::user::get_current_process_id;
 
 use super::{
-    fat32::Fat32Volume, vfs::{
+    fat32::Fat32Volume,
+    vfs::{
         inode::{mount_to, FileInfo, InodeRef, InodeTy},
         pipe::Pipe,
-    }, ROOT
+    },
+    ROOT,
 };
 
 static FILE_DESCRIPTOR_MANAGERS: Mutex<BTreeMap<ProcessId, Arc<FileDescriptorManager>>> =
@@ -53,7 +55,7 @@ impl FileDescriptorManager {
     }
 
     pub fn change_cwd(&self, path: String) {
-        if let Some(inode) = get_inode_by_path(path){
+        if let Some(inode) = get_inode_by_path(path) {
             if inode.read().inode_type() == InodeTy::Dir {
                 *self.cwd.lock() = inode;
             }
@@ -142,29 +144,36 @@ pub fn open(path: String, open_mode: OpenMode) -> Option<usize> {
     Some(file_descriptor)
 }
 
-pub fn read(fd: FileDescriptor, buf: &mut [u8]) -> Option<()> {
-    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+pub fn read(fd: FileDescriptor, buf: &mut [u8]) -> usize {
+    let current_file_descriptor_manager = get_file_descriptor_manager();
+    if let None = current_file_descriptor_manager {
+        return 0;
+    }
+    let current_file_descriptor_manager = current_file_descriptor_manager.unwrap();
 
-    let (inode, _, offset) = current_file_descriptor_manager.file_descriptors.get(&fd)?;
-
-    inode.read().read_at(*offset, buf);
-
-    Some(())
+    if let Some((inode, _, offset)) = current_file_descriptor_manager.file_descriptors.get(&fd) {
+        inode.read().read_at(*offset, buf)
+    } else {
+        0
+    }
 }
 
-pub fn write(fd: FileDescriptor, buf: &[u8]) -> Option<()> {
-    let current_file_descriptor_manager = get_file_descriptor_manager()?;
+pub fn write(fd: FileDescriptor, buf: &[u8]) -> usize {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
+        if let Some((inode, mode, offset)) =
+            current_file_descriptor_manager.file_descriptors.get(&fd)
+        {
+            match mode {
+                OpenMode::Write => inode.read().write_at(*offset, buf),
 
-    let (inode, mode, offset) = current_file_descriptor_manager.file_descriptors.get(&fd)?;
-
-    match mode {
-        OpenMode::Write => {
-            inode.read().write_at(*offset, buf);
+                _ => 0,
+            }
+        }else {
+            0
         }
-        _ => return None,
+    } else {
+        0
     }
-
-    Some(())
 }
 
 pub fn lseek(fd: FileDescriptor, offset: usize) -> Option<()> {
@@ -228,7 +237,7 @@ pub fn list_dir(path: String) -> Vec<FileInfo> {
             list.sort();
 
             let mut slow = 0;
-            for fast in 0..list.len(){
+            for fast in 0..list.len() {
                 if list[fast] != list[slow] && fast != slow {
                     list[slow] = list[fast].clone();
                     slow += 1;
@@ -253,22 +262,22 @@ pub fn change_cwd(path: String) {
             current_file_descriptor_manager.change_cwd(path);
         } else {
             let current = current_file_descriptor_manager.get_cwd();
-            let new = alloc::format!("{}{}",current,path);
+            let new = alloc::format!("{}{}", current, path);
             current_file_descriptor_manager.change_cwd(new);
         }
     }
 }
 
 pub fn get_cwd() -> String {
-    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager(){
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
         current_file_descriptor_manager.get_cwd()
-    }else {
+    } else {
         String::from("/")
     }
 }
 
-pub fn create(path: String,ty: InodeTy) -> Option<FileDescriptor> {
-    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager(){
+pub fn create(path: String, ty: InodeTy) -> Option<FileDescriptor> {
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
         if path.starts_with("/") {
             let mut name = String::new();
             let parrent_path = {
@@ -281,23 +290,22 @@ pub fn create(path: String,ty: InodeTy) -> Option<FileDescriptor> {
             let parent = get_inode_by_path(parrent_path)?;
             parent.read().create(name.clone(), ty)?;
             open(path, OpenMode::Write)
-        }else {
+        } else {
             let cwd = current_file_descriptor_manager.get_cwd();
             let parent = get_inode_by_path(cwd.clone())?;
             parent.read().create(path.clone(), ty)?;
-            open(cwd+path.as_str(), OpenMode::Write)
+            open(cwd + path.as_str(), OpenMode::Write)
         }
-    }else {
+    } else {
         None
     }
 }
 
 pub fn get_type(fd: FileDescriptor) -> Option<InodeTy> {
-    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager(){
-        
+    if let Some(current_file_descriptor_manager) = get_file_descriptor_manager() {
         let (inode, _, _) = current_file_descriptor_manager.file_descriptors.get(&fd)?;
         Some(inode.read().inode_type())
-    }else {
+    } else {
         None
     }
 }
@@ -306,11 +314,11 @@ pub fn mount(to: String, partition_path: String) -> Option<()> {
     let partition_inode = get_inode_by_path(partition_path)?;
     let to_father_path = {
         let mut path = to.clone();
-        if path.ends_with("/"){
+        if path.ends_with("/") {
             path.pop().unwrap();
         }
 
-        while!path.ends_with("/") {
+        while !path.ends_with("/") {
             path.pop().unwrap();
         }
         path
@@ -321,7 +329,7 @@ pub fn mount(to: String, partition_path: String) -> Option<()> {
     let to_name = {
         let mut path = to.read().get_path();
         let mut name = String::new();
-        if path.ends_with("/"){
+        if path.ends_with("/") {
             path.pop().unwrap();
         }
         while !path.ends_with("/") {

@@ -53,17 +53,13 @@ pub fn write(fd: usize, buf_addr: usize, buf_len: usize) -> usize {
         panic!("Read error at {:x}!", buf_addr);
     }
 
-    if let Some(_) = crate::fs::operation::write(fd, buf.as_slice()) {
-        buf_len
-    } else {
-        0
-    }
+    crate::fs::operation::write(fd, buf.as_slice())
 }
 
 pub fn read(fd: usize, buf_addr: usize, buf_len: usize) -> usize {
     let mut buf = vec![0; buf_len];
 
-    let ok = crate::fs::operation::read(fd, buf.as_mut()).is_some();
+    let len = crate::fs::operation::read(fd, buf.as_mut());
 
     write_for_syscall(VirtAddr::new(buf_addr as u64), buf.as_slice());
 
@@ -77,7 +73,7 @@ pub fn read(fd: usize, buf_addr: usize, buf_len: usize) -> usize {
         panic!("Read error at {:x}!", buf_addr);
     }
 
-    ok as usize * buf_len
+    len
 }
 
 pub fn close(fd: usize) -> usize {

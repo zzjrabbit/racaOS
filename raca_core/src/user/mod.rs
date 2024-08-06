@@ -6,6 +6,7 @@ use framework::{
 use spin::RwLock;
 
 pub mod syscall;
+pub mod login;
 
 #[inline]
 pub fn get_current_thread() -> Arc<RwLock<Thread>> {

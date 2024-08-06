@@ -15,7 +15,7 @@ pub fn main() {
     let mut buf = vec![0; fd.size()];
     fd.read(&mut buf);
     let process = raca_std::task::Process::new(&buf, "shell", 0, 0);
-    let pid = process.run();
+    process.run();
 
     wait();
 
@@ -23,4 +23,5 @@ pub fn main() {
     fd.write("Shell done".as_bytes());
 
     loop {}
+    // raca_std::task::exit(0);
 }

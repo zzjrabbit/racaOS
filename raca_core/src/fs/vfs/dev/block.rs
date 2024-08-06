@@ -65,7 +65,7 @@ impl Inode for BlockInode {
         HD_LIST.lock()[self.hd].get_size()
     }
 
-    fn read_at(&self, offset: usize, buf: &mut [u8]) {
+    fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
         let start = offset;
         let end = start + buf.len();
 
@@ -88,9 +88,10 @@ impl Inode for BlockInode {
         for i in 0..(end - start) {
             buf[i] = tmp[i + start_sector_read_start];
         }
+        buf.len()
     }
 
-    fn write_at(&self, offset: usize, buf: &[u8]) {
+    fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
         let start = offset;
         let end = start + buf.len();
 
@@ -119,5 +120,7 @@ impl Inode for BlockInode {
             .write_to_cache(start_sector_id, tmp);
 
         ref_to_mut(self).cache_manager.flush_cache();
+
+        buf.len()
     }
 }

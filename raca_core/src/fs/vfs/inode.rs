@@ -35,11 +35,11 @@ pub trait Inode: Sync + Send {
         unimplemented!()
     }
 
-    fn read_at(&self, _offset: usize, _buf: &mut [u8]) {
-        unimplemented!()
+    fn read_at(&self, _offset: usize, _buf: &mut [u8]) -> usize {
+        0
     }
-    fn write_at(&self, _offset: usize, _buf: &[u8]) {
-        unimplemented!()
+    fn write_at(&self, _offset: usize, _buf: &[u8]) -> usize {
+        0
     }
     fn flush(&self) {
         unimplemented!()

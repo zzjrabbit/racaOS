@@ -1,7 +1,7 @@
 use alloc::{
     collections::vec_deque::VecDeque,
     string::String,
-    sync::{Arc, Weak},
+    sync::Weak,
     vec::Vec,
 };
 use framework::{
@@ -9,8 +9,6 @@ use framework::{
     task::{thread::ThreadState, Thread},
 };
 use spin::RwLock;
-
-use crate::user::{get_current_thread, sleep};
 
 use super::inode::Inode;
 
@@ -47,21 +45,16 @@ impl Inode for Pipe {
         self.buffer.len()
     }
 
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) {
+    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> usize {
         let mut write = 0;
-        while write < buf.len() {
-            if let Some(data) = ref_to_mut(self).buffer.pop_back() {
-                buf[write] = data;
-                write += 1;
-            } else {
-                let thread = Arc::downgrade(&get_current_thread());
-                ref_to_mut(self).reader_requier.push(thread);
-                sleep();
-            }
+        while let Some(data) = ref_to_mut(self).buffer.pop_back() {
+            buf[write] = data;
+            write += 1;
         }
+        write
     }
 
-    fn write_at(&self, _offset: usize, buf: &[u8]) {
+    fn write_at(&self, _offset: usize, buf: &[u8]) -> usize {
         for &data in buf.iter() {
             ref_to_mut(self).buffer.push_front(data);
         }
@@ -69,5 +62,6 @@ impl Inode for Pipe {
             thread.upgrade().unwrap().write().state = ThreadState::Ready;
         }
         ref_to_mut(self).reader_requier.clear();
+        buf.len()
     }
 }

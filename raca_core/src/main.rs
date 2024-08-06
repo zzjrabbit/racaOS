@@ -52,7 +52,9 @@ pub extern "C" fn _start() {
     raca_core::ui::init();
 
     framework::start_schedule();
-    loop {}
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 #[panic_handler]

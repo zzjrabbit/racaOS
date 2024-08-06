@@ -632,14 +632,22 @@ checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
 name = "os-terminal"
-version = "0.2.7"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecb992ffd6e0ec7854536a05c5250cfb8e26dd0b15a22d4a0bc46f869e691730"
+checksum = "e82be64229b9df323eb94a315c0819899a3fb80e942fdde09056d5c133dfed0d"
 dependencies = [
  "bitflags 2.6.0",
+ "fontdue",
  "noto-sans-mono-bitmap",
  "spin",
  "vte",
+]
+
+[[package]]
+name = "passwd"
+version = "0.1.0"
+dependencies = [
+ "rs_sha3_512",
 ]
 
 [[package]]
@@ -696,6 +704,7 @@ dependencies = [
  "limine",
  "log",
  "pc-keyboard",
+ "rs_sha3_512",
  "spin",
  "usb-device",
  "uuid",
@@ -749,6 +758,54 @@ name = "regex-syntax"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
+
+[[package]]
+name = "rs_hasher_ctx"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a45ae5cc6246fa2666253289d6495e1fb3d125fb83842ff56b747a3b662e28e"
+dependencies = [
+ "rs_internal_hasher",
+ "rs_internal_state",
+ "rs_n_bit_words",
+]
+
+[[package]]
+name = "rs_internal_hasher"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19754b7c13d7fb92e995b1f6330918466e134ba7c3f55bf805c72e6a9727c426"
+dependencies = [
+ "rs_internal_state",
+ "rs_n_bit_words",
+]
+
+[[package]]
+name = "rs_internal_state"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "214a4e27fec5b651d615675874c6a829496cc2aa66e5f1b184ab05cb39fd3625"
+dependencies = [
+ "rs_n_bit_words",
+]
+
+[[package]]
+name = "rs_n_bit_words"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bc1bbb4c2a60f76b331e6ba70b5065e210fa6e72fc966c2d488736755d89cb6"
+
+[[package]]
+name = "rs_sha3_512"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f2b5ebd0f3a3f8513a028cf473d07f2a0b31627228bedec68da8ac1b7ce18c9"
+dependencies = [
+ "rs_hasher_ctx",
+ "rs_internal_hasher",
+ "rs_internal_state",
+ "rs_n_bit_words",
+]
 
 [[package]]
 name = "rustix"

@@ -1,5 +1,5 @@
 use crate::fs::vfs::inode::Inode;
-use crate::user::{get_current_thread, sleep};
+use crate::user::get_current_thread;
 use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
@@ -15,7 +15,6 @@ static WAIT_LIST: Mutex<Vec<Weak<RwLock<Thread>>>> = Mutex::new(Vec::new());
 
 pub fn keyboard_parse_thread() {
     fn push_char(ch: char) {
-        log::info!("Wake up, you lazy damn thing!");
         BYTES.push(ch).expect("Buffer full");
         for thread in WAIT_LIST.lock().iter() {
             thread.upgrade().unwrap().write().state = ThreadState::Ready;
@@ -77,24 +76,32 @@ impl Inode for Terminal {
         self.path.clone()
     }
 
-    fn read_at(&self, _offset: usize, buf: &mut [u8]) {
+    fn read_at(&self, _offset: usize, buf: &mut [u8]) -> usize {
         let mut write = 0;
-        while write < buf.len() {
-            log::info!("READ");
-            if let Some(byte) = BYTES.pop() {
-                buf[write] = byte as u8;
-                write += 1;
-            } else {
-                let thread = Arc::downgrade(&get_current_thread());
-                WAIT_LIST.lock().push(thread);
-                sleep();
+        while let Some(byte) = BYTES.pop() {
+            if write >= buf.len() {
+                break;
             }
+            buf[write] = byte as u8;
+            write += 1;
         }
+        if write < buf.len() {
+            let current_thread = get_current_thread();
+            WAIT_LIST.lock().push(Arc::downgrade(&current_thread));
+            current_thread.write().state = ThreadState::Waiting;
+            //x86_64::instructions::interrupts::enable();
+            //schedule();
+            //while current_thread.read().state == ThreadState::Waiting {}
+            //x86_64::instructions::interrupts::disable();
+        }
+        write
     }
 
-    fn write_at(&self, _offset: usize, buf: &[u8]) {
+    fn write_at(&self, _offset: usize, buf: &[u8]) -> usize {
         if let Ok(s) = core::str::from_utf8(buf) {
             framework::print!("{}", s);
+            return buf.len();
         }
+        0
     }
 }

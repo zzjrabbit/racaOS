@@ -92,21 +92,29 @@ pub fn exit(code: usize) -> usize {
             .write()
             .signal_manager
             .register_signal(
-                0,
+                1,
                 Signal {
                     ty: 0,
                     data: [code as u64, 0, 0, 0, 0, 0, 0, 0],
                 },
             );
     }
+    drop(process);
     framework::task::scheduler::exit();
+    log::info!("Done");
     return 0;
 }
 
 pub fn has_signal(ty: usize) -> usize {
     let process = get_current_process();
     let process = process.read();
-    process.signal_manager.has_signal(ty) as usize
+    if process.signal_manager.has_signal(ty) {
+        return 1;
+    }
+    for thread in process.threads.iter() {
+        thread.write().state = ThreadState::Waiting;
+    }
+    0
 }
 
 pub fn start_wait_for_signal(ty: usize) -> usize {
@@ -117,6 +125,7 @@ pub fn start_wait_for_signal(ty: usize) -> usize {
 }
 
 pub fn get_signal(ty: usize) -> usize {
+    log::info!("Get signal");
     let process = get_current_process();
     let mut process = process.write();
     if let Some(signal) = process.signal_manager.get_signal(ty) {
