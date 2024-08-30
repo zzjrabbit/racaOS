@@ -1,6 +1,6 @@
 use core::hash::Hasher;
 
-use alloc::{string::String,format};
+use alloc::{format, string::String};
 use rs_sha3_512::{HasherContext, Sha3_512Hasher};
 
 pub fn try_pass_word(password: String, sha: String) -> bool {

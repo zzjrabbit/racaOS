@@ -8,7 +8,7 @@ panic = "abort"
 
 [profile.release]
 lto = true
-opt-level = "z"
+opt-level = 3
 panic = "abort"
 strip = "symbols"
 codegen-units = 1

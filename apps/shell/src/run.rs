@@ -1,5 +1,9 @@
 use alloc::{string::String, vec};
-use raca_std::{fs::{FileDescriptor, FileType, OpenMode}, task::{wait, Process}};
+use raca_std::{
+    fs::{FileDescriptor, FileType, OpenMode},
+    println,
+    task::{wait, Process},
+};
 
 pub fn try_run(path: String) -> Option<()> {
     if let Ok(mut file) = FileDescriptor::open(&path, OpenMode::Read) {
@@ -21,10 +25,13 @@ pub fn try_run(path: String) -> Option<()> {
         //    write!(fd, "{}", buf[0] as char).unwrap();
         //}
         //loop{}
-        wait();
-        // loop{}
+        let code = wait();
+        println!("exit code: {}", code);
+        //loop{
+
+        //}
         Some(())
-    }else {
+    } else {
         None
     }
 }

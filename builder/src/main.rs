@@ -33,11 +33,13 @@ struct Args {
 fn main() {
     let init_path = env!("CARGO_BIN_FILE_INIT_init");
     let shell_path = env!("CARGO_BIN_FILE_SHELL_shell");
+    let hello1_path = env!("CARGO_BIN_FILE_HELLO1_hello1");
 
     let app_path = "esp/RACA/app64/".to_string();
 
     let init_dest = app_path.clone() + "init.rae";
     let shell_dest = app_path.clone() + "shell.rae";
+    let hello1_dest = app_path.clone() + "hello1.rae";
 
     io::copy(
         &mut File::open(Path::new(init_path)).unwrap(),
@@ -47,6 +49,11 @@ fn main() {
     io::copy(
         &mut File::open(Path::new(shell_path)).unwrap(),
         &mut File::create(shell_dest).unwrap(),
+    )
+    .unwrap();
+    io::copy(
+        &mut File::open(Path::new(hello1_path)).unwrap(),
+        &mut File::create(hello1_dest).unwrap(),
     )
     .unwrap();
 
@@ -111,6 +118,7 @@ fn main() {
         cmd.arg("-drive")
             .arg("format=raw,file=data.img,if=none,id=disk2");
         cmd.arg("-device").arg("nvme,drive=disk2,serial=1234");
+        cmd.arg("-net").arg("nic");
 
         if args.kvm {
             cmd.arg("--enable-kvm");

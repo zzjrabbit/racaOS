@@ -8,7 +8,13 @@ use framework::{
 };
 use limine::BaseRevision;
 use raca_core::{
-    fs::{self, operation::init_file_descriptor_manager},
+    fs::{
+        self,
+        operation::{
+            init_file_descriptor_manager, init_file_descriptor_manager_with_stdin_stdout,
+            kernel_open,
+        },
+    },
     user::syscall::syscall_handler,
 };
 
@@ -36,7 +42,11 @@ pub extern "C" fn _start() {
     Thread::new_kernel_thread(raca_core::fs::vfs::dev::terminal::keyboard_parse_thread);
 
     let process = Process::new_user_process("init", buf);
-    init_file_descriptor_manager(process.read().id);
+    init_file_descriptor_manager_with_stdin_stdout(
+        process.read().id,
+        kernel_open("/dev/terminal".into()).unwrap(),
+        kernel_open("/dev/terminal".into()).unwrap(),
+    );
     //Process::new_user_process("Hello2", include_bytes!("../../../apps/hello2.rae"));
 
     (40..=47).for_each(|index| framework::print!("\x1b[{}m   \x1b[0m", index));
@@ -50,6 +60,8 @@ pub extern "C" fn _start() {
     framework::serial_println!();
 
     raca_core::ui::init();
+
+    //drivers::net::e1000::init();
 
     framework::start_schedule();
     loop {

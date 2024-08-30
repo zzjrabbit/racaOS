@@ -5,13 +5,13 @@ use crate::{
         get_inode_by_fd, init_file_descriptor_manager,
         init_file_descriptor_manager_with_stdin_stdout,
     },
-    user::{get_current_process, get_current_thread},
+    user::get_current_process,
 };
 use alloc::{sync::Arc, vec};
 
 use framework::{
     memory::addr_to_mut_ref,
-    task::{signal::Signal, thread::ThreadState, Process},
+    task::{scheduler::SCHEDULER, signal::Signal, thread::ThreadState, Process},
 };
 use x86_64::VirtAddr;
 
@@ -84,24 +84,35 @@ pub fn create_process(info_addr: usize) -> usize {
 }
 
 pub fn exit(code: usize) -> usize {
-    let process = get_current_process();
-    if let Some(ref father) = process.read().father {
-        father
-            .upgrade()
-            .unwrap()
-            .write()
-            .signal_manager
-            .register_signal(
-                1,
-                Signal {
-                    ty: 0,
-                    data: [code as u64, 0, 0, 0, 0, 0, 0, 0],
-                },
-            );
+    {
+        let process = get_current_process();
+        if let Some(ref father) = process.read().father {
+            if father
+                .upgrade()
+                .unwrap()
+                .write()
+                .signal_manager
+                .register_signal(
+                    1,
+                    Signal {
+                        ty: 1,
+                        data: [code as u64, 0, 0, 0, 0, 0, 0, 0],
+                    },
+                )
+            {
+                framework::serial_println!("Father waiting");
+                for thread in father.upgrade().unwrap().read().threads.iter() {
+                    if !thread.read().state.is_active() {
+                        framework::serial_println!("wake up {}", thread.read().id.0);
+                        thread.write().state = ThreadState::Ready;
+                        SCHEDULER.lock().add(Arc::downgrade(thread));
+                    }
+                }
+            }
+        }
+        process.read().exit_process();
+        framework::serial_println!("Exited!");
     }
-    drop(process);
-    framework::task::scheduler::exit();
-    log::info!("Done");
     return 0;
 }
 
@@ -111,26 +122,32 @@ pub fn has_signal(ty: usize) -> usize {
     if process.signal_manager.has_signal(ty) {
         return 1;
     }
-    for thread in process.threads.iter() {
-        thread.write().state = ThreadState::Waiting;
-    }
     0
 }
 
 pub fn start_wait_for_signal(ty: usize) -> usize {
     let process = get_current_process();
     process.write().signal_manager.register_wait_for(ty);
-    get_current_thread().write().state = ThreadState::Waiting;
+    for thread in process.read().threads.iter() {
+        if thread.read().state.is_active() {
+            thread.write().state = ThreadState::Waiting;
+            SCHEDULER.lock().remove(Arc::downgrade(thread));
+        }
+    }
     return 0;
 }
 
 pub fn get_signal(ty: usize) -> usize {
-    log::info!("Get signal");
     let process = get_current_process();
     let mut process = process.write();
+
     if let Some(signal) = process.signal_manager.get_signal(ty) {
-        let new_signal_address = process.heap.allocate(Layout::from_size_align(size_of::<Signal>(), 8).unwrap()).unwrap();
+        let new_signal_address = process
+            .heap
+            .allocate(Layout::from_size_align(size_of::<Signal>(), 8).unwrap())
+            .unwrap();
         let new_signal = addr_to_mut_ref(VirtAddr::new(new_signal_address));
+
         *new_signal = signal;
         new_signal_address as usize
     } else {

@@ -168,7 +168,7 @@ pub fn write(fd: FileDescriptor, buf: &[u8]) -> usize {
 
                 _ => 0,
             }
-        }else {
+        } else {
             0
         }
     } else {
@@ -224,8 +224,6 @@ pub fn open_pipe(buffer: &mut [usize]) -> Option<()> {
 
     buffer[0] = file_descriptor_read;
     buffer[1] = file_descriptor_write;
-
-    log::info!("{:?}", buffer);
 
     Some(())
 }

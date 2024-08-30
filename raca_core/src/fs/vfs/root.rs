@@ -15,7 +15,9 @@ impl RootFS {
             nodes: BTreeMap::new(),
             path: String::new(),
         }));
-        ref_to_mut(&*inode.read()).nodes.insert(".".into(),inode.clone());
+        ref_to_mut(&*inode.read())
+            .nodes
+            .insert(".".into(), inode.clone());
         inode.clone()
     }
 }
@@ -28,7 +30,6 @@ impl Inode for RootFS {
         if let Some(father) = father {
             self.nodes.insert("..".into(), father.clone());
         }
-        
     }
 
     fn when_umounted(&mut self) {

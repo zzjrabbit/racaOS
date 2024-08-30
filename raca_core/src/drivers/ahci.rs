@@ -548,7 +548,7 @@ pub fn init() {
 
     let mut ahci_cons = AHCI_CONS.lock();
 
-    log::info!("NUM : {}",devices.len());
+    log::info!("NUM : {}", devices.len());
 
     for device in devices.iter_mut() {
         if let None = device.bar_init() {

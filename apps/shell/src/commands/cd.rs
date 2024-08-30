@@ -1,10 +1,12 @@
 use alloc::{string::String, vec::Vec};
-use raca_std::fs::{change_cwd, FileDescriptor, FileType, OpenMode};
-use core::fmt::Write;
+use raca_std::{
+    fs::{change_cwd, FileDescriptor, FileType, OpenMode},
+    println,
+};
 
-pub fn cd(stdio: &mut FileDescriptor, args: Vec<String>) {
+pub fn cd(args: Vec<String>) {
     if args.len() != 2 {
-        writeln!(stdio, "Usage: cd <folder>\n").unwrap();
+        println!("Usage: cd <folder>\n");
         return;
     }
 
@@ -12,17 +14,16 @@ pub fn cd(stdio: &mut FileDescriptor, args: Vec<String>) {
 
     let k = FileDescriptor::open(path.as_str(), OpenMode::Read);
     if let Err(_) = k {
-        writeln!(stdio, "cd: {}: No such directory", path).unwrap();
-        return ;
+        println!("cd: {}: No such directory", path);
+        return;
     }
 
     if k.unwrap().get_type() == FileType::File {
-        writeln!(stdio, "cd: {}: No such directory", path).unwrap();
-        return ;
+        println!("cd: {}: No such directory", path);
+        return;
     }
-    
+
     k.unwrap().close();
 
     change_cwd(path.clone());
 }
-

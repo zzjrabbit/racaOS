@@ -1,25 +1,15 @@
 use crate::fs::vfs::inode::Inode;
-use crate::user::get_current_thread;
 use alloc::string::String;
-use alloc::sync::{Arc, Weak};
-use alloc::vec::Vec;
 use crossbeam_queue::ArrayQueue;
 use framework::drivers::keyboard::get_scancode;
-use framework::task::thread::ThreadState;
-use framework::task::Thread;
 use pc_keyboard::{layouts, DecodedKey, HandleControl, KeyCode, Keyboard, ScancodeSet1};
-use spin::{Lazy, Mutex, RwLock};
+use spin::Lazy;
 
 static BYTES: Lazy<ArrayQueue<char>> = Lazy::new(|| ArrayQueue::new(1024));
-static WAIT_LIST: Mutex<Vec<Weak<RwLock<Thread>>>> = Mutex::new(Vec::new());
 
 pub fn keyboard_parse_thread() {
     fn push_char(ch: char) {
         BYTES.push(ch).expect("Buffer full");
-        for thread in WAIT_LIST.lock().iter() {
-            thread.upgrade().unwrap().write().state = ThreadState::Ready;
-        }
-        WAIT_LIST.lock().clear();
     }
 
     let mut keyboard = Keyboard::new(
@@ -84,15 +74,6 @@ impl Inode for Terminal {
             }
             buf[write] = byte as u8;
             write += 1;
-        }
-        if write < buf.len() {
-            let current_thread = get_current_thread();
-            WAIT_LIST.lock().push(Arc::downgrade(&current_thread));
-            current_thread.write().state = ThreadState::Waiting;
-            //x86_64::instructions::interrupts::enable();
-            //schedule();
-            //while current_thread.read().state == ThreadState::Waiting {}
-            //x86_64::instructions::interrupts::disable();
         }
         write
     }

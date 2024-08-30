@@ -1,10 +1,10 @@
 use alloc::{sync::Arc, vec::Vec};
 use spin::Mutex;
 
-pub trait BlockDevice: Send + Sync + 'static{
+pub trait BlockDevice: Send + Sync + 'static {
     fn read_block(&self, start_sec: usize, buf: &mut [u8]) -> Option<()>;
     fn write_block(&self, start_sec: usize, buf: &[u8]) -> Option<()>;
-    
+
     fn get_size(&self) -> usize;
 }
 
@@ -64,4 +64,3 @@ pub fn init() {
         HD_LIST.lock().push(disk.clone());
     }
 }
-

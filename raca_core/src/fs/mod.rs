@@ -10,12 +10,12 @@ use vfs::{
 };
 
 //mod ext2;
+mod ext4;
 mod fat32;
 pub mod operation;
 pub mod vfs;
 
-pub static ROOT: Lazy<Mutex<InodeRef>> =
-    Lazy::new(|| Mutex::new(RootFS::new()));
+pub static ROOT: Lazy<Mutex<InodeRef>> = Lazy::new(|| Mutex::new(RootFS::new()));
 
 #[used]
 static KERNEL_FILE_REQUEST: KernelFileRequest = KernelFileRequest::new();

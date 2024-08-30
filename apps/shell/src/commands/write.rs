@@ -1,10 +1,12 @@
 use alloc::{string::String, vec::Vec};
-use raca_std::fs::{FileDescriptor, OpenMode};
-use core::fmt::Write;
+use raca_std::{
+    fs::{FileDescriptor, OpenMode},
+    println,
+};
 
-pub fn write(stdio: &mut FileDescriptor, args: Vec<String>) {
+pub fn write(args: Vec<String>) {
     if args.len() < 3 {
-        writeln!(stdio, "Usage: write <file> <content>\n").unwrap();
+        println!("Usage: write <file> <content>\n");
         return;
     }
 
@@ -14,7 +16,6 @@ pub fn write(stdio: &mut FileDescriptor, args: Vec<String>) {
     if let Ok(file) = FileDescriptor::open(file_path.as_str(), OpenMode::Write) {
         file.write(content.as_bytes());
     } else {
-        writeln!(stdio,"Can't find {}.",file_path).unwrap();
+        println!("Can't find {}.", file_path);
     }
 }
-

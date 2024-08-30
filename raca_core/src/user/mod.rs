@@ -1,21 +1,13 @@
 use alloc::sync::Arc;
-use framework::{
-    arch::apic::get_lapic_id,
-    task::{process::ProcessId, scheduler::SCHEDULERS, thread::ThreadState, Process, Thread},
-};
+use framework::task::{process::ProcessId, scheduler::SCHEDULER, thread::ThreadState, Process, Thread};
 use spin::RwLock;
 
-pub mod syscall;
 pub mod login;
+pub mod syscall;
 
 #[inline]
 pub fn get_current_thread() -> Arc<RwLock<Thread>> {
-    SCHEDULERS
-        .lock()
-        .get(&get_lapic_id())
-        .unwrap()
-        .current_thread
-        .clone()
+    SCHEDULER.lock().current_thread().upgrade().unwrap()
 }
 
 #[inline]

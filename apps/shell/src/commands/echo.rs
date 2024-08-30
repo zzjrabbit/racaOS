@@ -1,14 +1,12 @@
 use alloc::{string::String, vec::Vec};
-use raca_std::fs::FileDescriptor;
-use core::fmt::Write;
+use raca_std::println;
 
-pub fn echo(stdio: &mut FileDescriptor, args: Vec<String>){
+pub fn echo(args: Vec<String>) {
     if args.len() < 2 {
         return;
     }
 
     let output = args.join(" ");
 
-    writeln!(stdio, "{}", output).unwrap();
+    println!("{}", output);
 }
-

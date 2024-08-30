@@ -14,7 +14,7 @@ pub fn main() {
     let fd = FileDescriptor::open("/RACA/app64/shell.rae", raca_std::fs::OpenMode::Read).unwrap();
     let mut buf = vec![0; fd.size()];
     fd.read(&mut buf);
-    let process = raca_std::task::Process::new(&buf, "shell", 0, 0);
+    let process = raca_std::task::Process::new(&buf, "shell", 0, 1);
     process.run();
 
     wait();

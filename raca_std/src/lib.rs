@@ -56,11 +56,5 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "sysv64" fn _start() -> ! {
-    //let _ = crate::io::open("/dev/console", crate::io::OpenType::Write);
-    //crate::print!("OK");
-
     task::exit(main());
-
-    //main(10,10);
-
 }

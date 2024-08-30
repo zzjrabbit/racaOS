@@ -1,9 +1,4 @@
-use alloc::{
-    collections::vec_deque::VecDeque,
-    string::String,
-    sync::Weak,
-    vec::Vec,
-};
+use alloc::{collections::vec_deque::VecDeque, string::String, sync::Weak, vec::Vec};
 use framework::{
     ref_to_mut,
     task::{thread::ThreadState, Thread},
@@ -29,7 +24,11 @@ impl Pipe {
 }
 
 impl Inode for Pipe {
-    fn when_mounted(&mut self, path: alloc::string::String, _father: Option<super::inode::InodeRef>) {
+    fn when_mounted(
+        &mut self,
+        path: alloc::string::String,
+        _father: Option<super::inode::InodeRef>,
+    ) {
         self.path.clear();
         self.path.push_str(path.as_str());
     }

@@ -3,7 +3,10 @@ use fatfs::*;
 use framework::{ref_to_mut, ref_to_static, unsafe_trait_impl};
 use spin::RwLock;
 
-use super::{operation::kernel_open, vfs::inode::{FileInfo, Inode, InodeRef, InodeTy}};
+use super::{
+    operation::kernel_open,
+    vfs::inode::{FileInfo, Inode, InodeRef, InodeTy},
+};
 
 type FatDir = Dir<'static, InodeRefIO, NullTimeProvider, LossyOemCpConverter>;
 type FatFile = File<'static, InodeRefIO, NullTimeProvider, LossyOemCpConverter>;
@@ -74,7 +77,9 @@ impl Fat32Volume {
             path: String::new(),
         };
         let inode_ref = Arc::new(RwLock::new(inode));
-        ref_to_mut(&*inode_ref.read()).virtual_inodes.insert(".".into(), inode_ref.clone());
+        ref_to_mut(&*inode_ref.read())
+            .virtual_inodes
+            .insert(".".into(), inode_ref.clone());
         inode_ref
     }
 }
@@ -109,18 +114,16 @@ impl Inode for Fat32Volume {
         if let Some(inode) = self.virtual_inodes.get(&name) {
             return Some(inode.clone());
         } else if let Ok(dir) = dir.open_dir(name.as_str()) {
-            let inode = Fat32Dir::new(
-                Arc::new(dir),
-                cluster_size,
-            );
-            inode.write().when_mounted(self.get_path()+name.as_str()+"/", self_inode);
+            let inode = Fat32Dir::new(Arc::new(dir), cluster_size);
+            inode
+                .write()
+                .when_mounted(self.get_path() + name.as_str() + "/", self_inode);
             return Some(inode);
         } else if let Ok(file) = dir.open_file(name.as_str()) {
-            let inode = Arc::new(RwLock::new(Fat32File::new(
-                Arc::new(file),
-                cluster_size,
-            )));
-            inode.write().when_mounted(self.get_path()+name.as_str(), self_inode);
+            let inode = Arc::new(RwLock::new(Fat32File::new(Arc::new(file), cluster_size)));
+            inode
+                .write()
+                .when_mounted(self.get_path() + name.as_str(), self_inode);
             return Some(inode);
         }
         //dir.
@@ -172,7 +175,7 @@ pub struct Fat32Dir {
 }
 
 impl Fat32Dir {
-    pub(self) fn new(dir: Arc<FatDir>, cluster_size: usize) -> InodeRef{
+    pub(self) fn new(dir: Arc<FatDir>, cluster_size: usize) -> InodeRef {
         let inode = Self {
             dir,
             path: String::new(),
@@ -180,7 +183,9 @@ impl Fat32Dir {
             virtual_inodes: BTreeMap::new(),
         };
         let inode_ref = Arc::new(RwLock::new(inode));
-        ref_to_mut(&*inode_ref.read()).virtual_inodes.insert(".".into(), inode_ref.clone());
+        ref_to_mut(&*inode_ref.read())
+            .virtual_inodes
+            .insert(".".into(), inode_ref.clone());
         inode_ref
     }
 }
@@ -190,7 +195,7 @@ impl Inode for Fat32Dir {
         self.path.clear();
         self.path.push_str(path.as_str());
         if let Some(father) = father {
-            self.virtual_inodes.insert("..".into(),father);
+            self.virtual_inodes.insert("..".into(), father);
         }
     }
 
@@ -211,21 +216,22 @@ impl Inode for Fat32Dir {
 
         if let Some(inode) = self.virtual_inodes.get(&name) {
             return Some(inode.clone());
-        }else if let Ok(dir) = self.dir.open_dir(name.as_str()) {
-            let inode = Fat32Dir::new(
-                Arc::new(dir),
-                self.cluster_size,
-            );
-            inode.write().when_mounted(self.get_path()+name.as_str()+"/", self_inode);
+        } else if let Ok(dir) = self.dir.open_dir(name.as_str()) {
+            let inode = Fat32Dir::new(Arc::new(dir), self.cluster_size);
+            inode
+                .write()
+                .when_mounted(self.get_path() + name.as_str() + "/", self_inode);
             return Some(inode);
         } else if let Ok(file) = self.dir.open_file(name.as_str()) {
             let inode = Arc::new(RwLock::new(Fat32File::new(
                 Arc::new(file),
                 self.cluster_size,
             )));
-            inode.write().when_mounted(self.get_path()+name.as_str(), self_inode);
+            inode
+                .write()
+                .when_mounted(self.get_path() + name.as_str(), self_inode);
             return Some(inode);
-        } 
+        }
         //dir.
         None
     }
@@ -299,7 +305,7 @@ impl Inode for Fat32File {
 
     fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
         let mut size = 0;
-        
+
         ref_to_mut(self.file.as_ref())
             .seek(SeekFrom::Start(offset as u64))
             .unwrap();

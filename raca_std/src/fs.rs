@@ -11,7 +11,7 @@ pub enum OpenMode {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct FileDescriptor(pub usize, bool);
+pub struct FileDescriptor(pub usize, pub(crate) bool);
 
 impl FileDescriptor {
     pub fn open(path: &str, open_mode: OpenMode) -> Result<Self, ()> {
@@ -200,19 +200,22 @@ impl FileInfo {
 
 pub fn change_cwd(path: String) {
     const CHANGE_CWD_SYSCALL: u64 = 15;
-    crate::syscall(CHANGE_CWD_SYSCALL, path.as_ptr() as usize, path.len(), 0, 0, 0);
+    crate::syscall(
+        CHANGE_CWD_SYSCALL,
+        path.as_ptr() as usize,
+        path.len(),
+        0,
+        0,
+        0,
+    );
 }
 
 pub fn get_cwd() -> String {
     const GET_CWD_SYSCALL: u64 = 16;
     let ptr = crate::syscall(GET_CWD_SYSCALL, 0, 0, 0, 0, 0);
-    let path_buf_ptr = unsafe {
-        (ptr as *const u64).read()
-    };
-    let path_buf_len = unsafe {
-        (ptr as *const usize).add(1).read()
-    };
-    let path_buf = unsafe {core::slice::from_raw_parts(path_buf_ptr as *const u8, path_buf_len)};
+    let path_buf_ptr = unsafe { (ptr as *const u64).read() };
+    let path_buf_len = unsafe { (ptr as *const usize).add(1).read() };
+    let path_buf = unsafe { core::slice::from_raw_parts(path_buf_ptr as *const u8, path_buf_len) };
     String::from_utf8(path_buf.to_vec()).unwrap()
 }
 
@@ -229,12 +232,11 @@ pub fn create(path: String, ty: FileType) -> Result<FileDescriptor, ()> {
     if fd == 0 {
         Err(())
     } else {
-     
         Ok(FileDescriptor(fd, false))
     }
 }
 
-pub fn mount(path: String, partition: String) -> Result<(),()> {
+pub fn mount(path: String, partition: String) -> Result<(), ()> {
     const MOUNT_SYSCALL_ID: u64 = 20;
     crate::syscall(
         MOUNT_SYSCALL_ID,
