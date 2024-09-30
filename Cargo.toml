@@ -1,0 +1,2 @@
+[workspace]
+members = ["raca_core", "rc_object_derive"]
