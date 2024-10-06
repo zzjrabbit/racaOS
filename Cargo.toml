@@ -1,0 +1,14 @@
+[workspace]
+members = ["builder", "modules/module_std", "modules/hello", "raca_core"]
+default-members = ["builder"]
+resolver="2"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+lto = true
+opt-level = 3
+panic = "abort"
+strip = "symbols"
+codegen-units = 1

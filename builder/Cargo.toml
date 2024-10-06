@@ -1,0 +1,26 @@
+[package]
+name = "builder"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+flate2 = "1.0.30"
+argh = "0.1.12"
+anyhow = "1.0.32"
+tempfile = "3.3.0"
+gpt = "4.0.0"
+walkdir = "2.5.0"
+
+[dependencies.fatfs]
+version = "0.3.4"
+default-features = false
+features = ["std", "alloc"]
+
+[dependencies.raca_core]
+path = "../raca_core"
+artifact = "bin"
+target = "x86_64-unknown-none"
+
+[dependencies.hello]
+path = "../modules/hello"
+artifact = "cdylib"
