@@ -25,7 +25,7 @@ pub extern "C" fn main() -> ! {
     raca_core::init();
     let module = HELLO.get_response().unwrap().modules()[0];
     let (ptr, size) = (module.addr(), module.size());
-    let data = unsafe { slice::from_raw_parts(ptr, size as usize) };
+    let data = unsafe { slice::from_raw_parts_mut(ptr, size as usize) };
     let module = Module::load(data);
     log::info!("module {} loaded", module.get_name());
     module.exec();

@@ -21,6 +21,4 @@ path = "../raca_core"
 artifact = "bin"
 target = "x86_64-unknown-none"
 
-[dependencies.hello]
-path = "../modules/hello"
-artifact = "cdylib"
+ 

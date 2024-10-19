@@ -13,4 +13,6 @@ fn main() {
         "cargo:rerun-if-changed={}/../link.ld",
         manifest_dir.display()
     );
+
+    println!("cargo:rustc-link-arg=-r",);
 }

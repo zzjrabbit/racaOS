@@ -17,6 +17,11 @@ acpi = "5.0.0"
 x2apic = "0.4.3"
 numeric-enum-macro = "0.2.0"
 
+[dependencies.goblin]
+version = "0.8.2"
+default-features = false
+features = ["elf64","elf32","endian_fd"]
+
 [dependencies.object]
 version = "0.36.4"
 features = ["read_core", "elf", "unaligned", ]

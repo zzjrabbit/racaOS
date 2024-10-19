@@ -4,3 +4,4 @@ bindeps = true
 
 [target.'cfg(target_os = "none")']
 rustflags = ["-C", "relocation-model=static"]
+

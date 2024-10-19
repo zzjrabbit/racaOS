@@ -1,3 +1,5 @@
+ENTRY(init)
+
 SECTIONS {
     .text : {
         *(.text .text.*)

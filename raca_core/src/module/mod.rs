@@ -1,7 +1,11 @@
 use core::{alloc::Layout, mem::transmute};
 
-use alloc::{alloc::alloc, collections::btree_map::BTreeMap, string::String};
-use object::{File, Object, ObjectSegment, ObjectSymbol, ObjectSymbolTable};
+use alloc::{
+    alloc::alloc,
+    collections::btree_map::BTreeMap,
+    string::{String, ToString},
+};
+use goblin::elf::Elf;
 use x86_64::{
     structures::paging::{Mapper, Page, Size4KiB},
     VirtAddr,
@@ -14,35 +18,32 @@ mod operations;
 
 #[repr(C)]
 pub struct InfoStruct {
-    _magic: [u8; 8],
-    name: [u8; 8],
-    kernel_function_address: usize,
+    name: &'static str,
 }
 
 pub struct Module {
     name: String,
-    function_addresses: BTreeMap<String, u64>,
+    symbol_addresses: BTreeMap<String, u64>,
+    entry_address: u64,
 }
 
 impl Module {
     pub fn load(data: &[u8]) -> Self {
-        //object::write::elf::Writer::
+        let binary = Elf::parse(data).unwrap();
+        let base = unsafe { alloc(Layout::from_size_align(data.len(), 4096).unwrap()) } as u64;
 
-        let binary = File::parse(data).unwrap();
+        let mut section_addresses = BTreeMap::new();
 
-        let max_addr = binary
-            .segments()
-            .map(|seg| seg.address() + seg.size())
-            .max()
-            .unwrap() as u64;
-        let base =
-            unsafe { alloc(Layout::from_size_align(max_addr as usize, 4096).unwrap()) } as u64;
+        let mut current_adress = base;
 
         let mut page_table = KERNEL_PAGE_TABLE.lock();
 
-        for page_i in 0..(max_addr + 4095) / 4096 {
-            let page =
-                Page::<Size4KiB>::containing_address(VirtAddr::new(base + page_i as u64 * 4096));
+        let start_page = Page::<Size4KiB>::containing_address(VirtAddr::new(base));
+        let end_page =
+            Page::<Size4KiB>::containing_address(VirtAddr::new(base + data.len() as u64));
+
+        for page in start_page..=end_page {
+            //log::info!("mapping {:x?}",page);
             unsafe {
                 page_table
                     .update_flags(page, MappingType::KernelCode.flags())
@@ -51,49 +52,85 @@ impl Module {
             }
         }
 
-        for segment in binary.segments() {
-            if let Ok(data) = segment.data() {
-                page_table.write_to_mapped_address(data, VirtAddr::new(segment.address() + base));
+        for (id, section) in binary.section_headers.iter().enumerate() {
+            if section.is_relocation() {
+                continue;
+            }
+
+            section_addresses.insert(id, current_adress);
+            current_adress += section.sh_size;
+        }
+
+        for (section_index, relocation_section) in binary.shdr_relocs {
+
+            let relocationed_section = binary
+                .section_headers
+                .get(section_index)
+                .unwrap();
+            let relocationed_section = binary.section_headers.get(relocationed_section.sh_info as usize).unwrap();
+
+            for relocation in relocation_section.iter() {
+                //if relocation.r_type = R_
+                let symbol = binary.syms.get(relocation.r_sym).unwrap();
+
+                let section_address = if symbol.is_import() {
+                    let symbol_name = binary.strtab.get_at(symbol.st_name).unwrap();
+                    if symbol_name  == "print" {
+                        print as u64
+                    } else {
+                        panic!("unknow symbol {}!",symbol_name);
+                    }
+                } else {
+                    *section_addresses.get(&symbol.st_shndx).unwrap()
+                };
+                let offset = relocation.r_offset + relocationed_section.sh_offset;
+                let addend = relocation.r_addend.unwrap_or(0);
+
+                let target_address = VirtAddr::new(if addend >= 0 {
+                    section_address + addend as u64
+                } else {
+                    section_address - (-addend as u64)
+                });
+
+                unsafe {
+                    ((data.as_ptr() as u64 + offset as u64) as *mut u64)
+                        .write(target_address.as_u64());
+                }
             }
         }
 
-        //for mut reloc in binary.dynamic_relocations().unwrap() {
-        //    reloc.1.set_addend(base as i64);
-        //}
+        for (&section_id, &section_address) in section_addresses.iter() {
+            let section = &binary.section_headers[section_id];
 
-        let get_info_address = binary
-            .dynamic_symbol_table()
-            .unwrap()
-            .symbols()
-            .find(|sym| {
-                if let Ok(name) = sym.name() {
-                    name == "get_info"
-                } else {
-                    false
-                }
+            page_table.write_to_mapped_address(
+                &data[section.sh_offset as usize
+                    ..section.sh_offset as usize + section.sh_size as usize],
+                VirtAddr::new(section_address),
+            );
+        }
+
+        let symbol_addresses = binary
+            .syms
+            .iter()
+            .filter(|symbol| section_addresses.get(&symbol.st_shndx).is_some())
+            .map(|symbol| {
+                (
+                    binary.strtab.get_at(symbol.st_name).unwrap().to_string(),
+                    *section_addresses.get(&symbol.st_shndx).unwrap(),
+                )
             })
-            .unwrap()
-            .address()
-            + base;
+            .collect::<BTreeMap<_, _>>();
 
-        let mut function_addresses = BTreeMap::new();
-        binary.dynamic_symbols().for_each(
-            |sym| {
-                if let Ok(name) = sym.name() {
-                    function_addresses.insert(String::from(name), sym.address() + base);
-                }
-            }
-        );
+        let entry_address = *symbol_addresses.get("init").unwrap();
 
-        let func: extern "C" fn() -> &'static mut InfoStruct =
-            unsafe { transmute(get_info_address) };
-        let info = func();
-
-        info.kernel_function_address = kernel_function as usize;
+        let info_address = *symbol_addresses.get("MODULE_INFO").unwrap();
+        let module_info = unsafe { &mut *(info_address as *mut InfoStruct) };
+        let name = module_info.name;
 
         Self {
-            name: String::from_utf8(info.name.to_vec()).unwrap(),
-            function_addresses,
+            name: name.into(),
+            symbol_addresses,
+            entry_address,
         }
     }
 
@@ -101,16 +138,12 @@ impl Module {
         self.name.clone()
     }
 
-    fn get_function_address(&self, name: &str) -> u64 {
-        self.function_addresses
-            .get(name)
-            .unwrap_or(&0)
-            .clone()
+    pub fn get_function_address(&self, name: &str) -> u64 {
+        self.symbol_addresses.get(name).unwrap_or(&0).clone()
     }
 
     pub fn exec(&self) -> usize {
-        let func: extern "C" fn() -> usize = unsafe { transmute(self.get_function_address("init")) };
+        let func: extern "C" fn() -> usize = unsafe { transmute(self.entry_address) };
         func()
     }
 }
-

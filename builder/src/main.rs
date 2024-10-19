@@ -34,6 +34,14 @@ struct Args {
 }
 
 fn main() {
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir("modules");
+    cmd.arg("build");
+    cmd.arg("--package").arg("hello");
+    cmd.arg("--release");
+    let mut child = cmd.spawn().unwrap();
+    child.wait().unwrap();
+
     /*let vdso_path = PathBuf::from(env!("CARGO_CDYLIB_FILE_RC_VDSO_rc_vdso"));
     println!("VDSO Path: {}", vdso_path.display());
     let mut vdso_src = File::open(vdso_path).unwrap();*/
@@ -46,7 +54,7 @@ fn main() {
     println!("RacaCore Path: {}", raca_core_path.display());
     let mut raca_core_src = File::open(raca_core_path).unwrap();
 
-    let hello_path = PathBuf::from(env!("CARGO_CDYLIB_FILE_HELLO_hello"));
+    let hello_path = PathBuf::from("target/target/release/hello");
     println!("Hello Path: {}", hello_path.display());
     let mut hello_src = File::open(hello_path).unwrap();
 
