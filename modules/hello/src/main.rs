@@ -18,7 +18,7 @@ pub extern "C" fn init() -> usize {
     //let function = MODULE_INFO.get_func(0);
     //function("test");
     unsafe {
-        print("test");
+        print("Hello from kernel module hello!");
     }
     0
 }

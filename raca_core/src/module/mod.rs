@@ -70,13 +70,12 @@ impl Module {
             let relocationed_section = binary.section_headers.get(relocationed_section.sh_info as usize).unwrap();
 
             for relocation in relocation_section.iter() {
-                //if relocation.r_type = R_
                 let symbol = binary.syms.get(relocation.r_sym).unwrap();
 
                 let section_address = if symbol.is_import() {
                     let symbol_name = binary.strtab.get_at(symbol.st_name).unwrap();
-                    if symbol_name  == "print" {
-                        print as u64
+                    if let Some(address) = KERNEL_SYMBOL_TABLE.get(symbol_name) {
+                        *address
                     } else {
                         panic!("unknow symbol {}!",symbol_name);
                     }

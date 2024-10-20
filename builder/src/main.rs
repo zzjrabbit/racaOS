@@ -33,42 +33,37 @@ struct Args {
     serial: bool,
 }
 
-fn main() {
+fn build_module(name: &str, images_path: PathBuf) {
     let mut cmd = Command::new("cargo");
     cmd.current_dir("modules");
     cmd.arg("build");
-    cmd.arg("--package").arg("hello");
+    cmd.arg("--package").arg(name);
     cmd.arg("--release");
     let mut child = cmd.spawn().unwrap();
     child.wait().unwrap();
 
-    /*let vdso_path = PathBuf::from(env!("CARGO_CDYLIB_FILE_RC_VDSO_rc_vdso"));
-    println!("VDSO Path: {}", vdso_path.display());
-    let mut vdso_src = File::open(vdso_path).unwrap();*/
+    let module_path = PathBuf::from("target/target/release/".to_string()+name);
+    let mut module_src = File::open(module_path).unwrap();
+    let mut module_dest = File::create(images_path.join(name.to_string()+".km")).unwrap();
 
-    //let user_boot_path = PathBuf::from(env!("CARGO_BIN_FILE_USER_BOOT_user_boot"));
-    //println!("User Boot Path: {}", user_boot_path.display());
-    //let mut user_boot_src = File::open(user_boot_path).unwrap();
+    io::copy(&mut module_src, &mut module_dest).unwrap();
+}
 
+fn main() {
     let raca_core_path = PathBuf::from(env!("CARGO_BIN_FILE_RACA_CORE_raca_core"));
     println!("RacaCore Path: {}", raca_core_path.display());
     let mut raca_core_src = File::open(raca_core_path).unwrap();
 
-    let hello_path = PathBuf::from("target/target/release/hello");
-    println!("Hello Path: {}", hello_path.display());
-    let mut hello_src = File::open(hello_path).unwrap();
-
     let images_path = PathBuf::from("esp");
 
-    //let mut vdso_dest = File::create(images_path.join("libraca-libos.so")).unwrap();
-    //let mut user_boot_dest = File::create(images_path.join("userboot.so")).unwrap();
-    let mut hello_dest = File::create(images_path.join("hello.km")).unwrap();
     let mut raca_core_dest = File::create(images_path.join("core.so")).unwrap();
 
-    //io::copy(&mut vdso_src, &mut vdso_dest).unwrap();
-    //io::copy(&mut user_boot_src, &mut user_boot_dest).unwrap();
-    io::copy(&mut hello_src, &mut hello_dest).unwrap();
     io::copy(&mut raca_core_src, &mut raca_core_dest).unwrap();
+
+    let modules = ["hello"];
+    for module in modules {
+        build_module(module, images_path.clone());
+    }
 
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let img_path = manifest_dir.parent().unwrap().join("racaOS.img");
