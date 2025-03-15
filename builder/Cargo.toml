@@ -1,0 +1,24 @@
+[package]
+name = "builder"
+edition = "2024"
+version = "0.1.0"
+
+[dependencies]
+argh = "0.1.12"
+anyhow = "1.0.94"
+tempfile = "3.14.0"
+gpt = "4.0.0"
+ovmf-prebuilt = "0.2.1"
+toml = "0.8.19"
+walkdir = "2.5.0"
+cpio = "0.4.1"
+
+[dependencies.fatfs]
+version = "0.3.6"
+default-features = false
+features = ["std", "alloc"]
+
+[dependencies.kernel]
+path = "../kernel"
+artifact = "bin"
+target = "x86_64-unknown-none"
