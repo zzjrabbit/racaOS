@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+acpi = "5.2.0"
+aml = "0.16.4"
 bit_field = { version = "0.10.2", default-features = false }
 bitflags = { version = "2.8.0", default-features = false }
 downcast-rs = { version = "2.0.1", default-features = false, features = ["sync"] }
@@ -13,4 +15,10 @@ limine = "0.3.1"
 log = { version = "0.4.25", default-features = false }
 spin = "0.9.8"
 uart_16550 = "0.3.2"
+x2apic = "0.5.0"
 x86_64 = "0.15.2"
+
+[dependencies.derive_more]
+version = "2.0.1"
+features = ["full"]
+default-features = false

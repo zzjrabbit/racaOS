@@ -1,3 +1,4 @@
+pub mod driver;
 pub mod gdt;
 pub mod int;
 mod mem;
@@ -10,4 +11,6 @@ pub static BSP: Lazy<Mutex<gdt::CpuInfo>> = Lazy::new(|| Mutex::new(gdt::CpuInfo
 pub fn init() {
     BSP.lock().init();
     int::init();
+    driver::acpi::init();
+    driver::apic::init();
 }

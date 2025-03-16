@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(new_range_api)]
 #![feature(abi_x86_interrupt)]
+#![feature(allocator_api)]
 #![recursion_limit = "512"]
 
 use limine::BaseRevision;
@@ -27,6 +28,8 @@ pub fn init() {
     log::info!("INIT Done: hal");
 
     log::info!("racaOS initialized.");
+
+    x86_64::instructions::interrupts::enable();
 }
 
 #[panic_handler]

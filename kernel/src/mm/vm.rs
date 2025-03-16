@@ -48,6 +48,15 @@ impl VirtualMemory {
 }
 
 impl VirtualMemory {
+    pub fn as_ptr(&self) -> *const u8 {
+        self.start_address as *const u8
+    }
+    
+    pub fn as_mut_ptr(&self) -> *mut u8 {
+        self.start_address as *mut u8
+    }
+    
+    /// return how many BYTES are there in this VirtualMemory Object
     pub fn len(&self) -> usize {
         self.page_count * 4096
     }
@@ -64,7 +73,9 @@ impl VirtualMemory {
         child
     }
 
-    pub fn allocate_child(&self, size: usize) -> RcResult<Arc<Self>> {
+    pub fn allocate_child(&self, page_count: usize) -> RcResult<Arc<Self>> {
+        let size = page_count * 4096;
+
         self.inner
             .lock()
             .children
@@ -82,7 +93,11 @@ impl VirtualMemory {
             }
         }
 
-        let child = Self::new(start_address?, size, self.page_table.clone());
+        if inner.children.len() == 0 && self.page_count >= page_count {
+            start_address = Ok(self.start_address);
+        }
+
+        let child = Self::new(start_address?, page_count, self.page_table.clone());
 
         inner.children.push(child.clone());
 
@@ -99,7 +114,6 @@ bitflags::bitflags! {
     /// Generic memory flags.
     #[derive(Clone, Copy, Debug)]
     pub struct MMUFlags: usize {
-        #[allow(clippy::identity_op)]
         const READ      = 1 << 2;
         const WRITE     = 1 << 3;
         const EXECUTE   = 1 << 4;
@@ -137,6 +151,20 @@ pub struct VmMapping {
     permissions: MMUFlags,
     physical_memory: Arc<PhysicalMemory>,
     virtual_memory: Arc<VirtualMemory>,
+}
+
+impl VmMapping {
+    pub fn new(
+        permissions: MMUFlags,
+        virtual_memory: Arc<VirtualMemory>,
+        physical_memory: Arc<PhysicalMemory>,
+    ) -> Self {
+        Self {
+            permissions,
+            virtual_memory,
+            physical_memory,
+        }
+    }
 }
 
 impl VmMapping {

@@ -22,11 +22,15 @@ pub fn register_handler(handler: InterruptHandler) -> Option<usize> {
 #[unsafe(no_mangle)]
 pub extern "C" fn rust_entry(frame: &mut IntFrame) {
     if frame.int_num >= super::INTERRUPT_OFFSET {
+        crate::hal::driver::apic::end_of_interrupt();
+
         let handlers = INTERRUPT_HANDLERS.read();
         let Some(handler) = handlers.get(&frame.int_num) else {
             return;
         };
         handler(frame);
+
+        return;
     }
 
     match frame.int_num {
