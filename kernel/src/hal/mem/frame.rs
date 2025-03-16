@@ -24,6 +24,11 @@ impl Bitmap {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    #[inline]
     pub fn get(&self, index: usize) -> bool {
         let byte = self.0[index / Self::BITS];
         byte.get_bit(index % Self::BITS)

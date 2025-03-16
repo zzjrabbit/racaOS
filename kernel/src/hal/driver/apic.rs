@@ -35,7 +35,7 @@ unsafe impl Send for LockedLocalApic {}
 unsafe impl Sync for LockedLocalApic {}
 
 pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
-    let physical_address = PhysAddr::new(ACPI.apic.local_apic_address as u64);
+    let physical_address = PhysAddr::new(ACPI.apic.local_apic_address);
     let virtual_address = convert_physical_to_virtual(physical_address);
 
     let timer_int = crate::hal::int::register_handler(timer_handler).unwrap();
@@ -98,6 +98,8 @@ unsafe fn disable_pic() {
     }
 }
 
+/// # Safety
+/// This function is quite safe
 pub unsafe fn ioapic_add_entry(irq: u8, vector: u8) {
     let lapic = LAPIC.lock();
     let mut ioapic = IOAPIC.lock();
@@ -111,6 +113,8 @@ pub unsafe fn ioapic_add_entry(irq: u8, vector: u8) {
     }
 }
 
+/// # Safety
+/// This function is quite safe
 pub unsafe fn calibrate_timer() {
     let mut lapic = LAPIC.lock();
     let mut lapic_total_ticks = 0;

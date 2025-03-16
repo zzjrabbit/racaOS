@@ -15,7 +15,7 @@ static HHDM_REQUEST: HhdmRequest = HhdmRequest::with_revision(2);
 static MMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::with_revision(2);
 
 static PHYSICAL_OFFSET: Lazy<u64> = Lazy::new(|| {
-    let hhdm_response = HHDM_REQUEST.get_response().take().unwrap();
+    let hhdm_response = HHDM_REQUEST.get_response().unwrap();
     hhdm_response.offset()
 });
 
@@ -26,11 +26,11 @@ pub static FRAME_ALLOCATOR: Lazy<Mutex<BitmapFrameAllocator>> = Lazy::new(|| {
 });
 
 pub fn convert_physical_to_virtual(physical_address: PhysAddr) -> VirtAddr {
-    return VirtAddr::new(physical_address.as_u64() + *PHYSICAL_OFFSET);
+    VirtAddr::new(physical_address.as_u64() + *PHYSICAL_OFFSET)
 }
 
 pub fn convert_virtual_to_physical(virtual_address: VirtAddr) -> PhysAddr {
-    return PhysAddr::new(virtual_address.as_u64() - *PHYSICAL_OFFSET);
+    PhysAddr::new(virtual_address.as_u64() - *PHYSICAL_OFFSET)
 }
 
 pub fn alloc_frames(count: usize) -> Option<usize> {

@@ -51,14 +51,18 @@ impl VirtualMemory {
     pub fn as_ptr(&self) -> *const u8 {
         self.start_address as *const u8
     }
-    
+
     pub fn as_mut_ptr(&self) -> *mut u8 {
         self.start_address as *mut u8
     }
-    
+
     /// return how many BYTES are there in this VirtualMemory Object
     pub fn len(&self) -> usize {
         self.page_count * 4096
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.page_count == 0
     }
 
     pub fn create_child(&self, page_range: Range<usize>) -> Arc<Self> {
@@ -93,7 +97,7 @@ impl VirtualMemory {
             }
         }
 
-        if inner.children.len() == 0 && self.page_count >= page_count {
+        if inner.children.is_empty() && self.page_count >= page_count {
             start_address = Ok(self.start_address);
         }
 

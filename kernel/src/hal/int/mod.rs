@@ -1,3 +1,5 @@
+use core::mem::transmute;
+
 use spin::Lazy;
 use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable};
 
@@ -17,267 +19,1038 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
     let mut idt = InterruptDescriptorTable::new();
     let entries = unsafe { &mut *(&mut idt as *mut _ as *mut [Entry<HandlerFunc>; 256]) };
     unsafe {
-        entries[0x00].set_handler_fn(core::mem::transmute(intentry00 as u64));
-        entries[0x01].set_handler_fn(core::mem::transmute(intentry01 as u64));
-        entries[0x02].set_handler_fn(core::mem::transmute(intentry02 as u64));
-        entries[0x03].set_handler_fn(core::mem::transmute(intentry03 as u64));
-        entries[0x04].set_handler_fn(core::mem::transmute(intentry04 as u64));
-        entries[0x05].set_handler_fn(core::mem::transmute(intentry05 as u64));
-        entries[0x06].set_handler_fn(core::mem::transmute(intentry06 as u64));
-        entries[0x07].set_handler_fn(core::mem::transmute(intentry07 as u64));
-        entries[0x08].set_handler_fn(core::mem::transmute(intentry08 as u64));
-        entries[0x09].set_handler_fn(core::mem::transmute(intentry09 as u64));
-        entries[0x0a].set_handler_fn(core::mem::transmute(intentry0a as u64));
-        entries[0x0b].set_handler_fn(core::mem::transmute(intentry0b as u64));
-        entries[0x0c].set_handler_fn(core::mem::transmute(intentry0c as u64));
-        entries[0x0d].set_handler_fn(core::mem::transmute(intentry0d as u64));
-        entries[0x0e].set_handler_fn(core::mem::transmute(intentry0e as u64));
-        entries[0x0f].set_handler_fn(core::mem::transmute(intentry0f as u64));
-        entries[0x10].set_handler_fn(core::mem::transmute(intentry10 as u64));
-        entries[0x11].set_handler_fn(core::mem::transmute(intentry11 as u64));
-        entries[0x12].set_handler_fn(core::mem::transmute(intentry12 as u64));
-        entries[0x13].set_handler_fn(core::mem::transmute(intentry13 as u64));
-        entries[0x14].set_handler_fn(core::mem::transmute(intentry14 as u64));
-        entries[0x15].set_handler_fn(core::mem::transmute(intentry15 as u64));
-        entries[0x16].set_handler_fn(core::mem::transmute(intentry16 as u64));
-        entries[0x17].set_handler_fn(core::mem::transmute(intentry17 as u64));
-        entries[0x18].set_handler_fn(core::mem::transmute(intentry18 as u64));
-        entries[0x19].set_handler_fn(core::mem::transmute(intentry19 as u64));
-        entries[0x1a].set_handler_fn(core::mem::transmute(intentry1a as u64));
-        entries[0x1b].set_handler_fn(core::mem::transmute(intentry1b as u64));
-        entries[0x1c].set_handler_fn(core::mem::transmute(intentry1c as u64));
-        entries[0x1d].set_handler_fn(core::mem::transmute(intentry1d as u64));
-        entries[0x1e].set_handler_fn(core::mem::transmute(intentry1e as u64));
-        entries[0x1f].set_handler_fn(core::mem::transmute(intentry1f as u64));
-        entries[0x20].set_handler_fn(core::mem::transmute(intentry20 as u64));
-        entries[0x21].set_handler_fn(core::mem::transmute(intentry21 as u64));
-        entries[0x22].set_handler_fn(core::mem::transmute(intentry22 as u64));
-        entries[0x23].set_handler_fn(core::mem::transmute(intentry23 as u64));
-        entries[0x24].set_handler_fn(core::mem::transmute(intentry24 as u64));
-        entries[0x25].set_handler_fn(core::mem::transmute(intentry25 as u64));
-        entries[0x26].set_handler_fn(core::mem::transmute(intentry26 as u64));
-        entries[0x27].set_handler_fn(core::mem::transmute(intentry27 as u64));
-        entries[0x28].set_handler_fn(core::mem::transmute(intentry28 as u64));
-        entries[0x29].set_handler_fn(core::mem::transmute(intentry29 as u64));
-        entries[0x2a].set_handler_fn(core::mem::transmute(intentry2a as u64));
-        entries[0x2b].set_handler_fn(core::mem::transmute(intentry2b as u64));
-        entries[0x2c].set_handler_fn(core::mem::transmute(intentry2c as u64));
-        entries[0x2d].set_handler_fn(core::mem::transmute(intentry2d as u64));
-        entries[0x2e].set_handler_fn(core::mem::transmute(intentry2e as u64));
-        entries[0x2f].set_handler_fn(core::mem::transmute(intentry2f as u64));
-        entries[0x30].set_handler_fn(core::mem::transmute(intentry30 as u64));
-        entries[0x31].set_handler_fn(core::mem::transmute(intentry31 as u64));
-        entries[0x32].set_handler_fn(core::mem::transmute(intentry32 as u64));
-        entries[0x33].set_handler_fn(core::mem::transmute(intentry33 as u64));
-        entries[0x34].set_handler_fn(core::mem::transmute(intentry34 as u64));
-        entries[0x35].set_handler_fn(core::mem::transmute(intentry35 as u64));
-        entries[0x36].set_handler_fn(core::mem::transmute(intentry36 as u64));
-        entries[0x37].set_handler_fn(core::mem::transmute(intentry37 as u64));
-        entries[0x38].set_handler_fn(core::mem::transmute(intentry38 as u64));
-        entries[0x39].set_handler_fn(core::mem::transmute(intentry39 as u64));
-        entries[0x3a].set_handler_fn(core::mem::transmute(intentry3a as u64));
-        entries[0x3b].set_handler_fn(core::mem::transmute(intentry3b as u64));
-        entries[0x3c].set_handler_fn(core::mem::transmute(intentry3c as u64));
-        entries[0x3d].set_handler_fn(core::mem::transmute(intentry3d as u64));
-        entries[0x3e].set_handler_fn(core::mem::transmute(intentry3e as u64));
-        entries[0x3f].set_handler_fn(core::mem::transmute(intentry3f as u64));
-        entries[0x40].set_handler_fn(core::mem::transmute(intentry40 as u64));
-        entries[0x41].set_handler_fn(core::mem::transmute(intentry41 as u64));
-        entries[0x42].set_handler_fn(core::mem::transmute(intentry42 as u64));
-        entries[0x43].set_handler_fn(core::mem::transmute(intentry43 as u64));
-        entries[0x44].set_handler_fn(core::mem::transmute(intentry44 as u64));
-        entries[0x45].set_handler_fn(core::mem::transmute(intentry45 as u64));
-        entries[0x46].set_handler_fn(core::mem::transmute(intentry46 as u64));
-        entries[0x47].set_handler_fn(core::mem::transmute(intentry47 as u64));
-        entries[0x48].set_handler_fn(core::mem::transmute(intentry48 as u64));
-        entries[0x49].set_handler_fn(core::mem::transmute(intentry49 as u64));
-        entries[0x4a].set_handler_fn(core::mem::transmute(intentry4a as u64));
-        entries[0x4b].set_handler_fn(core::mem::transmute(intentry4b as u64));
-        entries[0x4c].set_handler_fn(core::mem::transmute(intentry4c as u64));
-        entries[0x4d].set_handler_fn(core::mem::transmute(intentry4d as u64));
-        entries[0x4e].set_handler_fn(core::mem::transmute(intentry4e as u64));
-        entries[0x4f].set_handler_fn(core::mem::transmute(intentry4f as u64));
-        entries[0x50].set_handler_fn(core::mem::transmute(intentry50 as u64));
-        entries[0x51].set_handler_fn(core::mem::transmute(intentry51 as u64));
-        entries[0x52].set_handler_fn(core::mem::transmute(intentry52 as u64));
-        entries[0x53].set_handler_fn(core::mem::transmute(intentry53 as u64));
-        entries[0x54].set_handler_fn(core::mem::transmute(intentry54 as u64));
-        entries[0x55].set_handler_fn(core::mem::transmute(intentry55 as u64));
-        entries[0x56].set_handler_fn(core::mem::transmute(intentry56 as u64));
-        entries[0x57].set_handler_fn(core::mem::transmute(intentry57 as u64));
-        entries[0x58].set_handler_fn(core::mem::transmute(intentry58 as u64));
-        entries[0x59].set_handler_fn(core::mem::transmute(intentry59 as u64));
-        entries[0x5a].set_handler_fn(core::mem::transmute(intentry5a as u64));
-        entries[0x5b].set_handler_fn(core::mem::transmute(intentry5b as u64));
-        entries[0x5c].set_handler_fn(core::mem::transmute(intentry5c as u64));
-        entries[0x5d].set_handler_fn(core::mem::transmute(intentry5d as u64));
-        entries[0x5e].set_handler_fn(core::mem::transmute(intentry5e as u64));
-        entries[0x5f].set_handler_fn(core::mem::transmute(intentry5f as u64));
-        entries[0x60].set_handler_fn(core::mem::transmute(intentry60 as u64));
-        entries[0x61].set_handler_fn(core::mem::transmute(intentry61 as u64));
-        entries[0x62].set_handler_fn(core::mem::transmute(intentry62 as u64));
-        entries[0x63].set_handler_fn(core::mem::transmute(intentry63 as u64));
-        entries[0x64].set_handler_fn(core::mem::transmute(intentry64 as u64));
-        entries[0x65].set_handler_fn(core::mem::transmute(intentry65 as u64));
-        entries[0x66].set_handler_fn(core::mem::transmute(intentry66 as u64));
-        entries[0x67].set_handler_fn(core::mem::transmute(intentry67 as u64));
-        entries[0x68].set_handler_fn(core::mem::transmute(intentry68 as u64));
-        entries[0x69].set_handler_fn(core::mem::transmute(intentry69 as u64));
-        entries[0x6a].set_handler_fn(core::mem::transmute(intentry6a as u64));
-        entries[0x6b].set_handler_fn(core::mem::transmute(intentry6b as u64));
-        entries[0x6c].set_handler_fn(core::mem::transmute(intentry6c as u64));
-        entries[0x6d].set_handler_fn(core::mem::transmute(intentry6d as u64));
-        entries[0x6e].set_handler_fn(core::mem::transmute(intentry6e as u64));
-        entries[0x6f].set_handler_fn(core::mem::transmute(intentry6f as u64));
-        entries[0x70].set_handler_fn(core::mem::transmute(intentry70 as u64));
-        entries[0x71].set_handler_fn(core::mem::transmute(intentry71 as u64));
-        entries[0x72].set_handler_fn(core::mem::transmute(intentry72 as u64));
-        entries[0x73].set_handler_fn(core::mem::transmute(intentry73 as u64));
-        entries[0x74].set_handler_fn(core::mem::transmute(intentry74 as u64));
-        entries[0x75].set_handler_fn(core::mem::transmute(intentry75 as u64));
-        entries[0x76].set_handler_fn(core::mem::transmute(intentry76 as u64));
-        entries[0x77].set_handler_fn(core::mem::transmute(intentry77 as u64));
-        entries[0x78].set_handler_fn(core::mem::transmute(intentry78 as u64));
-        entries[0x79].set_handler_fn(core::mem::transmute(intentry79 as u64));
-        entries[0x7a].set_handler_fn(core::mem::transmute(intentry7a as u64));
-        entries[0x7b].set_handler_fn(core::mem::transmute(intentry7b as u64));
-        entries[0x7c].set_handler_fn(core::mem::transmute(intentry7c as u64));
-        entries[0x7d].set_handler_fn(core::mem::transmute(intentry7d as u64));
-        entries[0x7e].set_handler_fn(core::mem::transmute(intentry7e as u64));
-        entries[0x7f].set_handler_fn(core::mem::transmute(intentry7f as u64));
-        entries[0x80].set_handler_fn(core::mem::transmute(intentry80 as u64));
-        entries[0x81].set_handler_fn(core::mem::transmute(intentry81 as u64));
-        entries[0x82].set_handler_fn(core::mem::transmute(intentry82 as u64));
-        entries[0x83].set_handler_fn(core::mem::transmute(intentry83 as u64));
-        entries[0x84].set_handler_fn(core::mem::transmute(intentry84 as u64));
-        entries[0x85].set_handler_fn(core::mem::transmute(intentry85 as u64));
-        entries[0x86].set_handler_fn(core::mem::transmute(intentry86 as u64));
-        entries[0x87].set_handler_fn(core::mem::transmute(intentry87 as u64));
-        entries[0x88].set_handler_fn(core::mem::transmute(intentry88 as u64));
-        entries[0x89].set_handler_fn(core::mem::transmute(intentry89 as u64));
-        entries[0x8a].set_handler_fn(core::mem::transmute(intentry8a as u64));
-        entries[0x8b].set_handler_fn(core::mem::transmute(intentry8b as u64));
-        entries[0x8c].set_handler_fn(core::mem::transmute(intentry8c as u64));
-        entries[0x8d].set_handler_fn(core::mem::transmute(intentry8d as u64));
-        entries[0x8e].set_handler_fn(core::mem::transmute(intentry8e as u64));
-        entries[0x8f].set_handler_fn(core::mem::transmute(intentry8f as u64));
-        entries[0x90].set_handler_fn(core::mem::transmute(intentry90 as u64));
-        entries[0x91].set_handler_fn(core::mem::transmute(intentry91 as u64));
-        entries[0x92].set_handler_fn(core::mem::transmute(intentry92 as u64));
-        entries[0x93].set_handler_fn(core::mem::transmute(intentry93 as u64));
-        entries[0x94].set_handler_fn(core::mem::transmute(intentry94 as u64));
-        entries[0x95].set_handler_fn(core::mem::transmute(intentry95 as u64));
-        entries[0x96].set_handler_fn(core::mem::transmute(intentry96 as u64));
-        entries[0x97].set_handler_fn(core::mem::transmute(intentry97 as u64));
-        entries[0x98].set_handler_fn(core::mem::transmute(intentry98 as u64));
-        entries[0x99].set_handler_fn(core::mem::transmute(intentry99 as u64));
-        entries[0x9a].set_handler_fn(core::mem::transmute(intentry9a as u64));
-        entries[0x9b].set_handler_fn(core::mem::transmute(intentry9b as u64));
-        entries[0x9c].set_handler_fn(core::mem::transmute(intentry9c as u64));
-        entries[0x9d].set_handler_fn(core::mem::transmute(intentry9d as u64));
-        entries[0x9e].set_handler_fn(core::mem::transmute(intentry9e as u64));
-        entries[0x9f].set_handler_fn(core::mem::transmute(intentry9f as u64));
-        entries[0xa0].set_handler_fn(core::mem::transmute(intentrya0 as u64));
-        entries[0xa1].set_handler_fn(core::mem::transmute(intentrya1 as u64));
-        entries[0xa2].set_handler_fn(core::mem::transmute(intentrya2 as u64));
-        entries[0xa3].set_handler_fn(core::mem::transmute(intentrya3 as u64));
-        entries[0xa4].set_handler_fn(core::mem::transmute(intentrya4 as u64));
-        entries[0xa5].set_handler_fn(core::mem::transmute(intentrya5 as u64));
-        entries[0xa6].set_handler_fn(core::mem::transmute(intentrya6 as u64));
-        entries[0xa7].set_handler_fn(core::mem::transmute(intentrya7 as u64));
-        entries[0xa8].set_handler_fn(core::mem::transmute(intentrya8 as u64));
-        entries[0xa9].set_handler_fn(core::mem::transmute(intentrya9 as u64));
-        entries[0xaa].set_handler_fn(core::mem::transmute(intentryaa as u64));
-        entries[0xab].set_handler_fn(core::mem::transmute(intentryab as u64));
-        entries[0xac].set_handler_fn(core::mem::transmute(intentryac as u64));
-        entries[0xad].set_handler_fn(core::mem::transmute(intentryad as u64));
-        entries[0xae].set_handler_fn(core::mem::transmute(intentryae as u64));
-        entries[0xaf].set_handler_fn(core::mem::transmute(intentryaf as u64));
-        entries[0xb0].set_handler_fn(core::mem::transmute(intentryb0 as u64));
-        entries[0xb1].set_handler_fn(core::mem::transmute(intentryb1 as u64));
-        entries[0xb2].set_handler_fn(core::mem::transmute(intentryb2 as u64));
-        entries[0xb3].set_handler_fn(core::mem::transmute(intentryb3 as u64));
-        entries[0xb4].set_handler_fn(core::mem::transmute(intentryb4 as u64));
-        entries[0xb5].set_handler_fn(core::mem::transmute(intentryb5 as u64));
-        entries[0xb6].set_handler_fn(core::mem::transmute(intentryb6 as u64));
-        entries[0xb7].set_handler_fn(core::mem::transmute(intentryb7 as u64));
-        entries[0xb8].set_handler_fn(core::mem::transmute(intentryb8 as u64));
-        entries[0xb9].set_handler_fn(core::mem::transmute(intentryb9 as u64));
-        entries[0xba].set_handler_fn(core::mem::transmute(intentryba as u64));
-        entries[0xbb].set_handler_fn(core::mem::transmute(intentrybb as u64));
-        entries[0xbc].set_handler_fn(core::mem::transmute(intentrybc as u64));
-        entries[0xbd].set_handler_fn(core::mem::transmute(intentrybd as u64));
-        entries[0xbe].set_handler_fn(core::mem::transmute(intentrybe as u64));
-        entries[0xbf].set_handler_fn(core::mem::transmute(intentrybf as u64));
-        entries[0xc0].set_handler_fn(core::mem::transmute(intentryc0 as u64));
-        entries[0xc1].set_handler_fn(core::mem::transmute(intentryc1 as u64));
-        entries[0xc2].set_handler_fn(core::mem::transmute(intentryc2 as u64));
-        entries[0xc3].set_handler_fn(core::mem::transmute(intentryc3 as u64));
-        entries[0xc4].set_handler_fn(core::mem::transmute(intentryc4 as u64));
-        entries[0xc5].set_handler_fn(core::mem::transmute(intentryc5 as u64));
-        entries[0xc6].set_handler_fn(core::mem::transmute(intentryc6 as u64));
-        entries[0xc7].set_handler_fn(core::mem::transmute(intentryc7 as u64));
-        entries[0xc8].set_handler_fn(core::mem::transmute(intentryc8 as u64));
-        entries[0xc9].set_handler_fn(core::mem::transmute(intentryc9 as u64));
-        entries[0xca].set_handler_fn(core::mem::transmute(intentryca as u64));
-        entries[0xcb].set_handler_fn(core::mem::transmute(intentrycb as u64));
-        entries[0xcc].set_handler_fn(core::mem::transmute(intentrycc as u64));
-        entries[0xcd].set_handler_fn(core::mem::transmute(intentrycd as u64));
-        entries[0xce].set_handler_fn(core::mem::transmute(intentryce as u64));
-        entries[0xcf].set_handler_fn(core::mem::transmute(intentrycf as u64));
-        entries[0xd0].set_handler_fn(core::mem::transmute(intentryd0 as u64));
-        entries[0xd1].set_handler_fn(core::mem::transmute(intentryd1 as u64));
-        entries[0xd2].set_handler_fn(core::mem::transmute(intentryd2 as u64));
-        entries[0xd3].set_handler_fn(core::mem::transmute(intentryd3 as u64));
-        entries[0xd4].set_handler_fn(core::mem::transmute(intentryd4 as u64));
-        entries[0xd5].set_handler_fn(core::mem::transmute(intentryd5 as u64));
-        entries[0xd6].set_handler_fn(core::mem::transmute(intentryd6 as u64));
-        entries[0xd7].set_handler_fn(core::mem::transmute(intentryd7 as u64));
-        entries[0xd8].set_handler_fn(core::mem::transmute(intentryd8 as u64));
-        entries[0xd9].set_handler_fn(core::mem::transmute(intentryd9 as u64));
-        entries[0xda].set_handler_fn(core::mem::transmute(intentryda as u64));
-        entries[0xdb].set_handler_fn(core::mem::transmute(intentrydb as u64));
-        entries[0xdc].set_handler_fn(core::mem::transmute(intentrydc as u64));
-        entries[0xdd].set_handler_fn(core::mem::transmute(intentrydd as u64));
-        entries[0xde].set_handler_fn(core::mem::transmute(intentryde as u64));
-        entries[0xdf].set_handler_fn(core::mem::transmute(intentrydf as u64));
-        entries[0xe0].set_handler_fn(core::mem::transmute(intentrye0 as u64));
-        entries[0xe1].set_handler_fn(core::mem::transmute(intentrye1 as u64));
-        entries[0xe2].set_handler_fn(core::mem::transmute(intentrye2 as u64));
-        entries[0xe3].set_handler_fn(core::mem::transmute(intentrye3 as u64));
-        entries[0xe4].set_handler_fn(core::mem::transmute(intentrye4 as u64));
-        entries[0xe5].set_handler_fn(core::mem::transmute(intentrye5 as u64));
-        entries[0xe6].set_handler_fn(core::mem::transmute(intentrye6 as u64));
-        entries[0xe7].set_handler_fn(core::mem::transmute(intentrye7 as u64));
-        entries[0xe8].set_handler_fn(core::mem::transmute(intentrye8 as u64));
-        entries[0xe9].set_handler_fn(core::mem::transmute(intentrye9 as u64));
-        entries[0xea].set_handler_fn(core::mem::transmute(intentryea as u64));
-        entries[0xeb].set_handler_fn(core::mem::transmute(intentryeb as u64));
-        entries[0xec].set_handler_fn(core::mem::transmute(intentryec as u64));
-        entries[0xed].set_handler_fn(core::mem::transmute(intentryed as u64));
-        entries[0xee].set_handler_fn(core::mem::transmute(intentryee as u64));
-        entries[0xef].set_handler_fn(core::mem::transmute(intentryef as u64));
-        entries[0xf0].set_handler_fn(core::mem::transmute(intentryf0 as u64));
-        entries[0xf1].set_handler_fn(core::mem::transmute(intentryf1 as u64));
-        entries[0xf2].set_handler_fn(core::mem::transmute(intentryf2 as u64));
-        entries[0xf3].set_handler_fn(core::mem::transmute(intentryf3 as u64));
-        entries[0xf4].set_handler_fn(core::mem::transmute(intentryf4 as u64));
-        entries[0xf5].set_handler_fn(core::mem::transmute(intentryf5 as u64));
-        entries[0xf6].set_handler_fn(core::mem::transmute(intentryf6 as u64));
-        entries[0xf7].set_handler_fn(core::mem::transmute(intentryf7 as u64));
-        entries[0xf8].set_handler_fn(core::mem::transmute(intentryf8 as u64));
-        entries[0xf9].set_handler_fn(core::mem::transmute(intentryf9 as u64));
-        entries[0xfa].set_handler_fn(core::mem::transmute(intentryfa as u64));
-        entries[0xfb].set_handler_fn(core::mem::transmute(intentryfb as u64));
-        entries[0xfc].set_handler_fn(core::mem::transmute(intentryfc as u64));
-        entries[0xfd].set_handler_fn(core::mem::transmute(intentryfd as u64));
-        entries[0xfe].set_handler_fn(core::mem::transmute(intentryfe as u64));
-        entries[0xff].set_handler_fn(core::mem::transmute(intentryff as u64));
+        entries[0x00].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry00 as usize));
+        entries[0x01].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry01 as usize));
+        entries[0x02].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry02 as usize));
+        entries[0x03].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry03 as usize));
+        entries[0x04].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry04 as usize));
+        entries[0x05].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry05 as usize));
+        entries[0x06].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry06 as usize));
+        entries[0x07].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry07 as usize));
+        entries[0x08].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry08 as usize));
+        entries[0x09].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry09 as usize));
+        entries[0x0a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry0a as usize));
+        entries[0x0b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry0b as usize));
+        entries[0x0c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry0c as usize));
+        entries[0x0d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry0d as usize));
+        entries[0x0e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry0e as usize));
+        entries[0x0f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry0f as usize));
+        entries[0x10].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry10 as usize));
+        entries[0x11].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry11 as usize));
+        entries[0x12].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry12 as usize));
+        entries[0x13].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry13 as usize));
+        entries[0x14].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry14 as usize));
+        entries[0x15].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry15 as usize));
+        entries[0x16].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry16 as usize));
+        entries[0x17].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry17 as usize));
+        entries[0x18].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry18 as usize));
+        entries[0x19].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry19 as usize));
+        entries[0x1a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry1a as usize));
+        entries[0x1b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry1b as usize));
+        entries[0x1c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry1c as usize));
+        entries[0x1d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry1d as usize));
+        entries[0x1e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry1e as usize));
+        entries[0x1f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry1f as usize));
+        entries[0x20].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry20 as usize));
+        entries[0x21].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry21 as usize));
+        entries[0x22].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry22 as usize));
+        entries[0x23].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry23 as usize));
+        entries[0x24].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry24 as usize));
+        entries[0x25].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry25 as usize));
+        entries[0x26].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry26 as usize));
+        entries[0x27].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry27 as usize));
+        entries[0x28].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry28 as usize));
+        entries[0x29].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry29 as usize));
+        entries[0x2a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry2a as usize));
+        entries[0x2b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry2b as usize));
+        entries[0x2c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry2c as usize));
+        entries[0x2d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry2d as usize));
+        entries[0x2e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry2e as usize));
+        entries[0x2f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry2f as usize));
+        entries[0x30].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry30 as usize));
+        entries[0x31].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry31 as usize));
+        entries[0x32].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry32 as usize));
+        entries[0x33].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry33 as usize));
+        entries[0x34].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry34 as usize));
+        entries[0x35].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry35 as usize));
+        entries[0x36].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry36 as usize));
+        entries[0x37].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry37 as usize));
+        entries[0x38].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry38 as usize));
+        entries[0x39].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry39 as usize));
+        entries[0x3a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry3a as usize));
+        entries[0x3b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry3b as usize));
+        entries[0x3c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry3c as usize));
+        entries[0x3d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry3d as usize));
+        entries[0x3e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry3e as usize));
+        entries[0x3f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry3f as usize));
+        entries[0x40].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry40 as usize));
+        entries[0x41].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry41 as usize));
+        entries[0x42].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry42 as usize));
+        entries[0x43].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry43 as usize));
+        entries[0x44].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry44 as usize));
+        entries[0x45].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry45 as usize));
+        entries[0x46].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry46 as usize));
+        entries[0x47].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry47 as usize));
+        entries[0x48].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry48 as usize));
+        entries[0x49].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry49 as usize));
+        entries[0x4a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry4a as usize));
+        entries[0x4b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry4b as usize));
+        entries[0x4c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry4c as usize));
+        entries[0x4d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry4d as usize));
+        entries[0x4e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry4e as usize));
+        entries[0x4f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry4f as usize));
+        entries[0x50].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry50 as usize));
+        entries[0x51].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry51 as usize));
+        entries[0x52].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry52 as usize));
+        entries[0x53].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry53 as usize));
+        entries[0x54].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry54 as usize));
+        entries[0x55].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry55 as usize));
+        entries[0x56].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry56 as usize));
+        entries[0x57].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry57 as usize));
+        entries[0x58].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry58 as usize));
+        entries[0x59].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry59 as usize));
+        entries[0x5a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry5a as usize));
+        entries[0x5b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry5b as usize));
+        entries[0x5c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry5c as usize));
+        entries[0x5d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry5d as usize));
+        entries[0x5e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry5e as usize));
+        entries[0x5f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry5f as usize));
+        entries[0x60].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry60 as usize));
+        entries[0x61].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry61 as usize));
+        entries[0x62].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry62 as usize));
+        entries[0x63].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry63 as usize));
+        entries[0x64].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry64 as usize));
+        entries[0x65].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry65 as usize));
+        entries[0x66].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry66 as usize));
+        entries[0x67].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry67 as usize));
+        entries[0x68].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry68 as usize));
+        entries[0x69].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry69 as usize));
+        entries[0x6a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry6a as usize));
+        entries[0x6b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry6b as usize));
+        entries[0x6c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry6c as usize));
+        entries[0x6d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry6d as usize));
+        entries[0x6e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry6e as usize));
+        entries[0x6f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry6f as usize));
+        entries[0x70].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry70 as usize));
+        entries[0x71].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry71 as usize));
+        entries[0x72].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry72 as usize));
+        entries[0x73].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry73 as usize));
+        entries[0x74].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry74 as usize));
+        entries[0x75].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry75 as usize));
+        entries[0x76].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry76 as usize));
+        entries[0x77].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry77 as usize));
+        entries[0x78].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry78 as usize));
+        entries[0x79].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry79 as usize));
+        entries[0x7a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry7a as usize));
+        entries[0x7b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry7b as usize));
+        entries[0x7c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry7c as usize));
+        entries[0x7d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry7d as usize));
+        entries[0x7e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry7e as usize));
+        entries[0x7f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry7f as usize));
+        entries[0x80].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry80 as usize));
+        entries[0x81].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry81 as usize));
+        entries[0x82].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry82 as usize));
+        entries[0x83].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry83 as usize));
+        entries[0x84].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry84 as usize));
+        entries[0x85].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry85 as usize));
+        entries[0x86].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry86 as usize));
+        entries[0x87].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry87 as usize));
+        entries[0x88].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry88 as usize));
+        entries[0x89].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry89 as usize));
+        entries[0x8a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry8a as usize));
+        entries[0x8b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry8b as usize));
+        entries[0x8c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry8c as usize));
+        entries[0x8d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry8d as usize));
+        entries[0x8e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry8e as usize));
+        entries[0x8f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry8f as usize));
+        entries[0x90].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry90 as usize));
+        entries[0x91].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry91 as usize));
+        entries[0x92].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry92 as usize));
+        entries[0x93].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry93 as usize));
+        entries[0x94].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry94 as usize));
+        entries[0x95].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry95 as usize));
+        entries[0x96].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry96 as usize));
+        entries[0x97].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry97 as usize));
+        entries[0x98].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry98 as usize));
+        entries[0x99].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry99 as usize));
+        entries[0x9a].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry9a as usize));
+        entries[0x9b].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry9b as usize));
+        entries[0x9c].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry9c as usize));
+        entries[0x9d].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry9d as usize));
+        entries[0x9e].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry9e as usize));
+        entries[0x9f].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry9f as usize));
+        entries[0xa0].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya0 as usize));
+        entries[0xa1].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya1 as usize));
+        entries[0xa2].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya2 as usize));
+        entries[0xa3].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya3 as usize));
+        entries[0xa4].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya4 as usize));
+        entries[0xa5].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya5 as usize));
+        entries[0xa6].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya6 as usize));
+        entries[0xa7].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya7 as usize));
+        entries[0xa8].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya8 as usize));
+        entries[0xa9].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrya9 as usize));
+        entries[0xaa].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryaa as usize));
+        entries[0xab].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryab as usize));
+        entries[0xac].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryac as usize));
+        entries[0xad].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryad as usize));
+        entries[0xae].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryae as usize));
+        entries[0xaf].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryaf as usize));
+        entries[0xb0].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb0 as usize));
+        entries[0xb1].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb1 as usize));
+        entries[0xb2].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb2 as usize));
+        entries[0xb3].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb3 as usize));
+        entries[0xb4].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb4 as usize));
+        entries[0xb5].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb5 as usize));
+        entries[0xb6].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb6 as usize));
+        entries[0xb7].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb7 as usize));
+        entries[0xb8].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb8 as usize));
+        entries[0xb9].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryb9 as usize));
+        entries[0xba].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryba as usize));
+        entries[0xbb].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrybb as usize));
+        entries[0xbc].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrybc as usize));
+        entries[0xbd].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrybd as usize));
+        entries[0xbe].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrybe as usize));
+        entries[0xbf].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrybf as usize));
+        entries[0xc0].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc0 as usize));
+        entries[0xc1].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc1 as usize));
+        entries[0xc2].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc2 as usize));
+        entries[0xc3].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc3 as usize));
+        entries[0xc4].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc4 as usize));
+        entries[0xc5].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc5 as usize));
+        entries[0xc6].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc6 as usize));
+        entries[0xc7].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc7 as usize));
+        entries[0xc8].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc8 as usize));
+        entries[0xc9].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryc9 as usize));
+        entries[0xca].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryca as usize));
+        entries[0xcb].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrycb as usize));
+        entries[0xcc].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrycc as usize));
+        entries[0xcd].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrycd as usize));
+        entries[0xce].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryce as usize));
+        entries[0xcf].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrycf as usize));
+        entries[0xd0].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd0 as usize));
+        entries[0xd1].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd1 as usize));
+        entries[0xd2].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd2 as usize));
+        entries[0xd3].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd3 as usize));
+        entries[0xd4].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd4 as usize));
+        entries[0xd5].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd5 as usize));
+        entries[0xd6].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd6 as usize));
+        entries[0xd7].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd7 as usize));
+        entries[0xd8].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd8 as usize));
+        entries[0xd9].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryd9 as usize));
+        entries[0xda].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryda as usize));
+        entries[0xdb].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrydb as usize));
+        entries[0xdc].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrydc as usize));
+        entries[0xdd].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrydd as usize));
+        entries[0xde].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryde as usize));
+        entries[0xdf].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrydf as usize));
+        entries[0xe0].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye0 as usize));
+        entries[0xe1].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye1 as usize));
+        entries[0xe2].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye2 as usize));
+        entries[0xe3].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye3 as usize));
+        entries[0xe4].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye4 as usize));
+        entries[0xe5].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye5 as usize));
+        entries[0xe6].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye6 as usize));
+        entries[0xe7].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye7 as usize));
+        entries[0xe8].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye8 as usize));
+        entries[0xe9].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentrye9 as usize));
+        entries[0xea].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryea as usize));
+        entries[0xeb].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryeb as usize));
+        entries[0xec].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryec as usize));
+        entries[0xed].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryed as usize));
+        entries[0xee].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryee as usize));
+        entries[0xef].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryef as usize));
+        entries[0xf0].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf0 as usize));
+        entries[0xf1].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf1 as usize));
+        entries[0xf2].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf2 as usize));
+        entries[0xf3].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf3 as usize));
+        entries[0xf4].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf4 as usize));
+        entries[0xf5].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf5 as usize));
+        entries[0xf6].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf6 as usize));
+        entries[0xf7].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf7 as usize));
+        entries[0xf8].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf8 as usize));
+        entries[0xf9].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryf9 as usize));
+        entries[0xfa].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryfa as usize));
+        entries[0xfb].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryfb as usize));
+        entries[0xfc].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryfc as usize));
+        entries[0xfd].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryfd as usize));
+        entries[0xfe].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryfe as usize));
+        entries[0xff].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentryff as usize));
     }
 
     unsafe {
         idt.double_fault
-            .set_handler_fn(core::mem::transmute(intentry08 as u64))
+            .set_handler_fn(transmute::<
+                usize,
+                extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame, u64) -> !,
+            >(intentry08 as usize))
             .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
     }
 

@@ -21,5 +21,5 @@ pub fn init() {
 }
 
 pub fn page_count(size: usize) -> usize {
-    return (size + 4095) / 4096;
+    (size + 4095) / 4096
 }

@@ -33,6 +33,10 @@ impl PhysicalMemory {
         self.frame_count * 4096
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.frame_count == 0
+    }
+
     pub fn start_address(&self) -> usize {
         self.start_address
     }
