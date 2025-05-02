@@ -15,8 +15,20 @@ crate::kernel_object! {
 
 impl PhysicalMemory {
     pub fn allocate(count: usize) -> RcResult<Arc<Self>> {
+        if count == 0 {
+            return Ok(Self::new(0, 0));
+        }
+
         let start_address = crate::hal::alloc_frames(count).ok_or(RcError::AllocationFailed)?;
         Ok(Self::new(start_address, count))
+    }
+
+    pub fn deallocate(&self) {
+        if self.frame_count() == 0 {
+            return;
+        }
+
+        crate::hal::deallocate_frames(self.start_address() as u64, self.frame_count());
     }
 
     pub fn create_child(&self, frame_range: Range<usize>) -> Arc<Self> {

@@ -1,15 +1,19 @@
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
+use alloc::sync::Arc;
 use derive_more::Deref;
 use spin::{Lazy, Mutex};
 use x2apic::ioapic::{IoApic, IrqMode, RedirectionTableEntry};
 use x2apic::lapic::{LocalApic, LocalApicBuilder, TimerMode};
+use x86_64::structures::paging::{PhysFrame, Size4KiB};
 use x86_64::{PhysAddr, instructions::port::Port};
 
 use super::super::mem::convert_physical_to_virtual;
 use super::acpi::ACPI;
 use super::hpet::HPET;
 use crate::hal::int::IntFrame;
+use crate::hal::ref_current_page_table;
+use crate::mm::{MMUFlags, PhysicalMemory, VirtualMemory, VmMapping};
 
 const TIMER_FREQUENCY_HZ: u32 = 250;
 const TIMER_CALIBRATION_ITERATION: u32 = 100;
@@ -18,7 +22,10 @@ const IOAPIC_INTERRUPT_INDEX_OFFSET: u8 = 32;
 pub static APIC_INIT: AtomicBool = AtomicBool::new(false);
 pub static CALIBRATED_TIMER_INITIAL: AtomicU32 = AtomicU32::new(0);
 
-fn timer_handler(_frame: &mut IntFrame) {}
+fn timer_handler(frame: &mut IntFrame) {
+    let cpu_id = unsafe { LAPIC.lock().id() };
+    crate::task::scheduler::SCHEDULER.schedule(cpu_id, frame);
+}
 
 fn apic_error_handler(_frame: &mut IntFrame) {
     panic!("Apic Error");
@@ -35,10 +42,26 @@ unsafe impl Send for LockedLocalApic {}
 unsafe impl Sync for LockedLocalApic {}
 
 pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
-    let physical_address = PhysAddr::new(ACPI.apic.local_apic_address);
+    let physical_address =
+        PhysFrame::<Size4KiB>::containing_address(PhysAddr::new(ACPI.apic.local_apic_address))
+            .start_address();
     let virtual_address = convert_physical_to_virtual(physical_address);
 
+    let virtual_memory = VirtualMemory::new(
+        virtual_address.as_u64() as usize,
+        1,
+        Arc::new(Mutex::new(ref_current_page_table())),
+    );
+    let physical_memory = PhysicalMemory::new(physical_address.as_u64() as usize, 1);
+    let mapping = Arc::new(VmMapping::new(
+        MMUFlags::WRITE | MMUFlags::READ,
+        virtual_memory.clone(),
+        physical_memory.clone(),
+    ));
+    let _ = mapping.map();
+
     let timer_int = crate::hal::int::register_handler(timer_handler).unwrap();
+    log::info!("timer_int: {:x}", timer_int);
     let apic_error_int = crate::hal::int::register_handler(apic_error_handler).unwrap();
     let spurious_int = crate::hal::int::register_handler(spurious_handler).unwrap();
 
@@ -58,8 +81,21 @@ pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
 });
 
 pub static IOAPIC: Lazy<Mutex<IoApic>> = Lazy::new(|| unsafe {
-    let physical_address = PhysAddr::new(ACPI.apic.io_apics[0].address as u64);
+    let physical_address = PhysAddr::new(u64::from(ACPI.apic.io_apics[0].address));
     let virtual_address = convert_physical_to_virtual(physical_address);
+
+    let virtual_memory = VirtualMemory::new(
+        virtual_address.as_u64() as usize,
+        1,
+        Arc::new(Mutex::new(ref_current_page_table())),
+    );
+    let physical_memory = PhysicalMemory::new(physical_address.as_u64() as usize, 1);
+    let mapping = Arc::new(VmMapping::new(
+        MMUFlags::WRITE | MMUFlags::READ,
+        virtual_memory.clone(),
+        physical_memory.clone(),
+    ));
+    let _ = mapping.map();
 
     let mut ioapic = IoApic::new(virtual_address.as_u64());
     ioapic.init(IOAPIC_INTERRUPT_INDEX_OFFSET);

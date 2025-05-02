@@ -1,0 +1,26 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "user_boot"
+version = "0.1.0"
+edition = "2024"
+forced-target = "x86_64-unknown-none"
+
+[dependencies]
+common_std = { path = "../common_std" }
+
+[dependencies.terminal]
+path = "../terminal"
+artifact = "bin"
+target = "x86_64-unknown-none"
+
+[dependencies.keyboard]
+path = "../keyboard"
+artifact = "bin"
+target = "x86_64-unknown-none"
+
+[dependencies.rash]
+path = "../rash"
+artifact = "bin"
+target = "x86_64-unknown-none"
+

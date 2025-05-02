@@ -1,0 +1,10 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "idle"
+version = "0.1.0"
+edition = "2024"
+forced-target = "x86_64-unknown-none"
+
+[dependencies]
+common_std = { path = "../common_std" }

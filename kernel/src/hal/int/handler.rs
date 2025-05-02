@@ -1,10 +1,15 @@
-use alloc::collections::btree_map::BTreeMap;
-use spin::RwLock;
+use alloc::{
+    collections::btree_map::BTreeMap,
+    vec::Vec,
+};
+use spin::{Lazy, Mutex, RwLock};
 use x86_64::{registers::control::Cr2, structures::idt::PageFaultErrorCode};
+
+use crate::hal::driver::apic::LAPIC;
 
 pub type InterruptHandler = fn(frame: &mut IntFrame);
 
-pub static INTERRUPT_HANDLERS: RwLock<BTreeMap<usize, InterruptHandler>> =
+pub static INTERRUPT_HANDLERS: RwLock<BTreeMap<usize, Option<InterruptHandler>>> =
     RwLock::new(BTreeMap::new());
 
 pub fn register_handler(handler: InterruptHandler) -> Option<usize> {
@@ -12,12 +17,26 @@ pub fn register_handler(handler: InterruptHandler) -> Option<usize> {
 
     let int = handlers.len() + super::INTERRUPT_OFFSET;
     if int <= 0xff {
-        handlers.insert(int, handler);
+        handlers.insert(int, Some(handler));
         Some(int)
     } else {
         None
     }
 }
+
+pub fn allocate_interrupt() -> Option<usize> {
+    let mut handlers = INTERRUPT_HANDLERS.write();
+
+    let int = handlers.len() + super::INTERRUPT_OFFSET;
+    if int <= 0xff {
+        handlers.insert(int, None);
+        Some(int)
+    } else {
+        None
+    }
+}
+
+pub static INTERRUPT_COUNT: Lazy<Mutex<Vec<usize>>> = Lazy::new(|| Mutex::new(alloc::vec![0;256]));
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rust_entry(frame: &mut IntFrame) {
@@ -25,7 +44,8 @@ pub extern "C" fn rust_entry(frame: &mut IntFrame) {
         crate::hal::driver::apic::end_of_interrupt();
 
         let handlers = INTERRUPT_HANDLERS.read();
-        let Some(handler) = handlers.get(&frame.int_num) else {
+        let Some(Some(handler)) = handlers.get(&frame.int_num) else {
+            INTERRUPT_COUNT.lock()[frame.int_num] += 1;
             return;
         };
         handler(frame);
@@ -50,38 +70,42 @@ pub extern "C" fn rust_entry(frame: &mut IntFrame) {
 }
 
 fn division_zero(frame: &IntFrame) {
-    log::error!("Exception: Division Zero\n{:#?}", frame);
+    log::error!("Exception: Division Zero\n{:#x?}", frame);
     panic!("Unrecoverable fault occured, halting!");
 }
 
 fn segment_not_present(frame: &IntFrame) {
-    log::error!("Exception: Segment Not Present\n{:#?}", frame);
+    log::error!("Exception: Segment Not Present\n{:#x?}", frame);
     panic!("Unrecoverable fault occured, halting!");
 }
 
 fn general_protection_fault(frame: &IntFrame) {
-    log::error!("Exception: General Protection Fault\n{:#?}", frame);
+    log::error!("Exception: General Protection Fault\n{:#x?}", frame);
     x86_64::instructions::hlt();
 }
 
 fn invalid_opcode(frame: &IntFrame) {
-    log::error!("Exception: Invalid Opcode\n{:#?}", frame);
+    log::error!("Exception: Invalid Opcode\n{:#x?}", frame);
     x86_64::instructions::hlt();
 }
 
 fn breakpoint(frame: &IntFrame) {
-    log::debug!("Exception: Breakpoint\n{:#?}", frame);
+    log::debug!("Exception: Breakpoint\n{:#x?}", frame);
 }
 
 fn double_fault(frame: &IntFrame) -> ! {
-    log::error!("Exception: Double Fault\n{:#?}", frame);
+    log::error!("Exception: Double Fault\n{:#x?}", frame);
     panic!("Unrecoverable fault occured, halting!");
 }
 
 fn page_fault(frame: &IntFrame) {
-    log::warn!("Exception: Page Fault\n{:#?}", frame);
     log::warn!(
-        "Error Code: {:#x}",
+        "Exception: Page Fault From CPU {}\n{:#x?}",
+        unsafe { LAPIC.lock().id() },
+        frame
+    );
+    log::warn!(
+        "Error Code: {:?}",
         PageFaultErrorCode::from_bits_retain(frame.error_code as u64)
     );
     match Cr2::read() {

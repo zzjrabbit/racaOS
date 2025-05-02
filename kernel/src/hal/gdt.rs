@@ -1,3 +1,5 @@
+use core::ptr::addr_of;
+
 use spin::Lazy;
 use x86_64::VirtAddr;
 use x86_64::instructions::segmentation::{CS, SS, Segment};
@@ -7,7 +9,7 @@ use x86_64::structures::gdt::{Descriptor, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 
 pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
-pub const FAULT_STACK_SIZE: usize = 256;
+pub const FAULT_STACK_SIZE: usize = 8 * 1024;
 
 pub struct CpuInfo {
     gdt: GlobalDescriptorTable,
@@ -35,6 +37,8 @@ impl CpuInfo {
 }
 
 impl CpuInfo {
+    /// # Panics
+    /// Actually it will never panic.
     pub fn init(&mut self) {
         let (mut gdt, mut selectors) = COMMON_GDT.clone();
 
@@ -43,7 +47,7 @@ impl CpuInfo {
             VirtAddr::new(stack_start + self.fault_stack.len() as u64)
         };
 
-        let tss_ref = unsafe { &*(&self.tss as *const _) };
+        let tss_ref = unsafe { &*addr_of!(self.tss) };
         let tss_selector = Some(gdt.append(Descriptor::tss_segment(tss_ref)));
         selectors.tss_selector = tss_selector;
 
@@ -91,11 +95,13 @@ pub struct Selectors {
 }
 
 impl Selectors {
+    #[must_use]
     pub fn get_kernel_segments() -> (SegmentSelector, SegmentSelector) {
         let selectors = &COMMON_GDT.1;
         (selectors.code_selector, selectors.data_selector)
     }
 
+    #[must_use]
     pub fn get_user_segments() -> (SegmentSelector, SegmentSelector) {
         let selectors = &COMMON_GDT.1;
         (selectors.user_code_selector, selectors.user_data_selector)

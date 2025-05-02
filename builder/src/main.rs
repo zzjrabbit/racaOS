@@ -1,5 +1,5 @@
 use argh::FromArgs;
-use cpio::{newc::*, *};
+use cpio::{NewcBuilder, newc::ModeFileType, write_cpio};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{self, Read};
@@ -8,7 +8,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 #[derive(FromArgs)]
-#[argh(description = "TrashOS bootloader and kernel builder")]
+#[argh(description = "racaOS bootloader and kernel builder")]
 struct Args {
     #[argh(switch, short = 'b')]
     #[argh(description = "boot the constructed image")]
@@ -45,7 +45,7 @@ fn main() {
 
         cmd.arg("-machine").arg("q35");
         cmd.arg("-drive").arg(ovmf_config);
-        cmd.arg("-m").arg("256m");
+        cmd.arg("-m").arg("512m");
         cmd.arg("-smp").arg(format!("cores={}", args.cores));
         cmd.arg("-cpu").arg("qemu64,+x2apic");
 
@@ -55,7 +55,7 @@ fn main() {
             "windows" => Some("dsound"),
             _ => None,
         } {
-            cmd.arg("-audiodev").arg(format!("{},id=sound", backend));
+            cmd.arg("-audiodev").arg(format!("{backend},id=sound"));
             cmd.arg("-machine").arg("pcspk-audiodev=sound");
             cmd.arg("-device").arg("intel-hda");
             cmd.arg("-device").arg("hda-output,audiodev=sound");
@@ -120,8 +120,8 @@ fn build_img() -> PathBuf {
     {
         if entry.file_type().is_file() {
             let file_name = entry.file_name().to_str().unwrap();
-            if !file_name.starts_with(".") && !file_name.ends_with(".d") {
-                println!("found user program: `{}`", file_name);
+            if !file_name.starts_with('.') && !file_name.ends_with(".d") {
+                println!("found user program: `{file_name}`");
                 let user_program_path =
                     PathBuf::from("target/x86_64-unknown-none/release/".to_string() + file_name);
                 let mut user_program_src = File::open(user_program_path).unwrap();
@@ -162,7 +162,7 @@ fn build_initramfs() {
     for entry in walkdir::WalkDir::new("initramfs").into_iter().flatten() {
         if entry.file_type().is_file() {
             let mut path = entry.path().to_str().unwrap().to_string();
-            for _ in 0..("initramfs".len() + 1) {
+            for _ in 0..="initramfs".len() {
                 path.remove(0);
             }
 
@@ -198,10 +198,10 @@ fn build_image_from_dir(dir: &str, image_file: &str) {
     for entry in walkdir::WalkDir::new(dir).into_iter().flatten() {
         if entry.file_type().is_file() {
             let mut path = entry.path().to_str().unwrap().to_string();
-            for _ in 0..(dir.len() + 1) {
+            for _ in 0..=dir.len() {
                 path.remove(0);
             }
-            let path = path.replace("\\", "/");
+            let path = path.replace('\\', "/");
 
             files.insert(path.clone(), entry.path().to_path_buf());
         }

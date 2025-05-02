@@ -1,13 +1,64 @@
 use core::mem::transmute;
 
+use alloc::sync::Arc;
+use handler::{INTERRUPT_COUNT, allocate_interrupt};
 use spin::Lazy;
-use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable};
+use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable, PageFaultErrorCode};
 
-use super::gdt::DOUBLE_FAULT_IST_INDEX;
+use crate::{
+    error::{RcError, RcResult},
+    kernel_object,
+    object::KObjectBase,
+};
+
+use super::{driver::apic::ioapic_add_entry, gdt::DOUBLE_FAULT_IST_INDEX};
 
 mod handler;
 
 pub use handler::{IntFrame, register_handler};
+
+kernel_object! {
+    pub struct Irq{
+        int: u8,
+    }
+}
+
+impl Irq {
+    pub fn register(irq: u8) -> RcResult<Arc<Self>> {
+        let Some(int) = allocate_interrupt() else {
+            return Err(RcError::AllocationFailed);
+        };
+
+        unsafe {
+            ioapic_add_entry(irq, int as u8);
+        }
+
+        Ok(Arc::new(Self {
+            base: KObjectBase::default(),
+            int: int as u8,
+        }))
+    }
+
+    pub fn wait(&self) {
+        loop {
+            unsafe {
+                core::arch::asm!("hlt");
+            }
+
+            x86_64::instructions::interrupts::disable();
+
+            let mut interrupt_count = INTERRUPT_COUNT.lock();
+            if interrupt_count[self.int as usize] > 0 {
+                interrupt_count[self.int as usize] -= 1;
+
+                x86_64::instructions::interrupts::enable();
+                break;
+            }
+
+            x86_64::instructions::interrupts::enable();
+        }
+    }
+}
 
 pub fn init() {
     IDT.load();
@@ -17,7 +68,7 @@ pub const INTERRUPT_OFFSET: usize = 32;
 
 pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
     let mut idt = InterruptDescriptorTable::new();
-    let entries = unsafe { &mut *(&mut idt as *mut _ as *mut [Entry<HandlerFunc>; 256]) };
+    let entries = unsafe { &mut *((&raw mut idt).cast::<[Entry<HandlerFunc>; 256]>()) };
     unsafe {
         entries[0x00].set_handler_fn(transmute::<
             usize,
@@ -1051,6 +1102,23 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
                 usize,
                 extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame, u64) -> !,
             >(intentry08 as usize))
+            .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
+
+        idt.page_fault
+            .set_handler_fn(transmute::<
+                usize,
+                extern "x86-interrupt" fn(
+                    x86_64::structures::idt::InterruptStackFrame,
+                    PageFaultErrorCode,
+                ) -> (),
+            >(intentry0e as usize))
+            .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
+
+        idt[0x21]
+            .set_handler_fn(transmute::<
+                usize,
+                extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame) -> (),
+            >(intentry21 as usize))
             .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
     }
 

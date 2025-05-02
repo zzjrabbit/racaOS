@@ -1,18 +1,22 @@
+use crate::hal::ref_current_page_table;
+use crate::mm::{MMUFlags, PhysicalMemory, VirtualMemory, VmMapping, page_count};
 use acpi::fadt::Fadt;
 use acpi::platform::interrupt::Apic;
 use acpi::{AcpiHandler, AcpiTables, AmlTable, HpetInfo, PhysicalMapping};
 use acpi::{InterruptModel, PciConfigRegions};
 use alloc::alloc::Global;
 use alloc::boxed::Box;
+use alloc::sync::Arc;
 use aml::{AmlContext, AmlName};
 use core::ptr::NonNull;
 use limine::request::RsdpRequest;
-use spin::Lazy;
+use spin::{Lazy, Mutex};
+use x86_64::PhysAddr;
 use x86_64::instructions::interrupts::disable;
-use x86_64::instructions::port::{PortReadOnly, PortWriteOnly};
-use x86_64::{PhysAddr, VirtAddr};
+use x86_64::instructions::port::{Port, PortWriteOnly};
+use x86_64::structures::paging::{Page, PhysFrame, Size4KiB};
 
-use super::super::mem::{convert_physical_to_virtual, convert_virtual_to_physical};
+use super::super::mem::convert_physical_to_virtual;
 use crate::hal::int::IntFrame;
 
 #[used]
@@ -23,9 +27,8 @@ pub static ACPI: Lazy<Acpi> = Lazy::new(|| {
     let response = RSDP_REQUEST.get_response().unwrap();
 
     let acpi_tables = unsafe {
-        let rsdp_address = VirtAddr::new(response.address() as u64);
-        let physical_address = convert_virtual_to_physical(rsdp_address).as_u64();
-        let acpi_tables = AcpiTables::from_rsdp(AcpiMemHandler, physical_address as usize);
+        let rsdp_address = response.address();
+        let acpi_tables = AcpiTables::from_rsdp(AcpiMemHandler, rsdp_address);
         Box::leak(Box::new(acpi_tables.unwrap()))
     };
 
@@ -44,45 +47,34 @@ pub static ACPI: Lazy<Acpi> = Lazy::new(|| {
     let pci_regions = PciConfigRegions::new(acpi_tables).expect("Failed to get PCI regions");
     let hpet_info = HpetInfo::new(acpi_tables).expect("Failed to get HPET info");
 
-    let fadt = acpi_tables.find_table::<Fadt>().unwrap();
-    let dsdt = acpi_tables.dsdt().unwrap();
+    let fadt = *acpi_tables.find_table::<Fadt>().unwrap();
 
-    if fadt.smi_cmd_port != 0 && (fadt.acpi_enable != 0 || fadt.acpi_disable != 0) {
-        unsafe {
-            PortWriteOnly::new(fadt.smi_cmd_port as u16).write(fadt.acpi_enable);
-        }
-    }
-    while unsafe {
-        PortReadOnly::<u16>::new(fadt.pm1a_control_block().unwrap().address as u16).read()
-    } & 1
-        == 0
-    {}
-
-    let event_register_len = fadt.pm1a_event_block().unwrap().bit_width / 16;
+    let pm1a = fadt.pm1a_control_block().unwrap();
+    let mut pm1a_port = Port::<u16>::new(pm1a.address as u16);
 
     unsafe {
-        PortWriteOnly::new(
-            fadt.pm1a_event_block().unwrap().address as u16 + event_register_len as u16,
-        )
-        .write(1_u16 << 8);
-    }
-
-    if let Ok(Some(pm1b)) = fadt.pm1b_event_block() {
-        let len = pm1b.bit_width / 16;
-        unsafe {
-            PortWriteOnly::new(pm1b.address as u16 + len as u16).write(1_u16 << 8);
+        if fadt.smi_cmd_port != 0
+            && (fadt.acpi_enable == 0 || fadt.acpi_disable == 0)
+            && pm1a_port.read() & 1 == 0
+        {
+            Port::new(fadt.smi_cmd_port as u16).write(fadt.acpi_enable);
+            while pm1a_port.read() & 1 == 0 {}
         }
     }
+
+    let dsdt = acpi_tables.dsdt().expect("DSDT Not Found");
 
     Acpi {
         apic,
         pci_regions,
         hpet_info,
         dsdt,
-        fadt: *fadt,
+        fadt,
     }
 });
 
+/// # Panics
+/// If it fails to register a handler for the timer interrupt, it will panic.
 pub fn init() {
     let fadt = &ACPI.fadt;
     let vector = crate::hal::int::register_handler(poweroff_handler).unwrap();
@@ -103,6 +95,8 @@ fn poweroff_handler(_frame: &mut IntFrame) {
     reboot();
 }
 
+/// # Panics
+/// It panics when it fails to parse DSDT.
 pub fn poweroff() {
     disable();
     let fadt = &ACPI.fadt;
@@ -136,11 +130,13 @@ pub fn poweroff() {
     loop {
         unsafe {
             PortWriteOnly::new(fadt.pm1a_control_block().unwrap().address as u16)
-                .write((slp_typa as u32) | (1 << 13));
+                .write((slp_typa as u16) | (1 << 13));
         }
     }
 }
 
+/// # Panics
+/// it panics when it can't parse FADT
 pub fn reboot() {
     disable();
     let fadt = &ACPI.fadt;
@@ -164,6 +160,27 @@ impl AcpiHandler for AcpiMemHandler {
         let virtual_address = {
             let physical_address = PhysAddr::new(physical_address as u64);
             let virtual_address = convert_physical_to_virtual(physical_address);
+
+            let size = page_count(size);
+            let child = VirtualMemory::new(
+                Page::<Size4KiB>::containing_address(virtual_address)
+                    .start_address()
+                    .as_u64() as usize,
+                size,
+                Arc::new(Mutex::new(ref_current_page_table())),
+            );
+
+            let frame = PhysFrame::<Size4KiB>::containing_address(physical_address);
+            let start_address = frame.start_address().as_u64() as usize;
+            let physical_memory = PhysicalMemory::new(start_address, size);
+            let vm_mapping = Arc::new(VmMapping::new(
+                MMUFlags::READ | MMUFlags::WRITE,
+                child.clone(),
+                physical_memory.clone(),
+            ));
+
+            let _ = vm_mapping.map();
+
             unsafe { NonNull::new_unchecked(virtual_address.as_u64() as *mut T) }
         };
         unsafe { PhysicalMapping::new(physical_address, virtual_address, size, size, self.clone()) }

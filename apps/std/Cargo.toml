@@ -1,0 +1,11 @@
+[package]
+name = "std"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+common_std = { path = "../common_std" }
+embedded-io = {version="0.6.1", features=["alloc"]}
+noline = {version="0.5.1", features=["alloc"]}
+spin = "0.10.0"
+

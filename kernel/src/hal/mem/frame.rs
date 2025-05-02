@@ -7,6 +7,8 @@ use x86_64::PhysAddr;
 use x86_64::structures::paging::{FrameAllocator, PhysFrame};
 use x86_64::structures::paging::{FrameDeallocator, Size4KiB};
 
+use super::convert_physical_to_virtual;
+
 pub struct Bitmap(&'static mut [usize]);
 
 #[allow(dead_code)]
@@ -21,11 +23,6 @@ impl Bitmap {
     #[inline]
     pub fn len(&self) -> usize {
         self.0.len() * Self::BITS
-    }
-
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
     }
 
     #[inline]
@@ -157,9 +154,9 @@ impl BitmapFrameAllocator {
 
         let bitmap_buffer = unsafe {
             let physical_address = PhysAddr::new(bitmap_address);
-            let virtual_address = super::convert_physical_to_virtual(physical_address).as_u64();
+            let virtual_address = convert_physical_to_virtual(physical_address);
             let bitmap_inner_size = bitmap_size / size_of::<usize>();
-            core::slice::from_raw_parts_mut(virtual_address as *mut usize, bitmap_inner_size)
+            core::slice::from_raw_parts_mut(virtual_address.as_mut_ptr(), bitmap_inner_size)
         };
 
         let mut bitmap = Bitmap::new(bitmap_buffer);

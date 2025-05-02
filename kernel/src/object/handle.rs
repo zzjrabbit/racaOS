@@ -15,3 +15,5 @@ impl Handle {
         Handle { object, rights }
     }
 }
+
+pub const INVALID_HANDLE: u32 = u32::MAX;

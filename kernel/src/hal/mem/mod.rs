@@ -11,8 +11,13 @@ use x86_64::{
     structures::paging::{FrameDeallocator, PhysFrame},
 };
 
-static HHDM_REQUEST: HhdmRequest = HhdmRequest::with_revision(2);
-static MMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::with_revision(2);
+#[used]
+#[unsafe(link_section = ".requests")]
+static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
+
+#[used]
+#[unsafe(link_section = ".requests")]
+static MMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 
 static PHYSICAL_OFFSET: Lazy<u64> = Lazy::new(|| {
     let hhdm_response = HHDM_REQUEST.get_response().unwrap();
