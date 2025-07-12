@@ -72,6 +72,11 @@ impl Process {
         wait_for_signal(&[self.as_handle()], Signal::TASK_DEAD)?;
         Ok(())
     }
+
+    pub fn kill(&self) -> RcResult<()> {
+        syscall!(34, self.as_handle())?;
+        Ok(())
+    }
 }
 
 pub struct Job(u32);
@@ -99,6 +104,11 @@ impl Job {
             basic_policies.len()
         )?;
 
+        Ok(())
+    }
+
+    pub fn kill(&self) -> RcResult<()> {
+        syscall!(33, self.as_handle())?;
         Ok(())
     }
 }
@@ -171,6 +181,11 @@ impl Thread {
 impl Thread {
     pub fn join(&self) -> RcResult<()> {
         wait_for_signal(&[self.as_handle()], Signal::TASK_DEAD)?;
+        Ok(())
+    }
+
+    pub fn kill(&self) -> RcResult<()> {
+        syscall!(35, self.as_handle())?;
         Ok(())
     }
 }

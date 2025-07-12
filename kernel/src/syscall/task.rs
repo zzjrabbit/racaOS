@@ -57,6 +57,15 @@ pub fn process_create(
     Ok(0)
 }
 
+pub fn process_kill(handle: HandleValue) -> RcResult<usize> {
+    let current_process = current_process();
+
+    let process = current_process.get_object_with_rights::<Process>(handle, Rights::MANAGE_PROCESS)?;
+    process.kill();
+
+    Ok(0)
+}
+
 pub fn job_create(father_job_handle: HandleValue, handle_ptr: *mut HandleValue) -> RcResult<usize> {
     let current_process = current_process();
 
@@ -84,6 +93,16 @@ pub fn job_set_policy(
     let policies = unsafe { from_raw_parts(policy_ptr, policy_len) };
 
     job.set_policy_basic(SetPolicyOptions::Relative, policies)?;
+
+    Ok(0)
+}
+
+pub fn job_kill(handle: HandleValue) -> RcResult<usize> {
+    let current_process = current_process();
+    
+    let job = current_process.get_object_with_rights::<Job>(handle, Rights::MANAGE_JOB)?;
+
+    job.kill();
 
     Ok(0)
 }
@@ -143,3 +162,14 @@ pub fn exit_thread() -> RcResult<usize> {
 
     Ok(0)
 }
+
+pub fn kill_thread(handle: HandleValue) -> RcResult<usize> {
+    let current_process = current_process();
+    
+    let thread = current_process.get_object_with_rights::<Thread>(handle, Rights::MANAGE_THREAD)?;
+
+    thread.kill();
+
+    Ok(0)
+} 
+

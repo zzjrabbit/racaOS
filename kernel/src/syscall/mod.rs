@@ -96,6 +96,9 @@ pub extern "C" fn syscall_matcher(
             arg5 as *mut HandleValue,
         ),
         32 => task::exit_thread(),
+        33 => task::job_kill(arg1 as HandleValue),
+        34 => task::process_kill(arg1 as HandleValue),
+        35 => task::kill_thread(arg1 as HandleValue),
         _ => Err(RcError::InvalidSyscall),
     };
 
