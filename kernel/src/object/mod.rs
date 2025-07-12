@@ -1,5 +1,7 @@
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt::Debug;
 use core::sync::atomic::{AtomicU64, Ordering};
 use downcast_rs::{DowncastSync, impl_downcast};
@@ -7,9 +9,11 @@ use spin::Mutex;
 
 mod handle;
 mod rights;
+mod signal;
 
 pub use handle::*;
 pub use rights::*;
+pub use signal::*;
 
 use crate::error::{RcError, RcResult};
 
@@ -18,6 +22,11 @@ pub trait KernelObject: DowncastSync + Debug {
     fn type_name(&self) -> &str;
     fn name(&self) -> String;
     fn set_name(&self, name: &str);
+
+    fn set_signal(&self, signal: Signal);
+    fn clear_signal(&self, signal: Signal);
+    fn signal_present(&self, signal: Signal) -> bool;
+    fn add_signal_callback(&self, callback: SignalHandler);
 
     fn peer(&self) -> RcResult<Arc<dyn KernelObject>> {
         Err(RcError::NotSupported)
@@ -38,14 +47,22 @@ pub struct KObjectBase {
     inner: Mutex<KObjectBaseInner>,
 }
 
+pub type SignalHandler = Box<dyn Fn(Signal) -> bool + Send>;
+
 #[derive(Default)]
 struct KObjectBaseInner {
     name: String,
+    signal: Signal,
+    signal_callbacks: Vec<SignalHandler>,
 }
 
 impl KObjectBaseInner {
     pub fn with_name(name: String) -> Self {
-        Self { name }
+        Self {
+            name,
+            signal: Signal::empty(),
+            signal_callbacks: Vec::new(),
+        }
     }
 }
 
@@ -72,11 +89,40 @@ impl KObjectBase {
         static NEXT_KOID: AtomicU64 = AtomicU64::new(1);
         NEXT_KOID.fetch_add(1, Ordering::Relaxed)
     }
+
     pub fn name(&self) -> String {
         self.inner.lock().name.clone()
     }
+
     pub fn set_name(&self, name: &str) {
         self.inner.lock().name = name.to_string();
+    }
+
+    pub fn set_signal(&self, signal: Signal) {
+        if !self.signal_present(signal) {
+            let mut inner = self.inner.lock();
+
+            inner.signal.insert(signal);
+
+            let signal = inner.signal;
+            inner.signal_callbacks.retain(|f| !f(signal));
+        }
+    }
+
+    pub fn clear_signal(&self, signal: Signal) {
+        self.inner.lock().signal.remove(signal);
+    }
+
+    pub fn signal_present(&self, signal: Signal) -> bool {
+        self.inner.lock().signal.contains(signal)
+    }
+
+    pub fn add_signal_callback(&self, callback: SignalHandler) {
+        let mut inner = self.inner.lock();
+
+        if !callback(inner.signal) {
+            inner.signal_callbacks.push(callback);
+        }
     }
 }
 
@@ -123,6 +169,25 @@ macro_rules! kernel_object {
                 self.base.set_name(name)
             }
 
+            fn set_signal(&self, signal: $crate::object::Signal) {
+                self.base.set_signal(signal)
+            }
+
+            fn clear_signal(&self, signal: $crate::object::Signal) {
+                self.base.clear_signal(signal)
+            }
+
+            fn signal_present(&self, signal: $crate::object::Signal) -> bool {
+                self.base.signal_present(signal)
+            }
+
+            fn add_signal_callback(
+                &self,
+                callback: $crate::object::SignalHandler
+            ) {
+                self.base.add_signal_callback(callback);
+            }
+
             $($fn)*
         }
 
@@ -167,6 +232,22 @@ macro_rules! kernel_object {
 
             fn set_name(&self, name: &str){
                 self.base.set_name(name)
+            }
+
+            fn set_signal(&self, signal: $crate::object::Signal) {
+                self.base.set_signal(signal)
+            }
+
+            fn clear_signal(&self, signal: $crate::object::Signal) {
+                self.base.clear_signal(signal)
+            }
+
+            fn signal_present(&self, signal: $crate::object::Signal) -> bool {
+                self.base.signal_present(signal)
+            }
+
+            fn add_signal_callback(&self, callback: $crate::object::SignalHandler) {
+                self.base.add_signal_callback(callback);
             }
 
             $($fn)*

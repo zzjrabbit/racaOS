@@ -4,18 +4,22 @@ use alloc::{
 };
 use spin::Mutex;
 
-use crate::{error::RcResult, hal::int::IntFrame, object::KObjectBase};
+use crate::{
+    error::RcResult,
+    hal::{driver::apic::LAPIC, int::IntFrame},
+    mm::VirtualMemory,
+    object::{KObjectBase, KernelObject, Signal},
+};
 
 use super::{process::Process, scheduler::SCHEDULER};
 
 crate::kernel_object! {
     pub struct Thread {
-        proc: Weak<Process> = Arc::downgrade(&Process::new()),
-        kernel_stack: KernelStack = KernelStack::default(),
-        inner: Mutex<ThreadInner> = Mutex::new(ThreadInner::new()),
+        proc: Weak<Process>,
+        stack: Arc<VirtualMemory>,
+        kernel_stack: KernelStack,
+        inner: Mutex<ThreadInner>,
     }
-
-    fn new() {}
 
     fn related_koid(&self) -> crate::object::KoID {
         self.proc.upgrade().unwrap().id()
@@ -24,14 +28,14 @@ crate::kernel_object! {
 
 pub struct ThreadInner {
     context: IntFrame,
-    sleeping: bool,
+    state: ThreadState,
 }
 
 impl ThreadInner {
     pub fn new() -> Self {
         Self {
             context: IntFrame::default(),
-            sleeping: false,
+            state: ThreadState::Ready,
         }
     }
 }
@@ -42,20 +46,23 @@ impl Thread {
         proc: &Arc<Process>,
         name: &str,
         entry: usize,
-        stack: usize,
+        stack: Arc<VirtualMemory>,
     ) -> RcResult<Arc<Self>> {
+        let stack_start = stack.start_address() + stack.len();
+
         let mut inner = ThreadInner::new();
         inner.context.rip = entry;
-        inner.context.rsp = stack;
+        inner.context.rsp = stack_start;
         inner.context.rflags = 0x200;
-        inner.context.rdx = stack;
-        inner.context.rdi = stack;
+        inner.context.rdx = stack_start;
+        inner.context.rdi = stack_start;
         let (code_selector, data_selector) = crate::hal::gdt::Selectors::get_user_segments();
         inner.context.cs = code_selector.0 as usize;
         inner.context.ss = data_selector.0 as usize;
 
         let thread = Arc::new(Thread {
             base: KObjectBase::with_name(name),
+            stack: stack.clone(),
             proc: Arc::downgrade(proc),
             kernel_stack: KernelStack::default(),
             inner: Mutex::new(inner),
@@ -79,22 +86,50 @@ impl Thread {
         self.proc.clone()
     }
 
-    pub fn begin_sleep(&self) {
-        self.inner.lock().sleeping = true;
+    pub fn set_state(&self, state: ThreadState) {
+        self.inner.lock().state = state;
     }
 
-    pub fn wake_up(&self) {
-        self.inner.lock().sleeping = false;
+    pub fn state(&self) -> ThreadState {
+        self.inner.lock().state
+    }
+}
+
+impl Thread {
+    pub fn exit(&self) { 
+        self.set_signal(Signal::TASK_DEAD);
+        self.set_state(ThreadState::Dead);
+        SCHEDULER.remove_thread(self.id());
+        self.process().upgrade().unwrap().remove_thread(self.id());
     }
 
-    pub fn sleeping(&self) -> bool {
-        self.inner.lock().sleeping
+    pub fn kill(&self) {
+        let possible_running_on = match self.state() {
+            ThreadState::RunningOn(cpu_id) => Some(cpu_id),
+            _ => None,
+        };
+
+        self.exit();
+
+        possible_running_on.and_then(|cpu_id| {
+            if cpu_id == unsafe { LAPIC.lock().id() } {
+                return None;
+            }
+            unsafe {
+                LAPIC.lock().send_ipi(0x21, cpu_id);
+            }
+            Some(())
+        });
     }
 }
 
 impl Thread {
     pub fn kernel_stack(&self) -> usize {
         self.kernel_stack.end_address()
+    }
+
+    pub fn stack(&self) -> Arc<VirtualMemory> {
+        self.stack.clone()
     }
 }
 
@@ -111,5 +146,29 @@ impl Default for KernelStack {
 impl KernelStack {
     pub fn end_address(&self) -> usize {
         self.0.as_ptr_range().end as usize
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ThreadState {
+    RunningOn(u32),
+    Ready,
+    Blocked,
+    Dead,
+}
+
+impl ThreadState {
+    pub fn running_on(&self) -> Option<u32> {
+        match self {
+            Self::RunningOn(cpu_id) => Some(*cpu_id),
+            _ => None,
+        }
+    }
+
+    pub fn is_awake(&self) -> bool {
+        match self {
+            Self::RunningOn(_) | Self::Ready => true,
+            _ => false,
+        }
     }
 }

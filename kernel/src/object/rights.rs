@@ -30,5 +30,9 @@ bitflags! {
         const DEFAULT_FB = Self::BASIC.bits() | Self::IO.bits();
 
         const DEFAULT_CHANNEL = Self::BASIC.bits() & !Self::DUPLICATE.bits() | Self::IO.bits();
+
+        const DEFAULT_PORT = Self::BASIC.bits() | Self::IO.bits();
+
+        const DEFAULT_EVENT_PAIR = Self::BASIC.bits();
     }
 }

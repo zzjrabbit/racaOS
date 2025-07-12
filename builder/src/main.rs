@@ -45,7 +45,7 @@ fn main() {
 
         cmd.arg("-machine").arg("q35");
         cmd.arg("-drive").arg(ovmf_config);
-        cmd.arg("-m").arg("512m");
+        cmd.arg("-m").arg("1g");
         cmd.arg("-smp").arg(format!("cores={}", args.cores));
         cmd.arg("-cpu").arg("qemu64,+x2apic");
 

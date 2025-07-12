@@ -3,8 +3,8 @@
 #![feature(abi_x86_interrupt)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
-#![recursion_limit = "512"]
-#![allow(clippy::cast_possible_truncation)]
+// #![recursion_limit = "512"]
+// #![allow(clippy::cast_possible_truncation)]
 
 extern crate alloc;
 
@@ -14,6 +14,7 @@ pub mod ipc;
 pub mod logging;
 pub mod mm;
 pub mod object;
+pub mod signal;
 pub mod syscall;
 pub mod task;
 

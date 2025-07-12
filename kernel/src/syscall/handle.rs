@@ -33,3 +33,10 @@ pub fn duplicate_handle(
 
     Ok(0)
 }
+
+pub fn close_handle(handle: HandleValue) -> RcResult<usize> {
+    let current_process = current_process();
+    current_process.remove_handle(handle)?;
+
+    Ok(0)
+}

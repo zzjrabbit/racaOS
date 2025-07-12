@@ -1,8 +1,8 @@
 use core::mem::transmute;
 
-use alloc::sync::Arc;
-use handler::{INTERRUPT_COUNT, allocate_interrupt};
-use spin::Lazy;
+use alloc::{collections::btree_map::BTreeMap, sync::Arc};
+use handler::allocate_interrupt;
+use spin::{Lazy, Mutex};
 use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable, PageFaultErrorCode};
 
 use crate::{
@@ -11,7 +11,10 @@ use crate::{
     object::KObjectBase,
 };
 
-use super::{driver::apic::ioapic_add_entry, gdt::DOUBLE_FAULT_IST_INDEX};
+use super::{
+    driver::apic::ioapic_add_entry,
+    gdt::{DOUBLE_FAULT_IST_INDEX, PAGE_FAULT_IST_INDEX, TIMER_IST_INDEX},
+};
 
 mod handler;
 
@@ -23,6 +26,8 @@ kernel_object! {
     }
 }
 
+pub static IRQS: Mutex<BTreeMap<u8, Arc<Irq>>> = Mutex::new(BTreeMap::new());
+
 impl Irq {
     pub fn register(irq: u8) -> RcResult<Arc<Self>> {
         let Some(int) = allocate_interrupt() else {
@@ -33,30 +38,14 @@ impl Irq {
             ioapic_add_entry(irq, int as u8);
         }
 
-        Ok(Arc::new(Self {
+        let irq = Arc::new(Self {
             base: KObjectBase::default(),
             int: int as u8,
-        }))
-    }
+        });
 
-    pub fn wait(&self) {
-        loop {
-            unsafe {
-                core::arch::asm!("hlt");
-            }
+        IRQS.lock().insert(int as u8, irq.clone());
 
-            x86_64::instructions::interrupts::disable();
-
-            let mut interrupt_count = INTERRUPT_COUNT.lock();
-            if interrupt_count[self.int as usize] > 0 {
-                interrupt_count[self.int as usize] -= 1;
-
-                x86_64::instructions::interrupts::enable();
-                break;
-            }
-
-            x86_64::instructions::interrupts::enable();
-        }
+        Ok(irq)
     }
 }
 
@@ -1112,14 +1101,14 @@ pub static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
                     PageFaultErrorCode,
                 ) -> (),
             >(intentry0e as usize))
-            .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
+            .set_stack_index(PAGE_FAULT_IST_INDEX as u16);
 
         idt[0x21]
             .set_handler_fn(transmute::<
                 usize,
                 extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame) -> (),
             >(intentry21 as usize))
-            .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
+            .set_stack_index(TIMER_IST_INDEX as u16);
     }
 
     idt

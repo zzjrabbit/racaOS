@@ -1,0 +1,8 @@
+[package]
+name = "peg"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+peg-macros = "0.8.5"
+peg-runtime = {version="0.8.5", default-features=false}

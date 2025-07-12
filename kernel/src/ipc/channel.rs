@@ -7,7 +7,7 @@ use alloc::{
 use crate::{
     error::*,
     kernel_object,
-    object::{Handle, KObjectBase, KernelObject, KoID},
+    object::{Handle, KObjectBase, KernelObject, KoID, Signal},
 };
 
 use spin::Mutex;
@@ -67,8 +67,17 @@ impl Channel {
         let mut recv_queue = self.recv_queue.lock();
         if let Some(_msg) = recv_queue.front() {
             let msg = recv_queue.pop_front().unwrap();
+
+            if recv_queue.len() == 0 {
+                //log::info!("read all");
+                self.clear_signal(Signal::READABLE);
+            }
+
             return Ok(msg);
         }
+
+        //log::info!("unreadable");
+        self.clear_signal(Signal::READABLE);
         if self.peer_closed() {
             Err(RcError::PeerClosed)
         } else {
@@ -85,6 +94,7 @@ impl Channel {
     fn push_general(&self, msg: MessagePacket) {
         let mut send_queue = self.recv_queue.lock();
         send_queue.push_back(msg);
+        self.set_signal(Signal::READABLE);
     }
 
     fn peer_closed(&self) -> bool {

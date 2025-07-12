@@ -7,15 +7,22 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use spin::Mutex;
+use spin::RwLock;
 use x86_64::VirtAddr;
 
-use crate::hal::{driver::apic::LAPIC, int::IntFrame, smp::CPUS};
+use crate::{
+    hal::{driver::apic::LAPIC, int::IntFrame, smp::CPUS},
+    object::{Handle, KernelObject, KoID, Rights},
+    task::job::ROOT_JOB,
+};
 
-use super::{process::Process, thread::Thread};
+use super::{
+    process::Process,
+    thread::{Thread, ThreadState},
+};
 
 pub struct Scheduler {
-    inner: Mutex<SchedulerInner>,
+    inner: RwLock<SchedulerInner>,
 }
 
 pub struct SchedulerInner {
@@ -26,7 +33,7 @@ pub struct SchedulerInner {
 impl Scheduler {
     pub const fn new() -> Self {
         Self {
-            inner: Mutex::new(SchedulerInner {
+            inner: RwLock::new(SchedulerInner {
                 ready_threads: Vec::new(),
                 last_threads: BTreeMap::new(),
             }),
@@ -34,28 +41,46 @@ impl Scheduler {
     }
 
     pub fn add_thread(&self, thread: &Arc<Thread>) {
-        self.inner.lock().ready_threads.push(Arc::downgrade(thread));
+        self.inner
+            .write()
+            .ready_threads
+            .push(Arc::downgrade(thread));
+    }
+
+    pub fn remove_thread(&self, id: KoID) {
+        self.inner.write().ready_threads.retain(|thread| {
+            let thread = thread.upgrade();
+            if let Some(thread) = thread {
+                thread.id() != id
+            } else {
+                false
+            }
+        });
     }
 
     pub fn add_cpu(&self, id: u32) {
-        self.inner.lock().last_threads.insert(id, None);
+        self.inner.write().last_threads.insert(id, None);
     }
 
     pub fn current_thread(&self) -> Weak<Thread> {
-        self.inner.lock().last_threads[&unsafe { LAPIC.lock().id() }]
+        self.inner.read().last_threads[&unsafe { LAPIC.lock().id() }]
             .clone()
             .unwrap()
     }
 
     pub fn schedule(&self, cpu_id: u32, context: &mut IntFrame) {
-        let mut inner = self.inner.lock();
+        let mut inner = self.inner.write();
 
         if let Some(last_thread) = &inner.last_threads[&cpu_id] {
             if let Some(last_thread) = last_thread.upgrade() {
                 last_thread.restore_context(context.clone());
-                if !last_thread.sleeping() {
+                if last_thread.state().running_on().is_some() {
+                    last_thread.set_state(ThreadState::Ready);
                     inner.ready_threads.push(Arc::downgrade(&last_thread));
-                }
+                } /* else {
+                let process = last_thread.process().upgrade().unwrap();
+                if let None = inner.last_threads.iter().find(|thread| )
+                } */
             }
         }
 
@@ -64,6 +89,8 @@ impl Scheduler {
             .remove(0)
             .upgrade()
             .expect("Please remove killed threads.");
+
+        next_thread.set_state(ThreadState::RunningOn(cpu_id));
 
         next_thread.load_context(context);
 
@@ -90,16 +117,24 @@ pub fn init() {
     for id in CPUS.read().iter_id() {
         SCHEDULER.add_cpu(*id);
 
-        Process::create("idle", include_bytes!(core::env!("CARGO_BIN_FILE_IDLE"))).unwrap();
+        Process::create(
+            &ROOT_JOB,
+            "idle",
+            include_bytes!(core::env!("CARGO_BIN_FILE_IDLE")),
+        )
+        .unwrap();
     }
 
     log::info!("loading user_boot");
 
-    Process::create(
+    let user_boot = Process::create(
+        &ROOT_JOB,
         "user_boot",
         include_bytes!(core::env!("CARGO_BIN_FILE_USER_BOOT")),
     )
     .unwrap();
+
+    let _ = user_boot.add_handle(Handle::new(ROOT_JOB.clone(), Rights::DEFAULT_JOB));
 
     SCHEDULER_INIT.store(true, Ordering::SeqCst);
 }

@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-os-terminal = "0.6.8"
+os-terminal = {version="0.6.8", features=["truetype"]}
 spin = "0.10.0"
 common_std = { path = "../common_std" }

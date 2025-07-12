@@ -13,7 +13,7 @@ PHDRS
     rodata  PT_LOAD;
     data    PT_LOAD;
     dynamic PT_DYNAMIC;
-} 
+}
 
 SECTIONS
 {
@@ -26,6 +26,7 @@ SECTIONS
     .text : {
         *(.text .text.*)
     } :text
+    PROVIDE (__etext = .);
 
     /* Move to the next memory page for .rodata */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
@@ -34,8 +35,12 @@ SECTIONS
         *(.rodata .rodata.*)
     } :rodata
 
+    . = ALIGN(8);
+    PROVIDE(__eh_frame = .);
+    .eh_frame : { KEEP (*(.eh_frame)) *(.eh_frame.*) }
+
     /* Move to the next memory page for .data */
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    . += CONSTANT(MAXPAGESIZE);
 
     .data : {
         *(.data .data.*)
@@ -47,6 +52,11 @@ SECTIONS
         KEEP(*(.requests_end_marker))
     } :data
 
+    /* Dynamic section for relocations, both in its own PHDR and inside data PHDR */
+    .dynamic : {
+        *(.dynamic)
+    } :data :dynamic
+
     /* NOTE: .bss needs to be the last thing mapped to :data, otherwise lots of */
     /* unnecessary zeros will be written to the binary. */
     /* If you need, for example, .init_array and .fini_array, those should be placed */
@@ -56,9 +66,8 @@ SECTIONS
         *(COMMON)
     } :data
 
-    /* Discard .note.* and .eh_frame* since they may cause issues on some hosts. */
+    /* Discard .note.* since they may cause issues on some hosts. */
     /DISCARD/ : {
-        *(.eh_frame*)
         *(.note .note.*)
     }
 }

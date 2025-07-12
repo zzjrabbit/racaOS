@@ -4,9 +4,9 @@ pub struct VirtualMemory(u32);
 pub struct PhysicalMemory(u32);
 
 impl VirtualMemory {
-    pub fn create(page_count: usize) -> RcResult<Self> {
+    pub fn allocate_child(&self, page_count: usize) -> RcResult<Self> {
         let mut handle = 0u32;
-        syscall!(2, &raw mut handle, page_count)?;
+        syscall!(2, self.0, &raw mut handle, page_count)?;
         Ok(Self(handle))
     }
 
@@ -24,6 +24,10 @@ impl VirtualMemory {
         let mut handle = 0u32;
         syscall!(9, &raw mut handle)?;
         Ok(Self(handle))
+    }
+
+    pub fn as_handle(&self) -> u32 {
+        self.0
     }
 }
 

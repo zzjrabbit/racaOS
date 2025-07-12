@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 spin = "0.10.0"
 std = { path = "../std" }
+peg = { path = "../peg" }
+escape-bytes = "0.1.1"

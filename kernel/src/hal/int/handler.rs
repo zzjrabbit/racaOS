@@ -1,11 +1,15 @@
-use alloc::{
-    collections::btree_map::BTreeMap,
-    vec::Vec,
-};
-use spin::{Lazy, Mutex, RwLock};
+use alloc::collections::btree_map::BTreeMap;
+use spin::RwLock;
 use x86_64::{registers::control::Cr2, structures::idt::PageFaultErrorCode};
 
-use crate::hal::driver::apic::LAPIC;
+use crate::{
+    hal::driver::apic::LAPIC,
+    object::{KernelObject, Signal},
+    //mm::{MMUFlags, PhysicalMemory, VmMapping},
+    //task::scheduler::SCHEDULER,
+};
+
+use super::IRQS;
 
 pub type InterruptHandler = fn(frame: &mut IntFrame);
 
@@ -36,16 +40,18 @@ pub fn allocate_interrupt() -> Option<usize> {
     }
 }
 
-pub static INTERRUPT_COUNT: Lazy<Mutex<Vec<usize>>> = Lazy::new(|| Mutex::new(alloc::vec![0;256]));
-
 #[unsafe(no_mangle)]
 pub extern "C" fn rust_entry(frame: &mut IntFrame) {
     if frame.int_num >= super::INTERRUPT_OFFSET {
         crate::hal::driver::apic::end_of_interrupt();
 
         let handlers = INTERRUPT_HANDLERS.read();
+
+        if let Some(irq) = IRQS.lock().get(&(frame.int_num as u8)) {
+            irq.set_signal(Signal::INTERRUPT_PRESENT);
+        }
+
         let Some(Some(handler)) = handlers.get(&frame.int_num) else {
-            INTERRUPT_COUNT.lock()[frame.int_num] += 1;
             return;
         };
         handler(frame);
@@ -98,7 +104,49 @@ fn double_fault(frame: &IntFrame) -> ! {
     panic!("Unrecoverable fault occured, halting!");
 }
 
-fn page_fault(frame: &IntFrame) {
+fn page_fault(frame: &mut IntFrame) {
+    /*if let Ok(address) = Cr2::read() {
+        let address = address.as_u64() as usize;
+
+        log::info!("OK");
+        let current_thread = SCHEDULER.current_thread().upgrade().unwrap();
+        log::info!("OK");
+
+        let stack = current_thread.stack();
+        if address > stack.start_address() {
+            let offset = address - stack.start_address();
+
+            if offset < stack.len() {
+                let page_id = Page::<Size4KiB>::containing_address(VirtAddr::new(offset as u64))
+                    .start_address()
+                    .as_u64() as usize
+                    / 4096;
+
+                log::info!("Page Fault: Page ID {}", page_id);
+
+                for id in page_id - 7..page_id + 1 {
+                    let vm = stack.create_child(Range::from(id..id + 1));
+                    let pm = PhysicalMemory::allocate(1).unwrap();
+
+                    let mapping = Arc::new(VmMapping::new(
+                        MMUFlags::READ | MMUFlags::WRITE | MMUFlags::USER,
+                        vm.clone(),
+                        pm.clone(),
+                    ));
+                    mapping.map().unwrap();
+                }
+
+                log::warn!(
+                    "Exception: Page Fault From CPU {}\n{:#x?}",
+                    unsafe { LAPIC.lock().id() },
+                    frame
+                );
+
+                return;
+            }
+        }
+    }*/
+
     log::warn!(
         "Exception: Page Fault From CPU {}\n{:#x?}",
         unsafe { LAPIC.lock().id() },

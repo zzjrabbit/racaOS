@@ -6,13 +6,15 @@ use super::{
 use crate::{
     error::{RcError, RcResult},
     kernel_object,
-    object::{KObjectBase, KernelObject, KoID},
+    object::{KObjectBase, KernelObject, KoID, Signal},
 };
 use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use spin::Mutex;
+use spin::{Lazy, Mutex};
+
+pub static ROOT_JOB: Lazy<Arc<Job>> = Lazy::new(Job::root);
 
 kernel_object! {
     pub struct Job {
@@ -71,11 +73,12 @@ impl Job {
     }
 
     fn remove_child(&self, to_remove: &Weak<Job>) {
-        let mut inner = self.inner.lock();
-        inner.children.retain(|child| !to_remove.ptr_eq(child));
-        if inner.killed && inner.processes.is_empty() && inner.children.is_empty() {
-            drop(inner);
-            self.terminate()
+        {
+            let mut inner = self.inner.lock();
+            inner.children.retain(|child| !to_remove.ptr_eq(child));
+        }
+        if self.is_empty() {
+            self.kill();
         }
     }
 
@@ -130,11 +133,13 @@ impl Job {
 
     /// Remove a process from the job.
     pub(super) fn remove_process(&self, id: KoID) {
-        let mut inner = self.inner.lock();
-        inner.processes.retain(|proc| proc.id() != id);
-        if inner.killed && inner.processes.is_empty() && inner.children.is_empty() {
-            drop(inner);
-            self.terminate()
+        {
+            let mut inner = self.inner.lock();
+            inner.processes.retain(|proc| proc.id() != id);
+        }
+
+        if self.is_empty() {
+            self.kill();
         }
     }
 
@@ -168,10 +173,17 @@ impl Job {
         self.inner.lock().is_empty()
     }
 
-    /// The job finally terminates.
-    fn terminate(&self) {
-        if let Some(parent) = self.parent.as_ref() {
-            parent.remove_child(&self.inner.lock().self_ref)
+    pub fn kill(&self) {
+        self.inner.lock().killed = true;
+        self.set_signal(Signal::TASK_DEAD);
+        for child_job in self.inner.lock().children.iter() {
+            if let Some(child_job) = child_job.upgrade() {
+                child_job.kill();
+            }
+        }
+
+        for process in self.inner.lock().processes.iter() {
+            process.kill();
         }
     }
 }
@@ -193,6 +205,7 @@ impl JobInner {
 
 impl Drop for Job {
     fn drop(&mut self) {
-        self.terminate();
+        self.kill();
+        //self.terminate();
     }
 }

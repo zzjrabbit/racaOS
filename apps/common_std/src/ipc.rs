@@ -58,7 +58,7 @@ impl Channel {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct MessagePacket {
     pub data: Vec<u8>,
     pub handles: Vec<u32>,

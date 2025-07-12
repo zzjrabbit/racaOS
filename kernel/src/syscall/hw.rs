@@ -2,12 +2,16 @@ use crate::{
     error::{RcError, RcResult},
     hal::{IoPort, int::Irq},
     object::{Handle, HandleValue, Rights},
+    task::job_policy::PolicyCondition,
 };
 
 use super::current_process;
 
 pub fn create_io_port(port: u16, option: usize, handle_ptr: *mut HandleValue) -> RcResult<usize> {
     let current_process = current_process();
+
+    current_process.check_policy(PolicyCondition::NewDdkObject)?;
+
     let io_port = IoPort::new(port);
 
     let mut right = Rights::BASIC;
@@ -54,6 +58,8 @@ pub fn io_port_write(handle: HandleValue, value: usize, size: usize) -> RcResult
 
 pub fn irq_register(irq: u8, handle_ptr: *mut HandleValue) -> RcResult<usize> {
     let current_process = current_process();
+    current_process.check_policy(PolicyCondition::NewDdkObject)?;
+
     let handle = current_process.add_handle(Handle::new(
         Irq::register(irq)?,
         Rights::BASIC & !Rights::DUPLICATE,
@@ -62,19 +68,6 @@ pub fn irq_register(irq: u8, handle_ptr: *mut HandleValue) -> RcResult<usize> {
     unsafe {
         *handle_ptr = handle;
     }
-
-    Ok(0)
-}
-
-pub fn irq_wait(handle: HandleValue) -> RcResult<usize> {
-    let current_process = current_process();
-    let irq = current_process.get_object_with_rights::<Irq>(handle, Rights::empty())?;
-
-    x86_64::instructions::interrupts::enable();
-
-    irq.wait();
-
-    x86_64::instructions::interrupts::disable();
 
     Ok(0)
 }

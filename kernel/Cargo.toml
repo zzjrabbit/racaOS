@@ -7,13 +7,15 @@ edition = "2024"
 acpi = "5.2.0"
 aml = "0.16.4"
 bit_field = { version = "0.10.2", default-features = false }
-bitflags = { version = "2.8.0", default-features = false }
-downcast-rs = { version = "2.0.1", default-features = false, features = ["sync"] }
-elf = { version = "0.7.4", default-features = false }
+bitflags = { version = "2.9.0", default-features = false }
+downcast-rs = { version = "2.0.1", default-features = false, features = [
+    "sync",
+] }
+elf = { version = "0.8.0", default-features = false }
 good_memory_allocator = "0.1.7"
 humansize = "2.1.3"
-limine = "0.4.0"
-log = { version = "0.4.25", default-features = false }
+limine = "0.5.0"
+log = { version = "0.4.27", default-features = false }
 spin = "0.10.0"
 uart_16550 = "0.3.2"
 x2apic = "0.5.0"

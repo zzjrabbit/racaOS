@@ -1,5 +1,6 @@
 use core::ptr::addr_of;
 
+use alloc::vec::Vec;
 use spin::Lazy;
 use x86_64::VirtAddr;
 use x86_64::instructions::segmentation::{CS, SS, Segment};
@@ -9,22 +10,41 @@ use x86_64::structures::gdt::{Descriptor, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 
 pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
+pub const PAGE_FAULT_IST_INDEX: usize = 1;
+pub const TIMER_IST_INDEX: usize = 2;
 pub const FAULT_STACK_SIZE: usize = 8 * 1024;
+pub const SYSCALL_STACK_SIZE: usize = 0 * 1024;
 
 pub struct CpuInfo {
     gdt: GlobalDescriptorTable,
     tss: TaskStateSegment,
     selectors: Option<Selectors>,
-    fault_stack: [u8; FAULT_STACK_SIZE],
+    double_fault_stack: [u8; FAULT_STACK_SIZE],
+    page_fault_stack: [u8; FAULT_STACK_SIZE],
+    timer_stack: [u8; FAULT_STACK_SIZE],
+    syscall_stack: Vec<u8>,
+    pub syscall_info: SyscallCpuInfo,
+}
+
+#[repr(C)]
+pub struct SyscallCpuInfo {
+    pub syscall_stack: usize,
 }
 
 impl Default for CpuInfo {
     fn default() -> Self {
+        let syscall_stack = alloc::vec![0; SYSCALL_STACK_SIZE];
         Self {
+            syscall_info: SyscallCpuInfo {
+                syscall_stack: syscall_stack.as_ptr() as usize + syscall_stack.len(),
+            },
             gdt: GlobalDescriptorTable::new(),
             tss: TaskStateSegment::new(),
             selectors: None,
-            fault_stack: [0; FAULT_STACK_SIZE],
+            double_fault_stack: [0; FAULT_STACK_SIZE],
+            page_fault_stack: [0; FAULT_STACK_SIZE],
+            timer_stack: [0; FAULT_STACK_SIZE],
+            syscall_stack,
         }
     }
 }
@@ -43,8 +63,18 @@ impl CpuInfo {
         let (mut gdt, mut selectors) = COMMON_GDT.clone();
 
         self.tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = {
-            let stack_start = self.fault_stack.as_ptr() as u64;
-            VirtAddr::new(stack_start + self.fault_stack.len() as u64)
+            let stack_start = self.double_fault_stack.as_ptr() as u64;
+            VirtAddr::new(stack_start + self.double_fault_stack.len() as u64)
+        };
+
+        self.tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX] = {
+            let stack_start = self.page_fault_stack.as_ptr() as u64;
+            VirtAddr::new(stack_start + self.page_fault_stack.len() as u64)
+        };
+
+        self.tss.interrupt_stack_table[TIMER_IST_INDEX] = {
+            let stack_start = self.timer_stack.as_ptr() as u64;
+            VirtAddr::new(stack_start + self.timer_stack.len() as u64)
         };
 
         let tss_ref = unsafe { &*addr_of!(self.tss) };

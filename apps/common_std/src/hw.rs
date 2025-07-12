@@ -73,6 +73,7 @@ impl PortRWType for u32 {
     }
 }
 
+#[derive(Debug)]
 pub struct Irq(u32);
 
 impl Irq {
@@ -82,9 +83,8 @@ impl Irq {
         Ok(Self(handle))
     }
 
-    pub fn wait(&self) -> RcResult<()> {
-        syscall!(22, self.0)?;
-        Ok(())
+    pub fn as_handle(&self) -> u32 {
+        self.0
     }
 }
 

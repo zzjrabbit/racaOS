@@ -6,7 +6,6 @@ use elf::{
     abi::{PF_R, PF_W, PF_X, PT_LOAD},
     endian::NativeEndian,
 };
-use spin::RwLock;
 use x86_64::{
     VirtAddr,
     structures::paging::{Page, Size4KiB},
@@ -14,28 +13,23 @@ use x86_64::{
 
 use super::{
     job::Job,
-    job_policy::{JobPolicy, PolicyAction, PolicyCondition},
+    job_policy::{PolicyAction, PolicyCondition},
     thread::Thread,
 };
 use crate::{
     error::{RcError, RcResult},
     mm::{MMUFlags, PhysicalMemory, VirtualMemory, VmMapping, page_count},
-    object::{Handle, HandleValue, KernelObject, KoID, Rights},
+    object::{Handle, HandleValue, KObjectBase, KernelObject, KoID, Rights, Signal},
 };
 
-const MAIN_THREAD_STACK_SIZE: usize = 256; // 1MB
-
-static PROCESSES: RwLock<Vec<Arc<Process>>> = RwLock::new(Vec::new());
+const MAIN_THREAD_STACK_SIZE: usize = 32 * 256; // 32MB
 
 crate::kernel_object! {
     pub struct Process {
-        inner: spin::Mutex<ProcessInner> = spin::Mutex::new(ProcessInner::new()),
-        job: Arc<Job> = Job::root(),
-        policy: JobPolicy = Default::default(),
-        virtual_memory: Arc<VirtualMemory> = VirtualMemory::new_root(),
+        inner: spin::Mutex<ProcessInner>,
+        job: Arc<Job>,
+        virtual_memory: Arc<VirtualMemory>,
     }
-
-    fn new() {}
 
     fn get_child(&self, id: crate::object::KoID) -> RcResult<Arc<dyn KernelObject>> {
         let inner = self.inner.lock();
@@ -50,15 +44,23 @@ crate::kernel_object! {
 }
 
 impl Process {
-    pub fn create(name: &str, binary: &'static [u8]) -> RcResult<Arc<Self>> {
-        let process = Self::new();
+    pub fn create(job: &Arc<Job>, name: &str, binary: &'static [u8]) -> RcResult<Arc<Self>> {
+        let process = Arc::new(Self {
+            base: KObjectBase::default(),
+            inner: spin::Mutex::new(ProcessInner::new()),
+            job: job.clone(),
+            virtual_memory: VirtualMemory::new_root(),
+        });
 
         let file = ProcessBinary::parse(binary);
         ProcessBinary::map_segments(&file, process.vmar());
 
         let stack = process.vmar().allocate_child(MAIN_THREAD_STACK_SIZE)?;
-        for count in 0..MAIN_THREAD_STACK_SIZE {
-            let stack_page = stack.create_child(Range::from(count..count + 1));
+
+        let last = page_count(stack.len());
+
+        for count in 0..last {
+            let stack_page = stack.create_child(Range::from(last - 1 - count..last - count));
             let stack_memory = PhysicalMemory::allocate(1)?;
             let mapping = Arc::new(VmMapping::new(
                 MMUFlags::READ | MMUFlags::WRITE | MMUFlags::USER,
@@ -68,10 +70,8 @@ impl Process {
             mapping.map()?;
         }
 
-        let stack_address = stack.as_ptr() as usize + 4096 * MAIN_THREAD_STACK_SIZE;
-
-        Thread::create(&process, name, file.ehdr.e_entry as usize, stack_address)?;
-        PROCESSES.write().push(process.clone());
+        Thread::create(&process, name, file.ehdr.e_entry as usize, stack)?;
+        job.add_process(process.clone())?;
 
         Ok(process)
     }
@@ -132,6 +132,20 @@ impl Process {
         Ok(object)
     }
 
+    pub fn get_object_with_rights_no_downgrade(
+        &self,
+        handle_value: HandleValue,
+        desired_rights: Rights,
+    ) -> RcResult<Arc<dyn KernelObject>> {
+        let handle = self.get_handle(handle_value)?;
+        // check type before rights
+        let object = handle.object;
+        if !handle.rights.contains(desired_rights) {
+            return Err(RcError::AccessDenied);
+        }
+        Ok(object)
+    }
+
     pub fn dup_handle_operating_rights(
         &self,
         handle_value: HandleValue,
@@ -147,35 +161,43 @@ impl Process {
         Ok(new_handle_value)
     }
 
-    /// Exit current process with `retcode`.
-    /// The process do not terminate immediately when exited.
-    /// It will terminate after all its child threads are terminated.
     pub fn exit(&self, retcode: i64) {
+        x86_64::instructions::interrupts::disable();
+    
+        self.kill();
+        self.inner.lock().status = Status::Exited(retcode);
+
+        x86_64::instructions::interrupts::enable();
+
+        unsafe {
+            core::arch::asm!("int 0x21");
+        }
+    }
+
+    pub fn kill(&self) {
+        self.set_signal(Signal::TASK_DEAD);
+        self.job.remove_process(self.base.id);
+
         let mut inner = self.inner.lock();
         if let Status::Exited(_) = inner.status {
             return;
         }
-        inner.status = Status::Exited(retcode);
+        inner.status = Status::Exited(i64::MIN);
         inner.handles.clear();
-    }
+        
+        let threads = inner.threads.clone();
+        drop(inner);
 
-    /// The process finally terminates.
-    fn terminate(&self) {
-        let mut inner = self.inner.lock();
-        let _retcode = match inner.status {
-            Status::Exited(retcode) => retcode,
-            _ => {
-                inner.status = Status::Exited(0);
-                0
-            }
-        };
-        self.job.remove_process(self.base.id);
+        for thread in &threads {
+            thread.kill();
+        }
     }
 
     /// Check whether `condition` is allowed in the parent job's policy.
     pub fn check_policy(&self, condition: PolicyCondition) -> RcResult<()> {
         match self
-            .policy
+            .job
+            .policy()
             .get_action(condition)
             .unwrap_or(PolicyAction::Allow)
         {
@@ -218,7 +240,7 @@ impl Process {
         inner.threads.retain(|t| t.id() != tid);
         if inner.threads.is_empty() {
             drop(inner);
-            self.terminate();
+            self.kill();
         }
     }
 
@@ -229,10 +251,12 @@ impl Process {
 
     /// Get information of this process.
     pub fn get_info(&self) -> ProcessInfo {
+        let inner = self.inner.lock();
+
         let mut info = ProcessInfo {
             ..Default::default()
         };
-        match self.inner.lock().status {
+        match inner.status {
             Status::Init => {
                 info.started = false;
                 info.has_exited = false;
@@ -248,6 +272,12 @@ impl Process {
             }
         }
         info
+    }
+}
+
+impl Drop for Process {
+    fn drop(&mut self) {
+        log::info!("no!!!!!!!!!!");
     }
 }
 
@@ -320,7 +350,6 @@ struct ProcessBinary;
 
 impl ProcessBinary {
     fn parse(bin: &'static [u8]) -> ElfBytes<'static, NativeEndian> {
-        //File::parse(bin).expect("Failed to parse ELF binary!")
         ElfBytes::<NativeEndian>::minimal_parse(bin).expect("Failed to parse ELF binary!")
     }
 
