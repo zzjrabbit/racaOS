@@ -2,7 +2,7 @@
 
 use alloc::vec::Vec;
 use common_std::ipc::{Channel, MessagePacket};
-use common_std::signal::{wait_for_signal, Signal};
+use common_std::signal::{Signal, wait_for_signal};
 pub use common_std::*;
 use spin::Mutex;
 

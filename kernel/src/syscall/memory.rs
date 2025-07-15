@@ -11,10 +11,15 @@ use crate::{
 
 use super::current_process;
 
-pub fn allocate_child(father: HandleValue, handle_ptr: usize, page_count: usize) -> RcResult<usize> {
+pub fn allocate_child(
+    father: HandleValue,
+    handle_ptr: usize,
+    page_count: usize,
+) -> RcResult<usize> {
     let current_process = current_process();
 
-    let father = current_process.get_object_with_rights::<VirtualMemory>(father, Rights::GET_INFO)?;
+    let father =
+        current_process.get_object_with_rights::<VirtualMemory>(father, Rights::GET_INFO)?;
     let virtual_memory = father.allocate_child(page_count)?;
     let handle =
         current_process.add_handle(Handle::new(virtual_memory, Rights::DEFAULT_VIRTUAL_MEMORY));

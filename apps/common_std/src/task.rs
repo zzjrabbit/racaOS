@@ -1,7 +1,11 @@
 use alloc::vec::Vec;
 
 use crate::{
-    ipc::{Channel, MessagePacket}, memory::{MMUFlags, PhysicalMemory, VirtualMemory}, signal::{wait_for_signal, Signal}, syscall, RcResult
+    RcResult,
+    ipc::{Channel, MessagePacket},
+    memory::{MMUFlags, PhysicalMemory, VirtualMemory},
+    signal::{Signal, wait_for_signal},
+    syscall,
 };
 
 /// Information of a process.
@@ -152,8 +156,10 @@ impl Thread {
         const STACK_SIZE: usize = 8 * 1024 * 1024;
         let page_count = STACK_SIZE / 4096;
 
-        let stack = VirtualMemory::root_virtual_memory().unwrap().allocate_child(page_count)?;
-        
+        let stack = VirtualMemory::root_virtual_memory()
+            .unwrap()
+            .allocate_child(page_count)?;
+
         for id in 0..page_count {
             let child = stack.create_child(id, 1).unwrap();
             let pm = PhysicalMemory::create(1).unwrap();

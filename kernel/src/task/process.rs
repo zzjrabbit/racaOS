@@ -163,7 +163,7 @@ impl Process {
 
     pub fn exit(&self, retcode: i64) {
         x86_64::instructions::interrupts::disable();
-    
+
         self.kill();
         self.inner.lock().status = Status::Exited(retcode);
 
@@ -184,7 +184,7 @@ impl Process {
         }
         inner.status = Status::Exited(i64::MIN);
         inner.handles.clear();
-        
+
         let threads = inner.threads.clone();
         drop(inner);
 

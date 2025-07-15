@@ -8,6 +8,8 @@ acpi = "5.2.0"
 aml = "0.16.4"
 bit_field = { version = "0.10.2", default-features = false }
 bitflags = { version = "2.9.0", default-features = false }
+crossbeam-epoch = { version = "0.9.18", default-features = false, features = ["alloc"] }
+crossbeam-skiplist = { version = "0.1.3", default-features = false, features = ["alloc"] }
 downcast-rs = { version = "2.0.1", default-features = false, features = [
     "sync",
 ] }

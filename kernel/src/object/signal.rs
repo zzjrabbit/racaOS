@@ -8,7 +8,7 @@ bitflags::bitflags! {
         const PEER_CLOSED = 1 << 2;
 
         const TASK_DEAD = 1 << 3;
-        
+
         const USER_SIGNAL0 = 1 << 24;
         const USER_SIGNAL1 = 1 << 25;
         const USER_SIGNAL2 = 1 << 26;

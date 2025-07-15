@@ -1,3 +1,5 @@
+use core::cmp::Ordering;
+
 use alloc::{
     boxed::Box,
     sync::{Arc, Weak},
@@ -6,7 +8,10 @@ use spin::Mutex;
 
 use crate::{
     error::RcResult,
-    hal::{driver::apic::LAPIC, int::IntFrame},
+    hal::{
+        driver::{apic::LAPIC, hpet::HPET},
+        int::IntFrame,
+    },
     mm::VirtualMemory,
     object::{KObjectBase, KernelObject, Signal},
 };
@@ -29,6 +34,8 @@ crate::kernel_object! {
 pub struct ThreadInner {
     context: IntFrame,
     state: ThreadState,
+    nice: usize,
+    virtual_deadline: u128,
 }
 
 impl ThreadInner {
@@ -36,9 +43,24 @@ impl ThreadInner {
         Self {
             context: IntFrame::default(),
             state: ThreadState::Ready,
+            nice: 0,
+            virtual_deadline: HPET.elapsed().as_nanos() + PRIO_RATIOS[0] * 6 * ((1 << 20) / 128),
         }
     }
 }
+
+static PRIO_RATIOS: [u128; 40] = {
+    let mut prio_ratios = [0u128; 40];
+
+    prio_ratios[0] = 128;
+    let mut index = 1;
+    while index < 40 {
+        prio_ratios[index] = prio_ratios[index - 1] * 11 / 10;
+        index += 1;
+    }
+
+    prio_ratios
+};
 
 impl Thread {
     /// Create a new thread.
@@ -93,10 +115,28 @@ impl Thread {
     pub fn state(&self) -> ThreadState {
         self.inner.lock().state
     }
+
+    pub fn set_nice(&self, nice: usize) {
+        self.inner.lock().nice = nice;
+        self.update_virtual_deadline();
+    }
+
+    pub fn nice(&self) -> usize {
+        self.inner.lock().nice
+    }
+
+    pub fn update_virtual_deadline(&self) {
+        self.inner.lock().virtual_deadline =
+            HPET.elapsed().as_nanos() + PRIO_RATIOS[self.nice()] * 6 * ((1 << 20) / 128);
+    }
+
+    pub fn virtual_deadline(&self) -> u128 {
+        self.inner.lock().virtual_deadline
+    }
 }
 
 impl Thread {
-    pub fn exit(&self) { 
+    pub fn exit(&self) {
         self.set_signal(Signal::TASK_DEAD);
         self.set_state(ThreadState::Dead);
         SCHEDULER.remove_thread(self.id());
@@ -130,6 +170,34 @@ impl Thread {
 
     pub fn stack(&self) -> Arc<VirtualMemory> {
         self.stack.clone()
+    }
+}
+
+impl PartialEq for Thread {
+    fn eq(&self, other: &Self) -> bool {
+        self.virtual_deadline().eq(&other.virtual_deadline())
+    }
+}
+
+impl Eq for Thread {}
+
+impl PartialOrd for Thread {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.virtual_deadline()
+            .partial_cmp(&other.virtual_deadline())
+            .and_then(|cmp| {
+                Some(match cmp {
+                    Ordering::Less => Ordering::Greater,
+                    Ordering::Equal => Ordering::Equal,
+                    Ordering::Greater => Ordering::Less,
+                })
+            })
+    }
+}
+
+impl Ord for Thread {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 

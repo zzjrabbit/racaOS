@@ -1,7 +1,10 @@
 #![no_std]
 #![no_main]
 
-use std::{print, println, signal::{wait_for_signal, Signal}};
+use std::{
+    print, println,
+    signal::{Signal, wait_for_signal},
+};
 
 use alloc::{string::String, vec::Vec};
 use parser::Command;
