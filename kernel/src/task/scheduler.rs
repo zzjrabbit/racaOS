@@ -10,7 +10,7 @@ use spin::{Mutex, MutexGuard, RwLock};
 use x86_64::VirtAddr;
 
 use crate::{
-    hal::{driver::apic::LAPIC, int::IntFrame, smp::CPUS}, object::{Handle, KernelObject, KoID, Rights}, print, println, task::job::ROOT_JOB
+    hal::{driver::apic::LAPIC, int::IntFrame, smp::CPUS}, object::{Handle, KernelObject, KoID, Rights}, task::job::ROOT_JOB
 };
 
 use super::{
@@ -179,13 +179,9 @@ impl Scheduler {
 
         let mut next_thread = None;
         let mut queue_guard = None;
-        let mut count = 0;
         while let None = next_thread {
             (next_thread, queue_guard) = get_next_thread();
-            count += 1;
         }
-
-        print!("[{}]", count);
 
         let next_thread = next_thread.unwrap();
         let mut queue = queue_guard.unwrap();

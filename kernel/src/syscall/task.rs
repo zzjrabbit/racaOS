@@ -173,3 +173,18 @@ pub fn kill_thread(handle: HandleValue) -> RcResult<usize> {
 
     Ok(0)
 }
+
+pub fn increase_nice(increasement: usize) -> RcResult<usize> {
+    let current_thread = SCHEDULER.current_thread().upgrade().unwrap();
+
+    let new_nice = current_thread.nice() + increasement;
+    if new_nice >= 40 {
+        return Err(RcError::InvalidArguments);
+    }
+
+    current_thread.set_nice(new_nice);
+
+    Ok(0)
+}
+
+

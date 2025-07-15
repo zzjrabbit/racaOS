@@ -3,8 +3,10 @@
 
 #[unsafe(no_mangle)]
 pub extern "sysv64" fn _start() {
-    common_std::dummy();
-    loop {}
+    common_std::task::increase_nice(39);
+    loop {
+        common_std::debug::debug(".").unwrap();
+    }
 }
 
 #[panic_handler]

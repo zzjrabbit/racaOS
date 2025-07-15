@@ -200,3 +200,8 @@ pub fn thread_exit() -> ! {
     syscall!(32).unwrap();
     loop {}
 }
+
+pub fn increase_nice(increasement: usize) -> RcResult<()> {
+    syscall!(36, increasement)?;
+    Ok(())
+}
