@@ -31,7 +31,7 @@ pub fn init() {
     
     let (width,fb) = fb();
     
-    let color = 0xff - *BSP_LAPIC_ID as u8 * 30;
+    let color = 0xff - *BSP_LAPIC_ID as u8 * 6;
     let start_line = *BSP_LAPIC_ID as usize * 10;
     let start_pixel = start_line * width;
     for i in 0..5 * width {
@@ -63,7 +63,7 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     
     let (width,fb) = fb();
     
-    let color = 0xff - smp_info.lapic_id as u8 * 30;
+    let color = 0xff - smp_info.lapic_id as u8 * 6;
     let start_line = smp_info.lapic_id as usize * 10;
     let start_pixel = start_line * width;
     for i in 0..5 * width {
