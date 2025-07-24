@@ -1,0 +1,21 @@
+[workspace]
+resolver = "2"
+members = ["aegis", "aegis_macro", "builder", "kernel"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+# lto = "thin"
+# panic = "unwind"
+
+# [profile.release-lto]
+# inherits = "release"
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[workspace.dependencies]
+aegis = { path = "aegis" }
+aegis_macro = { path = "aegis_macro" }
+

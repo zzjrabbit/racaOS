@@ -1,0 +1,9 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+aegis = { workspace = true }
+log = "0.4.27"
+
