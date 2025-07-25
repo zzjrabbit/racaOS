@@ -3,7 +3,7 @@
 
 extern crate alloc;
 
-pub use aegis_macro::{main, panic_handler};
+pub use zodiac_macro::{main, panic_handler};
 pub use error::*;
 
 mod boot;

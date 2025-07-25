@@ -15,7 +15,7 @@ use crate::mem::{
     VirtualAddress, convert_physical_to_virtual,
     convert_virtual_to_physical,
 };
-use crate::{AegisError, MapError, UnmapError, UpdateError, QueryError};
+use crate::{ZodiacError, MapError, UnmapError, UpdateError, QueryError};
 
 static KERNEL_PAGE_TABLE: Lazy<Arc<RwLock<dyn GeneralPageTable>>> =
     Lazy::new(|| current_page_table());
@@ -178,7 +178,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
         page: crate::mem::Page,
         paddr: PhysicalAddress,
         flags: crate::mem::MMUFlags,
-    ) -> Result<(), AegisError> {
+    ) -> Result<(), ZodiacError> {
         let vaddr = VirtAddr::new(page.vaddr as u64);
         let paddr = PhysAddr::new(paddr as u64);
 
@@ -209,7 +209,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
     fn unmap(
         &mut self,
         vaddr: VirtualAddress,
-    ) -> Result<(PhysicalAddress, crate::mem::PageSize), AegisError> {
+    ) -> Result<(PhysicalAddress, crate::mem::PageSize), ZodiacError> {
         use x86_64::structures::paging::Mapper;
         match self.translate(VirtAddr::new(vaddr as u64)) {
             TranslateResult::Mapped { frame, .. } => {
@@ -250,7 +250,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
     fn query(
         &mut self,
         vaddr: VirtualAddress,
-    ) -> Result<(PhysicalAddress, MMUFlags, crate::mem::PageSize), AegisError> {
+    ) -> Result<(PhysicalAddress, MMUFlags, crate::mem::PageSize), ZodiacError> {
         match self.translate(VirtAddr::new(vaddr as u64)) {
             TranslateResult::Mapped {
                 frame,
@@ -278,7 +278,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
         &mut self,
         vaddr: VirtualAddress,
         flags: MMUFlags,
-    ) -> Result<crate::mem::PageSize, AegisError> {
+    ) -> Result<crate::mem::PageSize, ZodiacError> {
         let Ok((_, _, page_size)) = self.query(vaddr) else {
             return Err(UpdateError::NotMappedYet.into());
         };

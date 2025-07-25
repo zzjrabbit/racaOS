@@ -1,7 +1,7 @@
 use limine::{mp::Cpu, request::FramebufferRequest};
 use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
-use crate::{hal::smp::{BSP_LAPIC_ID, CPUS}, mem::{convert_physical_to_virtual, PhysicalAddress}};
+use crate::hal::smp::{BSP_LAPIC_ID, CPUS};
 
 pub mod device;
 pub mod mem;
@@ -31,10 +31,10 @@ pub fn init() {
     
     let (width,fb) = fb();
     
-    let color = 0xff - *BSP_LAPIC_ID as u8 * 6;
-    let start_line = *BSP_LAPIC_ID as usize * 10;
+    let color = 0xff - *BSP_LAPIC_ID as u8;
+    let start_line = *BSP_LAPIC_ID as usize * 6;
     let start_pixel = start_line * width;
-    for i in 0..5 * width {
+    for i in 0..3 * width {
         let pos = (start_pixel + i) * 4;
         fb[pos + 0] = color;
         fb[pos + 1] = color;
@@ -61,20 +61,32 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     
     init_sse();
     
+    log::debug!("Application Processor {} started", smp_info.id);
+    
+    use crate::mem::{VirtualMemory, PhysicalMemory, PageSize, MMUFlags};
+    
+    let root = VirtualMemory::kernel();
+    let child = root.allocate(None, 8192, 4096).unwrap();
+    let phys_mem = PhysicalMemory::new(2, PageSize::Size4K, false);
+    child.map(0, phys_mem, MMUFlags::READ | MMUFlags::WRITE).unwrap();
+    
+    let buffer = unsafe{core::slice::from_raw_parts_mut(child.start_address() as *mut u8, 8192)};
+    buffer.fill(0);
+    
+    log::info!("test of core{} done", smp_info.lapic_id);
+    
     let (width,fb) = fb();
     
-    let color = 0xff - smp_info.lapic_id as u8 * 6;
-    let start_line = smp_info.lapic_id as usize * 10;
+    let color = 0xff - smp_info.lapic_id as u8;
+    let start_line = smp_info.lapic_id as usize * 6;
     let start_pixel = start_line * width;
-    for i in 0..5 * width {
+    for i in 0..3 * width {
         let pos = (start_pixel + i) * 4;
         fb[pos + 0] = color;
         fb[pos + 1] = color;
         fb[pos + 2] = color;
         fb[pos + 3] = color;
     }
-    
-    log::debug!("Application Processor {} started", smp_info.id);
     
     loop {
         x86_64::instructions::hlt();

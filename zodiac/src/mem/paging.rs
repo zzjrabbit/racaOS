@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use bitflags::bitflags;
 use spin::RwLock;
 
-use crate::{mem::{PhysicalAddress, VirtualAddress}, AegisError, UnmapError};
+use crate::{mem::{PhysicalAddress, VirtualAddress}, ZodiacError, UnmapError};
 
 #[repr(usize)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -37,6 +37,10 @@ impl PageSize {
 
     pub const fn align_down(self, addr: usize) -> usize {
         addr & !(self as usize - 1)
+    }
+    
+    pub const fn align_up(self, addr: usize) -> usize {
+        self.align_down(addr + self as usize - 1)
     }
 
     pub const fn page_offset(self, addr: usize) -> usize {
@@ -73,13 +77,13 @@ bitflags! {
 
 pub trait GeneralPageTable: Sync + Send {
     fn physical_address(&self) -> PhysicalAddress;
-    fn map(&mut self, page: Page, paddr: PhysicalAddress, flags: MMUFlags) -> Result<(), AegisError>;
-    fn unmap(&mut self, vaddr: VirtualAddress) -> Result<(PhysicalAddress, PageSize), AegisError>;
-    fn update(&mut self, vaddr: VirtualAddress, flags: MMUFlags) -> Result<PageSize, AegisError>;
+    fn map(&mut self, page: Page, paddr: PhysicalAddress, flags: MMUFlags) -> Result<(), ZodiacError>;
+    fn unmap(&mut self, vaddr: VirtualAddress) -> Result<(PhysicalAddress, PageSize), ZodiacError>;
+    fn update(&mut self, vaddr: VirtualAddress, flags: MMUFlags) -> Result<PageSize, ZodiacError>;
     fn query(
         &mut self,
         vaddr: VirtualAddress,
-    ) -> Result<(PhysicalAddress, MMUFlags, PageSize), AegisError>;
+    ) -> Result<(PhysicalAddress, MMUFlags, PageSize), ZodiacError>;
     fn deep_copy(&self) -> Arc<RwLock<dyn GeneralPageTable>>;
 
     /// Note that start_vaddr and size must be aligned by page size
@@ -89,7 +93,7 @@ pub trait GeneralPageTable: Sync + Send {
         size: usize,
         start_paddr: PhysicalAddress,
         flags: MMUFlags,
-    ) -> Result<(), AegisError> {
+    ) -> Result<(), ZodiacError> {
         let mut vaddr = start_vaddr;
         let mut paddr = start_paddr;
         let end_vaddr = vaddr + size;
@@ -127,7 +131,7 @@ pub trait GeneralPageTable: Sync + Send {
     }
 
     /// Note that start_vaddr and size must be aligned by page size.
-    fn unmap_cont(&mut self, start_vaddr: VirtualAddress, size: usize) -> Result<(), AegisError> {
+    fn unmap_cont(&mut self, start_vaddr: VirtualAddress, size: usize) -> Result<(), ZodiacError> {
         let mut vaddr = start_vaddr;
         let end_vaddr = vaddr + size;
         while vaddr < end_vaddr {
@@ -136,7 +140,7 @@ pub trait GeneralPageTable: Sync + Send {
                     assert!(s.is_aligned(vaddr));
                     s as usize
                 }
-                Err(AegisError::FailedToUnmap(UnmapError::NotMappedYet)) => PageSize::Size4K as usize,
+                Err(ZodiacError::FailedToUnmap(UnmapError::NotMappedYet)) => PageSize::Size4K as usize,
                 Err(e) => return Err(e),
             };
             vaddr += page_size;

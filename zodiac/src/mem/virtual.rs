@@ -1,8 +1,11 @@
 use alloc::{sync::Arc, vec::Vec};
-use spin::{Lazy, RwLock};
+use limine::request::{ExecutableAddressRequest, ExecutableFileRequest};
+use spin::{Lazy, Mutex, RwLock};
 
 use crate::{
-    hal::mem::*, mem::{GeneralPageTable, MMUFlags, Page, PhysicalMemory, VirtualAddress}, AegisError, MapError, UnmapError, UpdateError
+    MapError, UnmapError, UpdateError, ZodiacError,
+    hal::mem::*,
+    mem::{GeneralPageTable, MMUFlags, Page, PhysicalMemory, VirtualAddress},
 };
 
 pub struct VirtualMemory {
@@ -11,6 +14,7 @@ pub struct VirtualMemory {
     inner: RwLock<VirtualMemoryInner>,
     page_table: Arc<RwLock<dyn GeneralPageTable>>,
     father: Option<Arc<VirtualMemory>>,
+    allocation_lock: Mutex<()>,
 }
 
 struct VirtualMemoryInner {
@@ -18,7 +22,31 @@ struct VirtualMemoryInner {
     mappings: Vec<Arc<VmMapping>>,
 }
 
-static KERNEL_VM: Lazy<Arc<VirtualMemory>> = Lazy::new(VirtualMemory::new_kernel);
+#[used]
+#[unsafe(link_section = ".requests")]
+static EXECUTABLE_FILE_REQUEST: ExecutableFileRequest = ExecutableFileRequest::new();
+
+#[used]
+#[unsafe(link_section = ".requests")]
+static EXECUTABLE_ADDRESS_REQUEST: ExecutableAddressRequest = ExecutableAddressRequest::new();
+
+static KERNEL_VM: Lazy<Arc<VirtualMemory>> = Lazy::new(|| {
+    let vm = VirtualMemory::new_kernel();
+
+    let kernel_size = EXECUTABLE_FILE_REQUEST
+        .get_response()
+        .unwrap()
+        .file()
+        .size() as usize;
+    let kernel_address = EXECUTABLE_ADDRESS_REQUEST
+        .get_response()
+        .unwrap()
+        .virtual_base() as VirtualAddress;
+
+    let _kernel_vm = vm.allocate(Some(kernel_address - vm.start_address), kernel_size, 1);
+
+    vm
+});
 
 impl VirtualMemory {
     pub(crate) fn new_kernel() -> Arc<Self> {
@@ -31,6 +59,7 @@ impl VirtualMemory {
             }),
             page_table: kernel_page_table(),
             father: None,
+            allocation_lock: Mutex::new(()),
         })
     }
 
@@ -44,9 +73,10 @@ impl VirtualMemory {
             }),
             page_table: kernel_page_table().read().deep_copy(),
             father: None,
+            allocation_lock: Mutex::new(()),
         })
     }
-    
+
     pub fn kernel() -> Arc<Self> {
         KERNEL_VM.clone()
     }
@@ -64,7 +94,9 @@ impl VirtualMemory {
         offset: Option<usize>,
         len: usize,
         align: usize,
-    ) -> Result<Arc<Self>, AegisError> {
+    ) -> Result<Arc<Self>, ZodiacError> {
+        let _allocation_guard = self.allocation_lock.lock();
+        
         let offset = self.determine_offset(offset, len, align)?;
         let child = Arc::new(Self {
             start_address: self.start_address + offset,
@@ -75,6 +107,7 @@ impl VirtualMemory {
             }),
             page_table: self.page_table.clone(),
             father: Some(self.clone()),
+            allocation_lock: Mutex::new(()),
         });
         self.inner.write().children.push(child.clone());
         Ok(child)
@@ -85,21 +118,21 @@ impl VirtualMemory {
         offset: Option<usize>,
         len: usize,
         align: usize,
-    ) -> Result<usize, AegisError> {
+    ) -> Result<usize, ZodiacError> {
         if len % align != 0 {
-            Err(AegisError::InvalidArguments)
+            Err(ZodiacError::InvalidArguments)
         } else if let Some(offset) = offset {
             if (offset + self.start_address) % align == 0 && self.test_map(offset, len, align) {
                 Ok(offset)
             } else {
-                Err(AegisError::InvalidArguments)
+                Err(ZodiacError::InvalidArguments)
             }
         } else if len > self.len {
-            Err(AegisError::InvalidArguments)
+            Err(ZodiacError::InvalidArguments)
         } else {
             match self.find_free_area(0, len, align) {
                 Some(offset) => Ok(offset),
-                None => Err(AegisError::NoMemory),
+                None => Err(ZodiacError::NoMemory),
             }
         }
     }
@@ -114,19 +147,16 @@ impl VirtualMemory {
         if end > self.start_address + self.len {
             return false;
         }
-        if self
-            .inner
-            .read()
-            .children
+        
+        let inner = self.inner.read();
+        
+        if inner.children
             .iter()
             .any(|vm| vm.overlap(start, end))
         {
             return false;
         }
-        if self
-            .inner
-            .read()
-            .mappings
+        if inner.mappings
             .iter()
             .any(|map| map.overlap(start, end))
         {
@@ -136,17 +166,16 @@ impl VirtualMemory {
     }
 
     fn find_free_area(&self, offset_hint: usize, len: usize, align: usize) -> Option<usize> {
+        let inner = self.inner.read();
         core::iter::once(offset_hint)
             .chain(
-                self.inner
-                    .read()
+                inner
                     .children
                     .iter()
                     .map(|child| child.end_address() - self.start_address),
             )
             .chain(
-                self.inner
-                    .read()
+                inner
                     .mappings
                     .iter()
                     .map(|mapping| mapping.end_address() - self.start_address),
@@ -165,8 +194,12 @@ impl VirtualMemory {
         if (self.start_address + offset) % physical_memory.page_size() as usize != 0 {
             return Err(MapError::VirtualAddressNotAligned);
         }
-        
-        if !self.test_map(offset, physical_memory.count() * physical_memory.page_size() as usize, physical_memory.page_size() as usize) {
+
+        if !self.test_map(
+            offset,
+            physical_memory.count() * physical_memory.page_size() as usize,
+            physical_memory.page_size() as usize,
+        ) {
             return Err(MapError::PageAlreadyMapped.into());
         }
 
@@ -181,66 +214,92 @@ impl VirtualMemory {
 
         Ok(())
     }
-    
-    pub fn unmap(&self, offset: usize, len: usize) -> Result<(), AegisError> {
+
+    pub fn unmap(&self, offset: usize, len: usize) -> Result<(), ZodiacError> {
         if offset + len > self.len {
-            return Err(AegisError::OutOfBounds);
+            return Err(ZodiacError::OutOfBounds);
         }
-        
+
         let start = self.start_address + offset;
         let end = start + len;
-        
-        if let Some(mapping) = self.inner.read().mappings.iter().find(|map| map.overlap(start, end)) {
-            mapping.unmap()?;
-        } else if let Some(child) = self.inner.read().children.iter().find(|ch| ch.overlap(start, end)) {
+
+        if let Some(mapping) = self
+            .inner
+            .read()
+            .mappings
+            .iter()
+            .find(|map| map.overlap(start, end))
+        {
+            mapping.unmap(self.start_address + offset, len)?;
+        } else if let Some(child) = self
+            .inner
+            .read()
+            .children
+            .iter()
+            .find(|ch| ch.overlap(start, end))
+        {
             return child.unmap(offset, len);
         } else {
             return Err(UnmapError::NotMappedYet.into());
         }
-        
-        self.inner.write().mappings.retain(|map| !map.overlap(start, end));
-        
+
+        self.inner
+            .write()
+            .mappings
+            .retain(|map| !map.overlap(start, end));
+
         Ok(())
     }
-    
-    pub fn protect(&self, offset: usize, len: usize, flags: MMUFlags) -> Result<(), AegisError> {
+
+    pub fn protect(&self, offset: usize, len: usize, flags: MMUFlags) -> Result<(), ZodiacError> {
         if offset + len > self.len {
-            return Err(AegisError::OutOfBounds);
+            return Err(ZodiacError::OutOfBounds);
         }
-        
+
         let start = self.start_address + offset;
         let end = start + len;
-        
-        if let Some(mapping) = self.inner.read().mappings.iter().find(|map| map.overlap(start, end)) {
-            mapping.protect(flags)?;
-        } else if let Some(child) = self.inner.read().children.iter().find(|ch| ch.overlap(start, end)) {
+
+        if let Some(mapping) = self
+            .inner
+            .read()
+            .mappings
+            .iter()
+            .find(|map| map.overlap(start, end))
+        {
+            mapping.protect(self.start_address + offset, len, flags)?;
+        } else if let Some(child) = self
+            .inner
+            .read()
+            .children
+            .iter()
+            .find(|ch| ch.overlap(start, end))
+        {
             return child.protect(offset, len, flags);
         } else {
             return Err(UpdateError::NotMappedYet.into());
         }
-        
-        self.inner.write().mappings.retain(|map| !map.overlap(start, end));
-        
+
+        self.inner
+            .write()
+            .mappings
+            .retain(|map| !map.overlap(start, end));
+
         Ok(())
     }
 
-    pub fn handle_page_fault(
-        &self,
-        vaddr: VirtualAddress,
-        flags: MMUFlags,
-    ) -> Result<(), AegisError> {
+    pub fn handle_page_fault(&self, vaddr: VirtualAddress) -> Result<(), ZodiacError> {
         if !self.contains(vaddr) {
-            return Err(AegisError::NotFound);
+            return Err(ZodiacError::NotFound);
         }
 
         let inner = self.inner.read();
         if let Some(child) = inner.children.iter().find(|ch| ch.contains(vaddr)) {
-            return child.handle_page_fault(vaddr, flags);
+            return child.handle_page_fault(vaddr);
         }
         if let Some(mapping) = inner.mappings.iter().find(|map| map.contains(vaddr)) {
-            return mapping.handle_page_fault(vaddr, flags);
+            return mapping.handle_page_fault(vaddr);
         }
-        Err(AegisError::NotFound)
+        Err(ZodiacError::NotFound)
     }
 }
 
@@ -256,6 +315,10 @@ impl VirtualMemory {
     pub fn contains(&self, vaddr: VirtualAddress) -> bool {
         self.start_address <= vaddr && vaddr < self.end_address()
     }
+
+    pub fn start_address(&self) -> VirtualAddress {
+        self.start_address
+    }
 }
 
 struct VmMapping {
@@ -268,7 +331,6 @@ struct VmMapping {
 
 struct VmMappingInner {
     flags: MMUFlags,
-    mapped: bool,
 }
 
 impl VmMapping {
@@ -284,21 +346,24 @@ impl VmMapping {
             size,
             physical_memory,
             page_table,
-            inner: RwLock::new(VmMappingInner { flags, mapped: false }),
+            inner: RwLock::new(VmMappingInner { flags }),
         })
     }
 }
 
 impl VmMapping {
-    fn mapped(&self) -> bool {
-        self.inner.read().mapped
-    }
-    
-    fn map(self: &Arc<Self>) -> Result<(), AegisError> {
-        if self.mapped() {
-            return Ok(());
+    fn map(self: &Arc<Self>, vaddr: VirtualAddress, size: usize) -> Result<(), ZodiacError> {
+        if vaddr < self.start_address || vaddr + size > self.start_address + self.size {
+            return Err(ZodiacError::OutOfBounds);
         }
-        
+
+        let page_size = self.physical_memory.page_size();
+
+        let vaddr = page_size.align_down(vaddr);
+        let size = page_size.align_up(size);
+        let page_count = size / page_size as usize;
+        let start_id = (vaddr - self.start_address) / page_size as usize;
+
         if self.physical_memory.contiguous() {
             self.page_table.write().map_cont(
                 self.start_address,
@@ -306,56 +371,69 @@ impl VmMapping {
                 self.physical_memory.get_start_address_of_frame(0)?,
                 self.inner.read().flags,
             )?;
-            self.inner.write().mapped = true;
         } else {
-            let page_size = self.physical_memory.page_size();
-            for index in 0..self.physical_memory.count() {
+            for index in 0..page_count {
                 self.page_table.write().map(
-                    Page::new_aligned(self.start_address + page_size as usize * index, page_size),
-                    self.physical_memory.get_start_address_of_frame(index)?,
+                    Page::new_aligned(vaddr + page_size as usize * index, page_size),
+                    self.physical_memory
+                        .get_start_address_of_frame(start_id + index)?,
                     self.inner.read().flags,
                 )?;
             }
-            self.inner.write().mapped = true;
         }
-        
+
         Ok(())
     }
-    
-    fn unmap(self: &Arc<Self>) -> Result<(), AegisError> {
-        if !self.mapped() {
-            return Ok(());
+
+    fn unmap(self: &Arc<Self>, vaddr: VirtualAddress, size: usize) -> Result<(), ZodiacError> {
+        if vaddr < self.start_address || vaddr + size > self.start_address + self.size {
+            return Err(ZodiacError::OutOfBounds);
         }
-        
-        if self.physical_memory.contiguous() {
-            self.page_table.write().unmap_cont(
-                self.start_address,
-                self.size,
-            )?;
-        } else {
-            let page_size = self.physical_memory.page_size();
-            for index in 0..self.physical_memory.count() {
-                self.page_table.write().unmap(
-                    self.start_address + page_size as usize * index,
-                )?;
-            }
+
+        let page_size = self.physical_memory.page_size();
+
+        let vaddr = page_size.align_down(vaddr);
+        let size = page_size.align_up(size);
+        let page_count = size / page_size as usize;
+
+        for index in 0..page_count {
+            self.page_table
+                .write()
+                .unmap(vaddr + page_size as usize * index)?;
         }
-        self.inner.write().mapped = false;
+
         Ok(())
     }
-    
-    fn protect(&self, flags: MMUFlags) -> Result<(), AegisError> {
-        for index in 0..self.physical_memory.count() {
-            let address = self.start_address + index * self.physical_memory.page_size() as usize;
-            self.page_table.write().update(address, flags)?;
+
+    fn protect(
+        &self,
+        vaddr: VirtualAddress,
+        size: usize,
+        flags: MMUFlags,
+    ) -> Result<(), ZodiacError> {
+        if vaddr < self.start_address || vaddr + size > self.start_address + self.size {
+            return Err(ZodiacError::OutOfBounds);
         }
+
+        let page_size = self.physical_memory.page_size();
+
+        let vaddr = page_size.align_down(vaddr);
+        let size = page_size.align_up(size);
+        let page_count = size / page_size as usize;
+
+        for index in 0..page_count {
+            self.page_table
+                .write()
+                .update(vaddr + page_size as usize * index, flags)?;
+        }
+
         Ok(())
     }
 }
 
 impl VmMapping {
-    fn handle_page_fault(self: &Arc<Self>, _vaddr: VirtualAddress, _flags: MMUFlags) -> Result<(), AegisError> {
-        self.map()
+    fn handle_page_fault(self: &Arc<Self>, vaddr: VirtualAddress) -> Result<(), ZodiacError> {
+        self.map(vaddr, self.physical_memory.page_size() as usize)
     }
 }
 

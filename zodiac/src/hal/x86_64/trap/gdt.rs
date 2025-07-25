@@ -1,5 +1,6 @@
 use core::ptr::addr_of;
 
+use alloc::boxed::Box;
 use spin::Lazy;
 use x86_64::VirtAddr;
 use x86_64::instructions::segmentation::{CS, SS, Segment};
@@ -10,13 +11,13 @@ use x86_64::structures::tss::TaskStateSegment;
 
 pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
 pub const PAGE_FAULT_IST_INDEX: usize = 1;
-pub const FAULT_STACK_SIZE: usize = 2 * 1024;
+pub const FAULT_STACK_SIZE: usize = 4 * 1024;
 
 pub struct CpuInfo {
     gdt: GlobalDescriptorTable,
     tss: TaskStateSegment,
     selectors: Option<Selectors>,
-    fault_stack: [u8; FAULT_STACK_SIZE],
+    fault_stack: &'static mut [u8],
 }
 
 impl Default for CpuInfo {
@@ -25,7 +26,7 @@ impl Default for CpuInfo {
             gdt: GlobalDescriptorTable::new(),
             tss: TaskStateSegment::new(),
             selectors: None,
-            fault_stack: [0; FAULT_STACK_SIZE],
+            fault_stack: Box::leak(Box::new([0; FAULT_STACK_SIZE])),
         }
     }
 }

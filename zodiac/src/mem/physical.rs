@@ -1,8 +1,8 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{collections::BTreeMap, sync::Arc};
 use spin::RwLock;
 
 use crate::{
-    AegisError,
+    ZodiacError,
     PhyscialMemoryError,
     hal::mem::align_down_by_page_size,
     mem::{FRAME_ALLOCATOR, PageSize, PhysicalAddress},
@@ -16,9 +16,8 @@ pub struct PhysicalMemory {
 }
 
 struct PhysicalMemoryInner {
-    commited: bool,
     start_address: Option<PhysicalAddress>,
-    frames: Vec<PhysicalAddress>,
+    frames: BTreeMap<usize, PhysicalAddress>,
 }
 
 impl PhysicalMemory {
@@ -28,9 +27,8 @@ impl PhysicalMemory {
             page_size,
             contiguous,
             inner: RwLock::new(PhysicalMemoryInner {
-                commited: false,
                 start_address: None,
-                frames: Vec::new(),
+                frames: BTreeMap::new(),
             }),
         })
     }
@@ -47,9 +45,8 @@ impl PhysicalMemory {
             page_size,
             contiguous: true,
             inner: RwLock::new(PhysicalMemoryInner {
-                commited: true,
                 start_address: Some(start_address),
-                frames: Vec::new(),
+                frames: BTreeMap::new(),
             }),
         })
     }
@@ -66,12 +63,16 @@ impl PhysicalMemory {
 }
 
 impl PhysicalMemory {
-    pub fn commited(&self) -> bool {
-        self.inner.read().commited
+    pub fn commited(&self, id: usize) -> bool {
+        if self.contiguous() {
+            self.inner.read().start_address.is_some()
+        } else  {
+            self.inner.read().frames.contains_key(&id)
+        }
     }
 
-    pub fn commit(&self) -> Result<(), AegisError> {
-        if self.commited() {
+    pub fn commit(&self, id: usize) -> Result<(), ZodiacError> {
+        if self.commited(id) {
             return Ok(());
         }
         
@@ -82,7 +83,6 @@ impl PhysicalMemory {
                 .lock()
                 .allocate_frames(self.count * one_frame_count, one_frame_count)
             {
-                self.inner.write().commited = true;
                 self.inner.write().start_address = Some(start_address);
                 Ok(())
             } else {
@@ -91,34 +91,31 @@ impl PhysicalMemory {
         } else {
             let mut inner = self.inner.write();
             
-            while inner.frames.len() <= self.count() {
-                let Some(start_address) = FRAME_ALLOCATOR
+            let Some(start_address) = FRAME_ALLOCATOR
                     .lock()
                     .allocate_frames(one_frame_count, one_frame_count)
                 else {
                     return Err(PhyscialMemoryError::AllocateFailed(one_frame_count).into())
                 };
-                
-                inner.frames.push(start_address);
-            }
-            self.inner.write().commited = true;
+            
+            inner.frames.insert(id, start_address);
             Ok(())
         }
     }
 }
 
 impl PhysicalMemory {
-    pub fn get_start_address_of_frame(&self, id: usize) -> Result<PhysicalAddress, AegisError> {
+    pub fn get_start_address_of_frame(&self, id: usize) -> Result<PhysicalAddress, ZodiacError> {
         if id >= self.count() {
-            return Err(AegisError::InvalidArguments);
+            return Err(ZodiacError::InvalidArguments);
         }
         
-        self.commit()?;
+        self.commit(id)?;
         
         if self.contiguous() {
             Ok(self.inner.read().start_address.unwrap() + (id * self.page_size as usize))
         } else {
-            Ok(*self.inner.read().frames.get(id).unwrap())
+            Ok(*self.inner.read().frames.get(&id).unwrap())
         }
     }
 

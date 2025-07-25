@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["aegis", "aegis_macro", "builder", "kernel"]
+members = ["zodiac", "zodiac_macro", "builder", "kernel"]
 
 [profile.dev]
 panic = "abort"
@@ -16,6 +16,6 @@ panic = "abort"
 codegen-units = 1
 
 [workspace.dependencies]
-aegis = { path = "aegis" }
-aegis_macro = { path = "aegis_macro" }
+zodiac = { path = "zodiac" }
+zodiac_macro = { path = "zodiac_macro" }
 

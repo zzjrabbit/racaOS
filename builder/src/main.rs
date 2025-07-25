@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::Command;
 
 #[derive(FromArgs)]
-#[argh(description = "Aegis kernel builder and runner")]
+#[argh(description = "racaOS kernel builder and runner")]
 struct Args {
     #[argh(switch, short = 'k')]
     #[argh(description = "use KVM acceleration")]

@@ -9,32 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
-name = "aegis"
-version = "0.1.0"
-dependencies = [
- "aegis_macro",
- "bit_field",
- "bitflags 2.9.1",
- "good_memory_allocator",
- "humansize",
- "limine",
- "log",
- "spin 0.10.0",
- "thiserror",
- "uart_16550",
- "x86_64",
-]
-
-[[package]]
-name = "aegis_macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -432,8 +406,8 @@ dependencies = [
 name = "kernel"
 version = "0.1.0"
 dependencies = [
- "aegis",
  "log",
+ "zodiac",
 ]
 
 [[package]]
@@ -466,6 +440,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af6d2ee42712e7bd2c787365cd1dab06ef59a61becbf87bec7b32b970bd2594b"
 dependencies = [
  "bitflags 2.9.1",
+]
+
+[[package]]
+name = "linked_list_allocator"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9afa463f5405ee81cdb9cc2baf37e08ec7e4c8209442b5d72c04cfb2cd6e6286"
+dependencies = [
+ "spinning_top",
 ]
 
 [[package]]
@@ -731,6 +714,15 @@ name = "spin"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5fe4ccb98d9c292d56fec89a5e07da7fc4cf0dc11e156b41793132775d3e591"
+dependencies = [
+ "lock_api",
+]
+
+[[package]]
+name = "spinning_top"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b9eb1a2f4c41445a3a0ff9abc5221c5fcd28e1f13cd7c0397706f9ac938ddb0"
 dependencies = [
  "lock_api",
 ]
@@ -1236,3 +1228,30 @@ name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+
+[[package]]
+name = "zodiac"
+version = "0.1.0"
+dependencies = [
+ "bit_field",
+ "bitflags 2.9.1",
+ "good_memory_allocator",
+ "humansize",
+ "limine",
+ "linked_list_allocator",
+ "log",
+ "spin 0.10.0",
+ "thiserror",
+ "uart_16550",
+ "x86_64",
+ "zodiac_macro",
+]
+
+[[package]]
+name = "zodiac_macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]

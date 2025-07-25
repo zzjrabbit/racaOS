@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum AegisError {
+pub enum ZodiacError {
     #[error("Not found.")]
     NotFound,
     #[error("Invalid arguments.")]

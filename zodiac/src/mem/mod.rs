@@ -8,7 +8,8 @@ mod physical;
 mod r#virtual;
 
 pub(crate) use frame::BitmapFrameAllocator;
-pub(crate) use paging::*;
+pub(crate) use paging::{Page, GeneralPageTable};
+pub use paging::{PageSize, MMUFlags};
 pub use physical::*;
 pub use r#virtual::*;
 

@@ -3,18 +3,26 @@
 
 use core::panic::PanicInfo;
 
-use aegis::mem::VirtualMemory;
+use zodiac::mem::{MMUFlags, PageSize, PhysicalMemory, VirtualMemory};
 
-#[aegis::main]
+#[zodiac::main]
 pub fn main() {
-    log::info!("Aegis Initialize done, entering kernel.");
+    log::info!("Zodiac Initialize done, entering kernel.");
     
-    let root = VirtualMemory::kernel();
+    let _root = VirtualMemory::kernel();
+    let child = _root.allocate(None, 8192, 4096).unwrap();
+    let phys_mem = PhysicalMemory::new(2, PageSize::Size4K, false);
+    child.map(0, phys_mem, MMUFlags::READ | MMUFlags::WRITE).unwrap();
+    
+    let buffer = unsafe{core::slice::from_raw_parts_mut(child.start_address() as *mut u8, 8192)};
+    buffer.fill(0);
+    
+    log::info!("test done");
     
     loop {}
 }
 
-#[aegis::panic_handler]
+#[zodiac::panic_handler]
 pub fn panic_handler(info: &PanicInfo) -> ! {
     log::error!("panic: {}!", info);
     loop {}

@@ -12,7 +12,7 @@ static MP_REQUEST: MpRequest = MpRequest::new();
 pub static BSP_LAPIC_ID: Lazy<u32> =
     Lazy::new(|| MP_REQUEST.get_response().unwrap().bsp_lapic_id());
 
-pub static CPUS: Lazy<Cpus> = Lazy::new(|| Cpus::default());
+pub static CPUS: Lazy<Cpus> = Lazy::new(Cpus::default);
 
 pub struct Cpus(RwLock<BTreeMap<u32, CpuInfo>>);
 
@@ -32,7 +32,8 @@ impl Cpus {
     }
     
     pub fn add_cpu(&self, lapic_id: u32) {
-        self.0.write().insert(lapic_id, CpuInfo::default());
+        let cpu_info = CpuInfo::default();
+        self.0.write().insert(lapic_id, cpu_info);
     }
 
     pub fn init_ap(&self) {

@@ -28,7 +28,7 @@ fn main() -> Result<()> {
     let img_path = manifest_dir
         .parent()
         .ok_or_else(|| anyhow!("Failed to get parent directory"))?
-        .join("AegisKernel.img");
+        .join("racaOS.img");
     build_img(files, &img_path).expect("Failed to build UEFI disk image");
     println!("cargo:rustc-env=IMG_PATH={}", img_path.to_str().unwrap());
 

@@ -9,7 +9,7 @@ pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     quote!(
         #[unsafe(no_mangle)]
-        extern "Rust" fn __aegis_main() -> ! {
+        extern "Rust" fn __zodiac_main() -> ! {
             let _: () = #main_fn_name();
 
             loop {}
@@ -28,7 +28,7 @@ pub fn panic_handler(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     quote!(
         #[unsafe(no_mangle)]
-        extern "Rust" fn __aegis_panic_handler(info: &core::panic::PanicInfo) -> ! {
+        extern "Rust" fn __zodiac_panic_handler(info: &core::panic::PanicInfo) -> ! {
             #handler_fn_name(info);
         }
 
