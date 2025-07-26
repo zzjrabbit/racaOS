@@ -8,40 +8,24 @@ A system that has undergone multiple reconstructions and runs on the x86_64 plat
 Birthday:2023-01-28   
 Thanks to [phil-opp](https://github.com/phil-opp) for x86_64 crate.   
 Thanks to the rCore team（ https://gitee.com/rcore-os ）They provided us with guidance templates, driver templates, and interrupt refactoring ideas  
-Thank you [wenxuanjun]（ https://github.com/wenxuanjun ）He ushered racaOS into the UEFI era\
+Thanks to [wenxuanjun]（ https://github.com/wenxuanjun ）He ushered racaOS into the UEFI era
 
-### Directories
-
-raca_core:main   
-esp:The system startup directory,Copy and paste all files from it onto a FAT formatted USB drive to start racaOS   
-Docs:Documents \
-
-## Documents
-
-Please look at   
-[Documents](Docs/index.md)
-
-## TODO
+## Roadmap
 
 - [x] 64 bits
 - [x] English display
-- [ ] Qemu x2APIC interrupts
-- [ ] Multitask
-- [ ] Clock
-- [ ] Real machine x2APIC interrupts
 - [x] Memory management
-- [ ] SMP
+- [x] SMP
+- [ ] Hpet timer
 - [ ] ACPI
+- [ ] APIC
+- [ ] Multitask
+- [ ] MuQss
 - [ ] AHCI driver
-- [ ] File system
+- [ ] NVMe driver
+- [ ] File system: FAT, ext2
 - [ ] Kernel Module loading
-- [ ] Start time calculation
-- [ ] Chinese display
-- [ ] Perfect GUI
-- [ ] Log in with passwords
 - [ ] Network drivers
 - [ ] Sound card drivers
 - [ ] Network connection support
-- [ ] Perfect API
-- [ ] Minor support for C library
-- [ ] GUI Library
+- [ ] Compatible with Linux
