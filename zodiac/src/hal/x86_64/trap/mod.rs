@@ -1,29 +1,10 @@
-use x86_64::registers::control::Cr2;
-
-use crate::mem::{VirtualAddress, VirtualMemory};
-
 pub(super) mod gdt;
 pub(super) mod idt;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn rust_entry(frame: &mut TrapFrame) {
-    match frame.int_num {
-        0xe => match Cr2::read() {
-            Ok(address) => {
-                VirtualMemory::kernel()
-                    .handle_page_fault(address.as_u64() as VirtualAddress)
-                    .unwrap();
-            }
-            Err(error) => {
-                log::error!("Invalid virtual address: {:?}", error);
-                loop {}
-            }
-        },
-        _ => {
-            log::info!("Interrupt: {:x?}", frame);
-            loop {}
-        }
-    }
+    log::info!("Interrupt: {:x?}", frame);
+    loop {}
 }
 
 #[derive(Debug, Clone, Default)]

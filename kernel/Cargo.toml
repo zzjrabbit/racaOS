@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-zodiac = { workspace = true }
+zodiac = { workspace = true, features = ["default_allocator"] }
 log = "0.4.27"
+good_memory_allocator = "0.1.7"
+spin = "0.10.0"
 

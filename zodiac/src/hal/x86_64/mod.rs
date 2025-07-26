@@ -63,18 +63,6 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     
     log::debug!("Application Processor {} started", smp_info.id);
     
-    use crate::mem::{VirtualMemory, PhysicalMemory, PageSize, MMUFlags};
-    
-    let root = VirtualMemory::kernel();
-    let child = root.allocate(None, 8192, 4096).unwrap();
-    let phys_mem = PhysicalMemory::new(2, PageSize::Size4K, false);
-    child.map(0, phys_mem, MMUFlags::READ | MMUFlags::WRITE).unwrap();
-    
-    let buffer = unsafe{core::slice::from_raw_parts_mut(child.start_address() as *mut u8, 8192)};
-    buffer.fill(0);
-    
-    log::info!("test of core{} done", smp_info.lapic_id);
-    
     let (width,fb) = fb();
     
     let color = 0xff - smp_info.lapic_id as u8;

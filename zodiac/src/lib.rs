@@ -3,7 +3,7 @@
 
 extern crate alloc;
 
-pub use zodiac_macro::{main, panic_handler};
+pub use zodiac_macro::{main, panic_handler, global_allocator};
 pub use error::*;
 
 mod boot;

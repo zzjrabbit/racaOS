@@ -2,16 +2,24 @@ use limine::request::{HhdmRequest, MemoryMapRequest};
 use spin::{Lazy, Mutex};
 
 mod frame;
-mod heap;
 mod paging;
 mod physical;
 mod r#virtual;
+mod heap;
 
 pub(crate) use frame::BitmapFrameAllocator;
 pub(crate) use paging::{Page, GeneralPageTable};
 pub use paging::{PageSize, MMUFlags};
 pub use physical::*;
 pub use r#virtual::*;
+pub use heap::Allocator;
+
+#[cfg(feature = "default_allocator")]
+pub use heap::DefaultAllocator;
+
+pub fn init() {
+    heap::init();
+}
 
 #[used]
 #[unsafe(link_section = ".requests")]
@@ -38,8 +46,4 @@ pub(crate) fn convert_physical_to_virtual(physical: PhysicalAddress) -> VirtualA
 
 pub(crate) fn convert_virtual_to_physical(r#virtual: VirtualAddress) -> PhysicalAddress {
     r#virtual + *PHYSICAL_MEMORY_OFFSET
-}
-
-pub fn init() {
-    heap::init();
 }

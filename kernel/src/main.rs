@@ -3,18 +3,20 @@
 
 use core::panic::PanicInfo;
 
-use zodiac::mem::{MMUFlags, PageSize, PhysicalMemory, VirtualMemory};
+use zodiac::mem::{MMUFlags, PageSize, PhysicalMemoryAllocOptions, VirtualMemorySpace};
+
+mod heap;
 
 #[zodiac::main]
 pub fn main() {
     log::info!("Zodiac Initialize done, entering kernel.");
     
-    let _root = VirtualMemory::kernel();
-    let child = _root.allocate(None, 8192, 4096).unwrap();
-    let phys_mem = PhysicalMemory::new(2, PageSize::Size4K, false);
-    child.map(0, phys_mem, MMUFlags::READ | MMUFlags::WRITE).unwrap();
+    let root = VirtualMemorySpace::new_kernel();
+    let mut cursor = root.cursor(0x100000, PageSize::Size4K).unwrap();
+    let phys_mem = PhysicalMemoryAllocOptions::default().count(2).allocate().unwrap();
+    cursor.map(&phys_mem, MMUFlags::READ | MMUFlags::WRITE).unwrap();
     
-    let buffer = unsafe{core::slice::from_raw_parts_mut(child.start_address() as *mut u8, 8192)};
+    let buffer = unsafe{core::slice::from_raw_parts_mut(0x100000 as *mut u8, 8192)};
     buffer.fill(0);
     
     log::info!("test done");

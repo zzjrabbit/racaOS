@@ -1,6 +1,21 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{ItemFn, parse_macro_input};
+use syn::{parse_macro_input, ItemFn, ItemStatic};
+
+#[proc_macro_attribute]
+pub fn global_allocator(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let global_allocator_item = parse_macro_input!(item as ItemStatic);
+    let global_allocator_name = &global_allocator_item.ident;
+    
+    quote!(
+        #[used]
+        #[unsafe(no_mangle)]
+        static __ZODIAC_GLOBAL_ALLOCATOR: &'static dyn ::zodiac::mem::Allocator = &#global_allocator_name;
+
+        #global_allocator_item
+    )
+    .into()
+}
 
 #[proc_macro_attribute]
 pub fn main(_attr: TokenStream, item: TokenStream) -> TokenStream {
