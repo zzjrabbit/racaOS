@@ -1,12 +1,12 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, ItemFn, ItemStatic};
+use syn::{ItemFn, ItemStatic, parse_macro_input};
 
 #[proc_macro_attribute]
 pub fn global_allocator(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let global_allocator_item = parse_macro_input!(item as ItemStatic);
     let global_allocator_name = &global_allocator_item.ident;
-    
+
     quote!(
         #[used]
         #[unsafe(no_mangle)]

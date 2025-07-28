@@ -2,17 +2,17 @@ use limine::request::{HhdmRequest, MemoryMapRequest};
 use spin::{Lazy, Mutex};
 
 mod frame;
+mod heap;
 mod paging;
 mod physical;
 mod r#virtual;
-mod heap;
 
 pub(crate) use frame::BitmapFrameAllocator;
-pub(crate) use paging::{Page, GeneralPageTable};
-pub use paging::{PageSize, MMUFlags};
+pub use heap::Allocator;
+pub(crate) use paging::{GeneralPageTable, Page};
+pub use paging::{MMUFlags, PageSize};
 pub use physical::*;
 pub use r#virtual::*;
-pub use heap::Allocator;
 
 #[cfg(feature = "default_allocator")]
 pub use heap::DefaultAllocator;

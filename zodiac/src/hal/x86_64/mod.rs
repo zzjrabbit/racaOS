@@ -3,24 +3,42 @@ use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
 use crate::hal::smp::{BSP_LAPIC_ID, CPUS};
 
+pub mod context;
 pub mod device;
+pub mod kernel;
 pub mod mem;
-pub mod trap;
 mod smp;
+pub mod timer;
+pub mod trap;
 
 #[used]
 #[unsafe(link_section = ".requests")]
 static FB_REQUEST: FramebufferRequest = FramebufferRequest::new();
 
 fn fb() -> (usize, &'static mut [u8]) {
-    let fb = FB_REQUEST.get_response().unwrap().framebuffers().next().unwrap();
-    
+    let fb = FB_REQUEST
+        .get_response()
+        .unwrap()
+        .framebuffers()
+        .next()
+        .unwrap();
+
     let address = fb.addr();
-    (fb.width() as usize, unsafe{core::slice::from_raw_parts_mut(address, fb.height() as usize * fb.width() as usize * 4)})
+    (fb.width() as usize, unsafe {
+        core::slice::from_raw_parts_mut(address, fb.height() as usize * fb.width() as usize * 4)
+    })
 }
 
 pub fn without_interrupts<R>(function: impl Fn() -> R) -> R {
     x86_64::instructions::interrupts::without_interrupts(function)
+}
+
+pub fn enable_interrupts() {
+    x86_64::instructions::interrupts::enable();
+}
+
+pub fn disable_interrupts() {
+    x86_64::instructions::interrupts::disable();
 }
 
 pub fn init() {
@@ -28,9 +46,12 @@ pub fn init() {
     trap::idt::init();
     init_sse();
     smp::CPUS.init_ap();
-    
-    let (width,fb) = fb();
-    
+    kernel::init();
+    timer::init();
+    enable_interrupts();
+
+    let (width, fb) = fb();
+
     let color = 0xff - *BSP_LAPIC_ID as u8;
     let start_line = *BSP_LAPIC_ID as usize * 6;
     let start_pixel = start_line * width;
@@ -58,13 +79,16 @@ pub fn init_sse() {
 unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
     CPUS.load(smp_info.lapic_id);
     trap::idt::init();
-    
+
     init_sse();
-    
+
+    kernel::ap_init();
+    timer::ap_init();
+
     log::debug!("Application Processor {} started", smp_info.id);
-    
-    let (width,fb) = fb();
-    
+
+    let (width, fb) = fb();
+
     let color = 0xff - smp_info.lapic_id as u8;
     let start_line = smp_info.lapic_id as usize * 6;
     let start_pixel = start_line * width;
@@ -75,7 +99,7 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
         fb[pos + 2] = color;
         fb[pos + 3] = color;
     }
-    
+
     loop {
         x86_64::instructions::hlt();
     }

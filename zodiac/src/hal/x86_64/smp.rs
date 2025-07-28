@@ -30,7 +30,7 @@ impl Cpus {
         let cpu_info = inner.get_mut(&lapic_id).unwrap();
         cpu_info.init();
     }
-    
+
     pub fn add_cpu(&self, lapic_id: u32) {
         let cpu_info = CpuInfo::default();
         self.0.write().insert(lapic_id, cpu_info);
@@ -38,7 +38,7 @@ impl Cpus {
 
     pub fn init_ap(&self) {
         let response = MP_REQUEST.get_response().unwrap();
-        
+
         for cpu in response.cpus() {
             if cpu.lapic_id != *BSP_LAPIC_ID {
                 self.add_cpu(cpu.lapic_id);

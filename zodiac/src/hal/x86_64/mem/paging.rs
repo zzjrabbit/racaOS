@@ -12,10 +12,9 @@ use x86_64::{
 
 use crate::mem::{
     BitmapFrameAllocator, FRAME_ALLOCATOR, GeneralPageTable, MMUFlags, PhysicalAddress,
-    VirtualAddress, convert_physical_to_virtual,
-    convert_virtual_to_physical,
+    VirtualAddress, convert_physical_to_virtual, convert_virtual_to_physical,
 };
-use crate::{ZodiacError, MapError, UnmapError, UpdateError, QueryError};
+use crate::{MapError, QueryError, UnmapError, UpdateError, ZodiacError};
 
 static KERNEL_PAGE_TABLE: Lazy<Arc<RwLock<dyn GeneralPageTable>>> =
     Lazy::new(|| current_page_table());
@@ -192,7 +191,8 @@ impl GeneralPageTable for OffsetPageTable<'_> {
                         frame,
                         mmu_flags_to_page_table_flags(flags),
                         &mut *FRAME_ALLOCATOR.lock(),
-                    ).map_err(|err| MapError::from(err))?
+                    )
+                    .map_err(|err| MapError::from(err))?
                     .flush();
                 }
                 Ok(())

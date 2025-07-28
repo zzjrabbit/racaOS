@@ -10,6 +10,7 @@ pub struct PhysicalMemoryAllocOptions {
     count: usize,
     page_size: PageSize,
     contiguous: bool,
+    address: Option<PhysicalAddress>,
 }
 
 impl Default for PhysicalMemoryAllocOptions {
@@ -18,6 +19,7 @@ impl Default for PhysicalMemoryAllocOptions {
             count: 1,
             page_size: PageSize::Size4K,
             contiguous: false,
+            address: None,
         }
     }
 }
@@ -37,11 +39,28 @@ impl PhysicalMemoryAllocOptions {
         self.contiguous = contiguous;
         self
     }
+
+    pub(crate) fn address(mut self, address: PhysicalAddress) -> Self {
+        self.address = Some(address);
+        self
+    }
 }
 
 impl PhysicalMemoryAllocOptions {
     pub fn allocate(self) -> Result<PhysicalMemory, ZodiacError> {
-        PhysicalMemory::new(self.count, self.page_size, self.contiguous)
+        if let Some(address) = self.address {
+            if !self.page_size.is_aligned(address) || !self.contiguous {
+                Err(ZodiacError::InvalidArguments)
+            } else {
+                Ok(PhysicalMemory::from_start_address(
+                    address,
+                    self.count,
+                    self.page_size,
+                ))
+            }
+        } else {
+            PhysicalMemory::new(self.count, self.page_size, self.contiguous)
+        }
     }
 }
 
@@ -90,7 +109,7 @@ impl PhysicalMemory {
 }
 
 impl PhysicalMemory {
-    pub fn from_start_address(
+    fn from_start_address(
         start_address: PhysicalAddress,
         count: usize,
         page_size: PageSize,

@@ -26,7 +26,11 @@ impl VirtualMemorySpace {
 }
 
 impl VirtualMemorySpace {
-    pub fn cursor(&self, virtual_address: VirtualAddress, page_size: PageSize) -> Result<Cursor, ZodiacError> {
+    pub fn cursor(
+        &self,
+        virtual_address: VirtualAddress,
+        page_size: PageSize,
+    ) -> Result<Cursor, ZodiacError> {
         Cursor::new(self.page_table.clone(), virtual_address, page_size)
     }
 }
@@ -67,13 +71,22 @@ impl Cursor {
 
         let vaddr = self.virtual_address;
         let page_count = physical_memory.count();
+        let mut first_error = None;
 
         for index in 0..page_count {
-            self.page_table.write().map(
+            if let Err(error) = self.page_table.write().map(
                 Page::new_aligned(vaddr + page_size as usize * index, page_size),
                 physical_memory.get_start_address_of_frame(index)?,
                 flags,
-            )?;
+            ) {
+                if first_error.is_none() {
+                    first_error = Some(error);
+                }
+            }
+        }
+        
+        if let Some(error) = first_error {
+            return Err(error);
         }
 
         self.virtual_address += page_size as usize * page_count;
@@ -85,29 +98,26 @@ impl Cursor {
         let page_size = self.page_size;
         let vaddr = self.virtual_address;
 
-        self.page_table.write().unmap_cont(vaddr, page_size.align_up(len))?;
+        self.page_table
+            .write()
+            .unmap_cont(vaddr, page_size.align_up(len))?;
 
         self.virtual_address += len;
 
         Ok(())
     }
 
-    pub fn protect(
-        &mut self,
-        len: usize,
-        flags: MMUFlags,
-    ) -> Result<(), ZodiacError> {
+    pub fn protect(&mut self, len: usize, flags: MMUFlags) -> Result<(), ZodiacError> {
         let page_size = self.page_size;
         let vaddr = self.virtual_address;
-        
+
         let len = page_size.align_up(len);
         let page_count = len / page_size as usize;
 
         for index in 0..page_count {
-            self.page_table.write().update(
-                vaddr + page_size as usize * index,
-                flags,
-            )?;
+            self.page_table
+                .write()
+                .update(vaddr + page_size as usize * index, flags)?;
         }
 
         self.virtual_address += len;
@@ -121,7 +131,7 @@ impl Cursor {
         if !self.page_size.is_aligned(virtual_address) {
             return Err(ZodiacError::InvalidArguments);
         }
-        
+
         self.virtual_address = virtual_address;
         Ok(())
     }

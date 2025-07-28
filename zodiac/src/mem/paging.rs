@@ -2,7 +2,10 @@ use alloc::sync::Arc;
 use bitflags::bitflags;
 use spin::RwLock;
 
-use crate::{mem::{PhysicalAddress, VirtualAddress}, ZodiacError, UnmapError};
+use crate::{
+    UnmapError, ZodiacError,
+    mem::{PhysicalAddress, VirtualAddress},
+};
 
 #[repr(usize)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -38,7 +41,7 @@ impl PageSize {
     pub const fn align_down(self, addr: usize) -> usize {
         addr & !(self as usize - 1)
     }
-    
+
     pub const fn align_up(self, addr: usize) -> usize {
         self.align_down(addr + self as usize - 1)
     }
@@ -77,7 +80,12 @@ bitflags! {
 
 pub trait GeneralPageTable: Sync + Send {
     fn physical_address(&self) -> PhysicalAddress;
-    fn map(&mut self, page: Page, paddr: PhysicalAddress, flags: MMUFlags) -> Result<(), ZodiacError>;
+    fn map(
+        &mut self,
+        page: Page,
+        paddr: PhysicalAddress,
+        flags: MMUFlags,
+    ) -> Result<(), ZodiacError>;
     fn unmap(&mut self, vaddr: VirtualAddress) -> Result<(PhysicalAddress, PageSize), ZodiacError>;
     fn update(&mut self, vaddr: VirtualAddress, flags: MMUFlags) -> Result<PageSize, ZodiacError>;
     fn query(
@@ -140,7 +148,9 @@ pub trait GeneralPageTable: Sync + Send {
                     assert!(s.is_aligned(vaddr));
                     s as usize
                 }
-                Err(ZodiacError::FailedToUnmap(UnmapError::NotMappedYet)) => PageSize::Size4K as usize,
+                Err(ZodiacError::FailedToUnmap(UnmapError::NotMappedYet)) => {
+                    PageSize::Size4K as usize
+                }
                 Err(e) => return Err(e),
             };
             vaddr += page_size;
