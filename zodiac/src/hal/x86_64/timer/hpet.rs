@@ -95,7 +95,6 @@ impl Hpet {
                     irq = Irq::allocate_specific(i as u8, hpet_timer_handler);
                 }
                 if let Some(_) = irq {
-                    log::info!("HPET Timer Irq: {}", i);
                     let timer_config = ((i as u64) << 9) | (1 << 2);
                     ptr::write_volatile(timer_config_addr, timer_config);
                     return hpet;

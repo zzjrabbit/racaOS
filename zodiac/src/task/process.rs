@@ -4,9 +4,7 @@ use alloc::{sync::Arc, vec::Vec};
 use spin::{Lazy, RwLock};
 
 use crate::{
-    ZodiacError,
-    mem::VirtualMemorySpace,
-    task::{Thread, ThreadId},
+    hal::cpu::Cpu, mem::VirtualMemorySpace, task::{remove_thread, Thread, ThreadId, ThreadState}, ZodiacError
 };
 
 pub type ProcessId = usize;
@@ -56,6 +54,37 @@ impl Process {
 
     pub fn vm_space(&self) -> &VirtualMemorySpace {
         &self.vm_space
+    }
+}
+
+impl Process {
+    pub fn exit(&self) -> ! {
+        for thread in self.inner.read().threads.iter() {
+            let cpu = if let ThreadState::RunningOn(cpu) = thread.thread_state() {
+                Some(cpu)
+            } else {
+                None
+            };
+            
+            thread.set_thread_state(ThreadState::Dead);
+            remove_thread(thread.thread_id());
+            
+            if let Some(cpu) = cpu {
+                if cpu != Cpu::current() {
+                    cpu.trigger_schedule();
+                }
+            }
+        }
+        
+        Cpu::current().trigger_schedule();
+        loop {}
+    }
+    
+    pub fn kill(&self) {
+        let threads = self.inner.read().threads.clone();
+        for thread in threads {
+            thread.kill();
+        }
     }
 }
 

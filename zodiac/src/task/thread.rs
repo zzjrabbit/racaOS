@@ -7,10 +7,7 @@ use alloc::{
 use spin::RwLock;
 
 use crate::{
-    ZodiacError,
-    hal::{context::TrapFrame, cpu::Cpu},
-    mem::VirtualAddress,
-    task::{Process, add_thread},
+    hal::{context::TrapFrame, cpu::Cpu}, mem::VirtualAddress, task::{add_thread, current_thread, remove_thread, Process}, ZodiacError
 };
 
 pub type ThreadId = usize;
@@ -30,6 +27,10 @@ struct ThreadInner {
 }
 
 impl Thread {
+    pub fn current() -> Arc<Self> {
+        current_thread()
+    }
+    
     pub fn spawn(self: &Arc<Self>) {
         add_thread(self.clone());
     }
@@ -48,7 +49,7 @@ impl Thread {
         self.inner.read().thread_state
     }
 
-    pub fn set_thread_state(&self, state: ThreadState) {
+    pub(crate) fn set_thread_state(&self, state: ThreadState) {
         self.inner.write().thread_state = state;
     }
 
@@ -61,11 +62,58 @@ impl Thread {
     }
 }
 
+impl Thread {
+    pub fn block(&self) {
+        self.set_thread_state(ThreadState::Blocked);
+        self.r#yield();
+    }
+    
+    pub fn r#yield(&self) {
+        Cpu::current().trigger_schedule();
+    }
+    
+    pub(crate) fn run(&self) {
+        self.set_thread_state(ThreadState::RunningOn(Cpu::current()));
+    }
+    
+    pub(crate) fn ready(&self) {
+        self.set_thread_state(ThreadState::Ready);
+    }
+}
+
+impl Thread {
+    pub fn exit(&self) -> ! {
+        remove_thread(self.thread_id());
+        self.process().unwrap().remove_thread(self.thread_id());
+        self.set_thread_state(ThreadState::Dead);
+        
+        self.r#yield();
+        loop {}
+    }
+    
+    pub fn kill(&self) {
+        remove_thread(self.thread_id());
+        self.process().unwrap().remove_thread(self.thread_id());
+        
+        let cpu = if let ThreadState::RunningOn(cpu) = self.thread_state() {
+            Some(cpu)
+        } else {
+            None
+        };
+        self.set_thread_state(ThreadState::Dead);
+        
+        if let Some(cpu) = cpu {
+            cpu.trigger_schedule();
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum ThreadState {
     Ready,
     RunningOn(Cpu),
     Blocked,
+    Dead,
 }
 
 impl ThreadState {

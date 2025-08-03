@@ -2,7 +2,7 @@ mod fifo;
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use alloc::sync::Arc;
+use alloc::sync::{Arc, Weak};
 pub use fifo::*;
 use spin::Once;
 
@@ -20,10 +20,10 @@ pub trait Scheduler<T = Arc<Thread>>: Sync + Send {
     fn retain(&self, f: &dyn Fn(&T) -> bool);
 }
 
-pub trait LocalQueue<T = Arc<Thread>> {
+pub trait LocalQueue<T = Arc<Thread>, W = Weak<Thread>> {
     /// Returns the current thread.
     /// Note that the current thread is not in the ready queue.
-    fn current(&self) -> Option<T>;
+    fn current(&self) -> Option<W>;
     /// Push a thread into the local queue.
     fn enqueue(&mut self, thread: T);
     /// Pick the next thread to execute, and deque the thread.
@@ -105,13 +105,17 @@ impl SchedulerWrapper {
             .unwrap()
             .with_local_queue_mut(&mut |queue| {
                 if let Some(current) = queue.current() {
-                    current.set_kernel_stack_pointer(context as *mut _ as usize);
-                    if !current.thread_state().is_blocked() {
-                        queue.enqueue(current.clone());
+                    if let Some(current) = current.upgrade() {
+                        current.set_kernel_stack_pointer(context as *mut _ as usize);
+                        if !current.thread_state().is_blocked() {
+                            current.ready();
+                            queue.enqueue(current.clone());
+                        }
                     }
                 }
 
                 let next = queue.deque_next_thread().expect("CPU Hungry.");
+                next.run();
 
                 set_kernel_stack(next.kernel_stack_pointer() + size_of::<TrapFrame>());
 
@@ -126,16 +130,34 @@ impl SchedulerWrapper {
         switch_stack!(kernel_stack_pointer);
         return_from_int!();
     }
+    
+    fn current(&self) -> Arc<Thread> {
+        let mut current = None;
+        self.scheduler.get().unwrap().with_local_queue(&mut |queue| {
+            current = queue.current().unwrap().upgrade();
+        });
+        current.unwrap()
+    }
 }
 
-pub fn add_thread(thread: Arc<Thread>) {
-    SCHEDULER.add(thread);
+mod wrappers {
+    use super::*;
+    
+    pub fn add_thread(thread: Arc<Thread>) {
+        SCHEDULER.add(thread);
+    }
+    
+    pub fn remove_thread(thread_id: ThreadId) {
+        SCHEDULER.remove(thread_id);
+    }
+    
+    pub fn schedule(context: &mut TrapFrame) {
+        SCHEDULER.schedule(context);
+    }
+    
+    pub fn current_thread() -> Arc<Thread> {
+        SCHEDULER.current()
+    }
 }
 
-pub fn remove_thread(thread_id: ThreadId) {
-    SCHEDULER.remove(thread_id);
-}
-
-pub fn schedule(context: &mut TrapFrame) {
-    SCHEDULER.schedule(context);
-}
+pub(crate) use wrappers::*;

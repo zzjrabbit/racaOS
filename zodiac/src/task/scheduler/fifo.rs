@@ -1,6 +1,6 @@
 use alloc::{
     collections::{BTreeMap, VecDeque},
-    sync::Arc,
+    sync::{Arc, Weak},
 };
 use spin::{Lazy, RwLock};
 
@@ -63,7 +63,7 @@ impl Scheduler for FifoScheduler {
 }
 
 pub struct FifoLocalQueue {
-    current: Option<Arc<Thread>>,
+    current: Option<Weak<Thread>>,
     queue: Arc<RwLock<VecDeque<Arc<Thread>>>>,
 }
 
@@ -77,14 +77,14 @@ impl FifoLocalQueue {
 }
 
 impl LocalQueue for FifoLocalQueue {
-    fn current(&self) -> Option<Arc<Thread>> {
+    fn current(&self) -> Option<Weak<Thread>> {
         self.current.clone()
     }
 
     fn deque_next_thread(&mut self) -> Option<Arc<Thread>> {
-        let thread = self.queue.write().pop_front();
-        self.current = thread.clone();
-        thread
+        let thread = self.queue.write().pop_front()?;
+        self.current = Some(Arc::downgrade(&thread));
+        Some(thread)
     }
 
     fn enqueue(&mut self, thread: Arc<Thread>) {

@@ -1,7 +1,7 @@
 use limine::request::FramebufferRequest;
 use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
-use crate::hal::{cpu::Cpu, smp::{BSP_LAPIC_ID, CPUS}};
+use crate::{hal::{cpu::Cpu, kernel::apic_timer_irq, smp::{BSP_LAPIC_ID, CPUS}}};
 
 pub mod context;
 pub mod cpu;
@@ -88,13 +88,20 @@ macro_rules! return_from_int {
     };
 }
 
+impl Cpu {
+    pub fn trigger_schedule(&self) {
+        self.send_ipi(apic_timer_irq());
+    }
+}
+
 pub fn init() {
     smp::CPUS.load(Cpu::bsp());
     trap::idt::init();
     init_sse();
-    smp::CPUS.init_ap();
     kernel::init();
     timer::init();
+    
+    smp::CPUS.init_ap();
 
     let (width, fb) = fb();
 

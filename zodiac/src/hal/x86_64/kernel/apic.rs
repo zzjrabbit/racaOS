@@ -36,8 +36,11 @@ pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
     let origin_physical_address = ACPI.apic.local_apic_address as PhysicalAddress;
     let physical_address = PageSize::Size4K.align_down(origin_physical_address);
     log::trace!(
-        "Initializing LAPIC at physical address {:#x}",
-        physical_address
+        "Initializing LAPIC at physical address {:#x}, timer vector: {}, spurious vector: {}, error vector: {}",
+        physical_address,
+        TIMER_IRQ.as_int_vector(),
+        SPURIOUS_IRQ.as_int_vector(),
+        APIC_ERROR_IRQ.as_int_vector()
     );
     let virtual_address = convert_physical_to_virtual(physical_address);
 
@@ -70,9 +73,15 @@ pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
 
     lapic.enable();
     lapic.disable_timer();
+    
+    log::trace!("Lapic Initialized");
 
     LockedLocalApic(Mutex::new(lapic))
 });
+
+pub fn apic_timer_irq() -> Irq {
+    TIMER_IRQ.clone()
+}
 
 pub fn ap_init() {
     while !APIC_INIT.load(Ordering::SeqCst) {

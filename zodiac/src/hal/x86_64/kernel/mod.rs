@@ -4,7 +4,7 @@ pub mod irq;
 
 pub(super) use acpi::ACPI;
 pub use acpi::{reboot, shutdown};
-pub(super) use apic::LAPIC;
+pub(super) use apic::{LAPIC, apic_timer_irq};
 pub(crate) use apic::end_of_interrupt;
 
 pub(crate) fn init() {
