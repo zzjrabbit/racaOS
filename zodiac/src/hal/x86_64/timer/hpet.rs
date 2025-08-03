@@ -5,7 +5,10 @@ use spin::Lazy;
 
 use crate::hal::context::TrapFrame;
 use crate::hal::kernel::ACPI;
-use crate::mem::{convert_physical_to_virtual, MMUFlags, PageSize, PhysicalAddress, PhysicalMemoryAllocOptions, VirtualMemorySpace};
+use crate::mem::{
+    MMUFlags, PageSize, PhysicalAddress, PhysicalMemoryAllocOptions, VirtualMemorySpace,
+    convert_physical_to_virtual,
+};
 use crate::trap::Irq;
 
 pub fn init() {
@@ -17,8 +20,7 @@ pub static HPET: Lazy<Hpet> = Lazy::new(|| {
     let physical_address = PageSize::Size4K.align_down(origin_physical_address);
     let virtual_address = convert_physical_to_virtual(physical_address);
 
-    let page_count = PageSize::Size4K
-        .align_up(origin_physical_address + 0x1000 - physical_address)
+    let page_count = PageSize::Size4K.align_up(origin_physical_address + 0x1000 - physical_address)
         / PageSize::Size4K as usize;
 
     let pm = PhysicalMemoryAllocOptions::default()
@@ -86,7 +88,7 @@ impl Hpet {
             let timer_config_addr = (hpet.address + 0x100) as *mut u64;
             let old_config = ptr::read_volatile(timer_config_addr);
             let route_cap = old_config.get_bits(32..63);
-            
+
             let mut irq = None;
             for i in 0..32 {
                 if route_cap.get_bit(i) {

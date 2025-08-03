@@ -12,6 +12,7 @@ use crate::{
         MMUFlags, PageSize, PhysicalAddress, PhysicalMemoryAllocOptions, VirtualMemorySpace,
         convert_physical_to_virtual,
     },
+    task::schedule,
     trap::Irq,
 };
 
@@ -23,8 +24,10 @@ pub struct LockedLocalApic(Mutex<LocalApic>);
 unsafe impl Send for LockedLocalApic {}
 unsafe impl Sync for LockedLocalApic {}
 
-fn timer_handler(_frame: &mut TrapFrame) {
-    crate::print!(".")
+fn timer_handler(frame: &mut TrapFrame) {
+    //crate::print!("[{}]", unsafe { LAPIC.lock().id() });
+    schedule(frame);
+    //crate::print!("[{}]", unsafe { LAPIC.lock().id() });
 }
 
 static TIMER_IRQ: Lazy<Irq> = Lazy::new(|| Irq::allocate(timer_handler).unwrap());
@@ -34,10 +37,13 @@ static SPURIOUS_IRQ: Lazy<Irq> = Lazy::new(|| Irq::allocate(|_frame| {}).unwrap(
 pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
     let origin_physical_address = ACPI.apic.local_apic_address as PhysicalAddress;
     let physical_address = PageSize::Size4K.align_down(origin_physical_address);
+    log::trace!(
+        "Initializing LAPIC at physical address {:#x}",
+        physical_address
+    );
     let virtual_address = convert_physical_to_virtual(physical_address);
-    
-    let page_count = PageSize::Size4K
-        .align_up(origin_physical_address + 0x1000 - physical_address)
+
+    let page_count = PageSize::Size4K.align_up(origin_physical_address + 0x1000 - physical_address)
         / PageSize::Size4K as usize;
 
     let physical_memory = PhysicalMemoryAllocOptions::default()

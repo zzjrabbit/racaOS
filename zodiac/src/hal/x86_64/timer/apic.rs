@@ -1,4 +1,7 @@
-use core::{sync::atomic::{AtomicBool, AtomicU32, Ordering}, time::Duration};
+use core::{
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
+    time::Duration,
+};
 
 use x2apic::lapic::TimerMode;
 
@@ -11,11 +14,11 @@ static LAPIC_TIMER_INIT: AtomicBool = AtomicBool::new(false);
 static LAPIC_TIMER_INITIAL: AtomicU32 = AtomicU32::new(0);
 
 pub fn init() {
-    LAPIC_TIMER_INIT.store(true, Ordering::SeqCst);
     unsafe {
         calibrate_timer();
         LAPIC.lock().enable_timer();
     }
+    LAPIC_TIMER_INIT.store(true, Ordering::SeqCst);
 }
 
 pub fn ap_init() {
@@ -24,6 +27,7 @@ pub fn ap_init() {
     }
     let timer_initial = LAPIC_TIMER_INITIAL.load(Ordering::Relaxed);
     unsafe {
+        LAPIC.lock().set_timer_mode(TimerMode::Periodic);
         LAPIC.lock().set_timer_initial(timer_initial);
         LAPIC.lock().enable_timer();
     }
@@ -39,7 +43,7 @@ unsafe fn calibrate_timer() {
             lapic.set_timer_initial(u32::MAX);
         }
         while HPET.elapsed() - last_time < Duration::from_millis(1) {}
-        lapic_total_ticks += u32::MAX - unsafe{lapic.timer_current()};
+        lapic_total_ticks += u32::MAX - unsafe { lapic.timer_current() };
     }
 
     let average_ticks_per_ms = lapic_total_ticks / TIMER_CALIBRATION_ITERATION;
@@ -50,6 +54,6 @@ unsafe fn calibrate_timer() {
         lapic.set_timer_mode(TimerMode::Periodic);
         lapic.set_timer_initial(calibrated_timer_initial);
     }
-    
+
     LAPIC_TIMER_INITIAL.store(calibrated_timer_initial, Ordering::Relaxed);
 }

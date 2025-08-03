@@ -59,7 +59,7 @@ fn init_acpi() -> Result<Acpi<'static>, AcpiError> {
             while pm1a_port.read() & 1 == 0 {}
         }
     }
-    
+
     Ok(Acpi {
         apic,
         hpet_info: HpetInfo::new(acpi_tables)?,

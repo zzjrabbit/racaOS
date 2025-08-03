@@ -1,6 +1,11 @@
+use core::ptr::copy_nonoverlapping;
+
 pub use error_code::*;
 
-use crate::mem::VirtualAddress;
+use crate::{
+    hal::{kernel::LAPIC, smp::CPUS},
+    mem::VirtualAddress,
+};
 
 mod error_code;
 
@@ -187,5 +192,43 @@ impl CpuException {
         };
 
         Some(exception)
+    }
+}
+
+impl TrapFrame {
+    pub fn init_in(kernel_stack: &mut [u8], entry: usize, stack: usize, user_mode: bool) -> usize {
+        let kernel_stack_end = kernel_stack.as_ptr() as usize + kernel_stack.len();
+        log::info!("Kernel stack end: {:x}", kernel_stack_end);
+
+        let mut frame = Self::default();
+
+        frame.rip = entry;
+        frame.rsp = if user_mode {
+            stack
+        } else {
+            kernel_stack_end
+        };
+        frame.rflags = 0x200;
+        CPUS.with_cpu_info(unsafe { LAPIC.lock().id() }, |cpu_info| {
+            frame.cs = if user_mode {
+                cpu_info.user_code_selector()
+            } else {
+                cpu_info.kernel_code_selector()
+            };
+            frame.ss = if user_mode {
+                cpu_info.user_data_selector()
+            } else {
+                cpu_info.kernel_data_selector()
+            };
+        });
+
+        unsafe {
+            copy_nonoverlapping(
+                &frame as *const Self,
+                (kernel_stack_end - size_of::<Self>()) as *mut Self,
+                1,
+            );
+        }
+        kernel_stack_end - size_of::<Self>()
     }
 }

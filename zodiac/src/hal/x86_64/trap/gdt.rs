@@ -71,6 +71,22 @@ impl CpuInfo {
             load_tss(selectors.tss_selector.unwrap());
         }
     }
+
+    pub fn kernel_code_selector(&self) -> usize {
+        self.selectors.as_ref().unwrap().code_selector.0 as usize
+    }
+
+    pub fn kernel_data_selector(&self) -> usize {
+        self.selectors.as_ref().unwrap().data_selector.0 as usize
+    }
+
+    pub fn user_code_selector(&self) -> usize {
+        self.selectors.as_ref().unwrap().user_code_selector.0 as usize
+    }
+
+    pub fn user_data_selector(&self) -> usize {
+        self.selectors.as_ref().unwrap().user_data_selector.0 as usize
+    }
 }
 
 static COMMON_GDT: Lazy<(GlobalDescriptorTable, Selectors)> = Lazy::new(|| {
@@ -78,8 +94,8 @@ static COMMON_GDT: Lazy<(GlobalDescriptorTable, Selectors)> = Lazy::new(|| {
 
     let code_selector = gdt.append(Descriptor::kernel_code_segment());
     let data_selector = gdt.append(Descriptor::kernel_data_segment());
-    let user_data_selector = gdt.append(Descriptor::user_data_segment());
     let user_code_selector = gdt.append(Descriptor::user_code_segment());
+    let user_data_selector = gdt.append(Descriptor::user_data_segment());
 
     let selectors = Selectors {
         code_selector,
@@ -99,18 +115,4 @@ pub struct Selectors {
     user_code_selector: SegmentSelector,
     user_data_selector: SegmentSelector,
     tss_selector: Option<SegmentSelector>,
-}
-
-impl Selectors {
-    #[must_use]
-    pub fn get_kernel_segments() -> (SegmentSelector, SegmentSelector) {
-        let selectors = &COMMON_GDT.1;
-        (selectors.code_selector, selectors.data_selector)
-    }
-
-    #[must_use]
-    pub fn get_user_segments() -> (SegmentSelector, SegmentSelector) {
-        let selectors = &COMMON_GDT.1;
-        (selectors.user_code_selector, selectors.user_data_selector)
-    }
 }

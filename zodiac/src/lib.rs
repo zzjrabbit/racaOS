@@ -7,6 +7,8 @@ extern crate alloc;
 pub use error::*;
 pub use zodiac_macro::{global_allocator, main, panic_handler};
 
+use crate::hal::disable_interrupts;
+
 mod boot;
 pub mod console;
 mod error;
@@ -16,11 +18,12 @@ pub mod hal;
 pub mod logger;
 pub mod mem;
 mod panic;
+pub mod task;
 pub mod trap;
 
 fn init() {
+    disable_interrupts();
     mem::init();
     logger::init();
     hal::init();
-    hal::enable_interrupts();
 }

@@ -21,6 +21,11 @@ static KERNEL_PAGE_TABLE: Lazy<Arc<RwLock<dyn GeneralPageTable>>> =
 
 fn current_page_table() -> Arc<RwLock<dyn GeneralPageTable>> {
     let physical_address = Cr3::read().0.start_address();
+    log::trace!(
+        "Current page table physical address: {:?}",
+        physical_address
+    );
+
     let page_table =
         convert_physical_to_virtual(physical_address.as_u64() as PhysicalAddress) as *mut PageTable;
     let physical_memory_offset = VirtAddr::new(convert_physical_to_virtual(0) as u64);
@@ -369,5 +374,14 @@ impl GeneralPageTable for OffsetPageTable<'_> {
             )
         };
         Arc::new(RwLock::new(page_table))
+    }
+
+    fn switch(&self) {
+        let frame = PhysFrame::containing_address(PhysAddr::new(self.physical_address() as u64));
+
+        let flags = Cr3::read().1;
+        unsafe {
+            Cr3::write(frame, flags);
+        }
     }
 }

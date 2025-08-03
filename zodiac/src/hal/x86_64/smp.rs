@@ -7,7 +7,7 @@ use super::trap::gdt::CpuInfo;
 
 #[used]
 #[unsafe(link_section = ".requests")]
-static MP_REQUEST: MpRequest = MpRequest::new();
+pub(super) static MP_REQUEST: MpRequest = MpRequest::new();
 
 pub static BSP_LAPIC_ID: Lazy<u32> =
     Lazy::new(|| MP_REQUEST.get_response().unwrap().bsp_lapic_id());
@@ -21,6 +21,12 @@ impl Default for Cpus {
         let mut cpus = BTreeMap::new();
         cpus.insert(*BSP_LAPIC_ID, CpuInfo::default());
         Cpus(RwLock::new(cpus))
+    }
+}
+
+impl Cpus {
+    pub fn len(&self) -> usize {
+        self.0.read().len()
     }
 }
 
@@ -45,5 +51,23 @@ impl Cpus {
                 cpu.goto_address.write(ap_entry);
             }
         }
+    }
+
+    pub fn with_cpu_info<F>(&self, lapic_id: u32, f: F)
+    where
+        F: FnOnce(&CpuInfo),
+    {
+        let inner = self.0.read();
+        let cpu_info = inner.get(&lapic_id).unwrap();
+        f(cpu_info);
+    }
+
+    pub fn with_cpu_info_mut<F>(&self, lapic_id: u32, f: F)
+    where
+        F: FnOnce(&mut CpuInfo),
+    {
+        let mut inner = self.0.write();
+        let cpu_info = inner.get_mut(&lapic_id).unwrap();
+        f(cpu_info);
     }
 }

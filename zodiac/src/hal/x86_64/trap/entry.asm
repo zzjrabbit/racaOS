@@ -36,10 +36,8 @@ interrupt:
     mov rdi, rsp
     call rust_entry
 
-
+.global int_ret
 int_ret:
-    mov rdi, rsp
-
     pop r15
     pop r14
     pop r13

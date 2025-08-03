@@ -35,6 +35,12 @@ impl VirtualMemorySpace {
     }
 }
 
+impl VirtualMemorySpace {
+    pub fn switch(&self) {
+        self.page_table.read().switch();
+    }
+}
+
 pub struct Cursor {
     page_table: Arc<RwLock<dyn GeneralPageTable>>,
     virtual_address: VirtualAddress,
@@ -84,7 +90,7 @@ impl Cursor {
                 }
             }
         }
-        
+
         if let Some(error) = first_error {
             return Err(error);
         }

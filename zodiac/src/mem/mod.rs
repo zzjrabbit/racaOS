@@ -45,5 +45,5 @@ pub(crate) fn convert_physical_to_virtual(physical: PhysicalAddress) -> VirtualA
 }
 
 pub(crate) fn convert_virtual_to_physical(r#virtual: VirtualAddress) -> PhysicalAddress {
-    r#virtual + *PHYSICAL_MEMORY_OFFSET
+    r#virtual - *PHYSICAL_MEMORY_OFFSET
 }

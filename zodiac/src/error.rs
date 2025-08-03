@@ -10,6 +10,8 @@ pub enum ZodiacError {
     NoMemory,
     #[error("Out of bounds.")]
     OutOfBounds,
+    #[error("Arguments not enough.")]
+    ArgumentsNotEnough,
     #[error("Failed to map.")]
     FailedToMap(#[from] MapError),
     #[error("Failed to unmap.")]

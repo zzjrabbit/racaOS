@@ -4,6 +4,7 @@ use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 use crate::hal::smp::{BSP_LAPIC_ID, CPUS};
 
 pub mod context;
+pub mod cpu;
 pub mod device;
 pub mod kernel;
 pub mod mem;
@@ -41,6 +42,52 @@ pub fn disable_interrupts() {
     x86_64::instructions::interrupts::disable();
 }
 
+pub fn cpu_num() -> usize {
+    smp::CPUS.len()
+}
+
+#[macro_export]
+macro_rules! switch_stack {
+    ($stack_pointer: expr) => {
+        unsafe {
+            core::arch::asm!(
+                "mov rsp, {0}",
+                in(reg) $stack_pointer,
+            );
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! return_from_int {
+    () => {
+        unsafe {
+            core::arch::asm!(
+                "pop r15",
+                "pop r14",
+                "pop r13",
+                "pop r12",
+                "pop rbp",
+                "pop rbx",
+                
+                "pop r11",
+                "pop r10",
+                "pop r9",
+                "pop r8",
+                "pop rsi",
+                "pop rdi",
+                "pop rdx",
+                "pop rcx",
+                "pop rax",
+                
+                "add rsp, 16",
+                "iretq",
+                options(noreturn),
+            );
+        }
+    };
+}
+
 pub fn init() {
     smp::CPUS.load(*BSP_LAPIC_ID);
     trap::idt::init();
@@ -48,7 +95,6 @@ pub fn init() {
     smp::CPUS.init_ap();
     kernel::init();
     timer::init();
-    enable_interrupts();
 
     let (width, fb) = fb();
 
@@ -77,6 +123,7 @@ pub fn init_sse() {
 }
 
 unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
+    disable_interrupts();
     CPUS.load(smp_info.lapic_id);
     trap::idt::init();
 
@@ -99,6 +146,8 @@ unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
         fb[pos + 2] = color;
         fb[pos + 3] = color;
     }
+
+    crate::task::ap_init();
 
     loop {
         x86_64::instructions::hlt();
