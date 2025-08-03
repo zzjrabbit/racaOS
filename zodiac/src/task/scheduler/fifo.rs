@@ -27,7 +27,7 @@ impl FifoSchedulerInner {
         let queue = Arc::new(RwLock::new(VecDeque::new()));
 
         let mut local_queues = BTreeMap::new();
-        for cpu in Cpu::all_cpus() {
+        for cpu in Cpu::all() {
             local_queues.insert(cpu, RwLock::new(FifoLocalQueue::new(queue.clone())));
         }
 

@@ -2,6 +2,8 @@ use alloc::collections::BTreeMap;
 use limine::request::MpRequest;
 use spin::{Lazy, RwLock};
 
+use crate::hal::cpu::Cpu;
+
 use super::ap_entry;
 use super::trap::gdt::CpuInfo;
 
@@ -14,12 +16,12 @@ pub static BSP_LAPIC_ID: Lazy<u32> =
 
 pub static CPUS: Lazy<Cpus> = Lazy::new(Cpus::default);
 
-pub struct Cpus(RwLock<BTreeMap<u32, CpuInfo>>);
+pub struct Cpus(RwLock<BTreeMap<Cpu, CpuInfo>>);
 
 impl Default for Cpus {
     fn default() -> Self {
         let mut cpus = BTreeMap::new();
-        cpus.insert(*BSP_LAPIC_ID, CpuInfo::default());
+        cpus.insert(Cpu::bsp(), CpuInfo::default());
         Cpus(RwLock::new(cpus))
     }
 }
@@ -31,15 +33,15 @@ impl Cpus {
 }
 
 impl Cpus {
-    pub fn load(&self, lapic_id: u32) {
+    pub fn load(&self, cpu: Cpu) {
         let mut inner = self.0.write();
-        let cpu_info = inner.get_mut(&lapic_id).unwrap();
+        let cpu_info = inner.get_mut(&cpu).unwrap();
         cpu_info.init();
     }
 
-    pub fn add_cpu(&self, lapic_id: u32) {
+    pub fn add_cpu(&self, cpu: Cpu) {
         let cpu_info = CpuInfo::default();
-        self.0.write().insert(lapic_id, cpu_info);
+        self.0.write().insert(cpu, cpu_info);
     }
 
     pub fn init_ap(&self) {
@@ -47,27 +49,27 @@ impl Cpus {
 
         for cpu in response.cpus() {
             if cpu.lapic_id != *BSP_LAPIC_ID {
-                self.add_cpu(cpu.lapic_id);
+                self.add_cpu(Cpu::new(cpu.lapic_id));
                 cpu.goto_address.write(ap_entry);
             }
         }
     }
 
-    pub fn with_cpu_info<F>(&self, lapic_id: u32, f: F)
+    pub fn with_cpu_info<F>(&self, cpu: Cpu, f: F)
     where
         F: FnOnce(&CpuInfo),
     {
         let inner = self.0.read();
-        let cpu_info = inner.get(&lapic_id).unwrap();
+        let cpu_info = inner.get(&cpu).unwrap();
         f(cpu_info);
     }
 
-    pub fn with_cpu_info_mut<F>(&self, lapic_id: u32, f: F)
+    pub fn with_cpu_info_mut<F>(&self, cpu: Cpu, f: F)
     where
         F: FnOnce(&mut CpuInfo),
     {
         let mut inner = self.0.write();
-        let cpu_info = inner.get_mut(&lapic_id).unwrap();
+        let cpu_info = inner.get_mut(&cpu).unwrap();
         f(cpu_info);
     }
 }

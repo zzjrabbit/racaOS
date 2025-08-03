@@ -4,7 +4,6 @@ use crate::{
     hal::{
         context::{CpuException, TrapFrame},
         cpu::Cpu,
-        kernel::LAPIC,
         smp::CPUS,
     },
     mem::VirtualAddress,
@@ -31,7 +30,7 @@ extern "C" fn rust_entry(frame: &mut TrapFrame) {
 }
 
 pub(crate) fn set_kernel_stack(stack: VirtualAddress) {
-    CPUS.with_cpu_info_mut(unsafe { LAPIC.lock().id() }, |cpu_info| {
+    CPUS.with_cpu_info_mut(Cpu::current(), |cpu_info| {
         cpu_info.set_ring0_rsp(VirtAddr::new(stack as u64))
     });
 }

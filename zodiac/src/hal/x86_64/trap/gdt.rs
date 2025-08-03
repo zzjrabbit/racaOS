@@ -39,8 +39,6 @@ impl CpuInfo {
 }
 
 impl CpuInfo {
-    /// # Panics
-    /// Actually it will never panic.
     pub fn init(&mut self) {
         let (mut gdt, mut selectors) = COMMON_GDT.clone();
 

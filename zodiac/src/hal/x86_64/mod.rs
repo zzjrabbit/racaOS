@@ -1,7 +1,7 @@
-use limine::{mp::Cpu, request::FramebufferRequest};
+use limine::request::FramebufferRequest;
 use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
-use crate::hal::smp::{BSP_LAPIC_ID, CPUS};
+use crate::hal::{cpu::Cpu, smp::{BSP_LAPIC_ID, CPUS}};
 
 pub mod context;
 pub mod cpu;
@@ -89,7 +89,7 @@ macro_rules! return_from_int {
 }
 
 pub fn init() {
-    smp::CPUS.load(*BSP_LAPIC_ID);
+    smp::CPUS.load(Cpu::bsp());
     trap::idt::init();
     init_sse();
     smp::CPUS.init_ap();
@@ -122,9 +122,9 @@ pub fn init_sse() {
     unsafe { Cr4::write(cr4) };
 }
 
-unsafe extern "C" fn ap_entry(smp_info: &Cpu) -> ! {
+unsafe extern "C" fn ap_entry(smp_info: &limine::mp::Cpu) -> ! {
     disable_interrupts();
-    CPUS.load(smp_info.lapic_id);
+    CPUS.load(Cpu::new(smp_info.lapic_id));
     trap::idt::init();
 
     init_sse();

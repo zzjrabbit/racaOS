@@ -25,9 +25,7 @@ unsafe impl Send for LockedLocalApic {}
 unsafe impl Sync for LockedLocalApic {}
 
 fn timer_handler(frame: &mut TrapFrame) {
-    //crate::print!("[{}]", unsafe { LAPIC.lock().id() });
     schedule(frame);
-    //crate::print!("[{}]", unsafe { LAPIC.lock().id() });
 }
 
 static TIMER_IRQ: Lazy<Irq> = Lazy::new(|| Irq::allocate(timer_handler).unwrap());
@@ -102,7 +100,6 @@ unsafe fn disable_pic() {
 pub fn init() {
     unsafe {
         disable_pic();
-        log::info!("BSP Lapic id: {}", LAPIC.lock().id());
         APIC_INIT.store(true, Ordering::SeqCst);
     }
 }
