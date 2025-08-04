@@ -5,11 +5,18 @@ use crate::{
         context::{CpuException, TrapFrame},
         cpu::Cpu,
         smp::CPUS,
-    }, mem::VirtualAddress, task::schedule, trap::IRQ_MANAGER
+    },
+    mem::VirtualAddress,
+    task::schedule,
+    trap::IRQ_MANAGER,
 };
 
 pub(super) mod gdt;
 pub(super) mod idt;
+pub(super) mod syscall;
+
+pub use syscall::{set_syscall_handler};
+pub(crate) use syscall::init;
 
 #[unsafe(no_mangle)]
 extern "C" fn rust_entry(frame: &mut TrapFrame) {

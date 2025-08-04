@@ -1,5 +1,6 @@
 use core::{
-    fmt::{self, Write}, sync::atomic::{AtomicBool, Ordering}
+    fmt::{self, Write},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 use alloc::{
@@ -53,9 +54,9 @@ fn terminal_flush(terminal: &mut Terminal<Display>) {
 
 fn terminal_thread() -> ! {
     /*let mut display = Display::default();
-    
+
     let (width, height) = display.size();
-    
+
     for y in 0..height {
         for x in 0..width {
             display.draw_pixel(x, y, (0x70, 0xb0, 0xd0));

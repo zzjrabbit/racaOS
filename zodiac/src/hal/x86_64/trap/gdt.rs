@@ -92,8 +92,8 @@ static COMMON_GDT: Lazy<(GlobalDescriptorTable, Selectors)> = Lazy::new(|| {
 
     let code_selector = gdt.append(Descriptor::kernel_code_segment());
     let data_selector = gdt.append(Descriptor::kernel_data_segment());
-    let user_code_selector = gdt.append(Descriptor::user_code_segment());
     let user_data_selector = gdt.append(Descriptor::user_data_segment());
+    let user_code_selector = gdt.append(Descriptor::user_code_segment());
 
     let selectors = Selectors {
         code_selector,

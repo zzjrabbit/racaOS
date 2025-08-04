@@ -7,7 +7,10 @@ use alloc::{
 use spin::RwLock;
 
 use crate::{
-    hal::{context::TrapFrame, cpu::Cpu}, mem::VirtualAddress, task::{add_thread, current_thread, remove_thread, Process}, ZodiacError
+    ZodiacError,
+    hal::{context::TrapFrame, cpu::Cpu},
+    mem::VirtualAddress,
+    task::{Process, add_thread, current_thread, remove_thread},
 };
 
 pub type ThreadId = usize;
@@ -60,7 +63,7 @@ impl Thread {
     pub(crate) fn set_context(&self, context: TrapFrame) {
         self.inner.write().context = context;
     }
-    
+
     pub(crate) fn kernel_stack(&self) -> VirtualAddress {
         self.kernel_stack.as_ptr() as VirtualAddress + self.kernel_stack.len()
     }

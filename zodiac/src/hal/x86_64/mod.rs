@@ -45,6 +45,7 @@ pub fn init() {
     init_sse();
     kernel::init();
     timer::init();
+    trap::init();
 
     smp::CPUS.init_ap();
 }
@@ -70,6 +71,7 @@ unsafe extern "C" fn ap_entry(smp_info: &limine::mp::Cpu) -> ! {
 
     kernel::ap_init();
     timer::ap_init();
+    trap::init();
 
     log::debug!("Application Processor {} started", smp_info.id);
 

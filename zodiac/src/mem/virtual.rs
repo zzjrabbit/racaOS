@@ -1,10 +1,20 @@
+use core::mem::transmute;
+
 use alloc::sync::Arc;
+use object::{
+    File, Object, ObjectSegment, SegmentFlags,
+    elf::{PF_W, PF_X},
+    pe::{IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_WRITE},
+};
 use spin::RwLock;
 
 use crate::{
     ZodiacError,
     hal::mem::*,
-    mem::{GeneralPageTable, MMUFlags, Page, PageSize, PhysicalMemory, VirtualAddress},
+    mem::{
+        GeneralPageTable, MMUFlags, Page, PageSize, PhysicalMemory, PhysicalMemoryAllocOptions,
+        VirtualAddress, convert_physical_to_virtual,
+    },
 };
 
 pub struct VirtualMemorySpace {
@@ -32,6 +42,26 @@ impl VirtualMemorySpace {
         page_size: PageSize,
     ) -> Result<Cursor, ZodiacError> {
         Cursor::new(self.page_table.clone(), virtual_address, page_size)
+    }
+
+    pub fn reader(&self, address: VirtualAddress, len: usize) -> VmReader {
+        VmReader {
+            address,
+            len,
+            page_table: self.page_table.clone(),
+        }
+    }
+
+    pub fn writer(&self, address: VirtualAddress, len: usize) -> VmWriter {
+        VmWriter {
+            address,
+            len,
+            page_table: self.page_table.clone(),
+        }
+    }
+
+    pub fn binary_file_mapper<'a>(&'a self) -> BinaryFileMapper<'a> {
+        BinaryFileMapper { vm_space: self }
     }
 }
 
@@ -140,5 +170,144 @@ impl Cursor {
 
         self.virtual_address = virtual_address;
         Ok(())
+    }
+}
+
+pub struct VmReader {
+    address: VirtualAddress,
+    len: usize,
+    page_table: Arc<RwLock<dyn GeneralPageTable>>,
+}
+
+impl VmReader {
+    pub fn read(&self, buffer: &mut [u8]) -> Result<(), ZodiacError> {
+        let mut read = 0usize;
+
+        if self.len != buffer.len() {
+            return Err(ZodiacError::InvalidArguments);
+        }
+
+        while read < self.len {
+            let current_address = self.address + read;
+
+            let (physical_address, _, page_size) =
+                self.page_table.write().query(current_address)?;
+            let page_offset = page_size.page_offset(current_address);
+            let remaining = self.len - read;
+            let chunk_size = (page_size as usize - page_offset).min(remaining);
+
+            let virtual_address = convert_physical_to_virtual(physical_address);
+
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    virtual_address as *const u8,
+                    buffer[read..read + chunk_size].as_mut_ptr(),
+                    chunk_size,
+                );
+                read += chunk_size;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub struct VmWriter {
+    address: VirtualAddress,
+    len: usize,
+    page_table: Arc<RwLock<dyn GeneralPageTable>>,
+}
+
+impl VmWriter {
+    pub fn write(&self, buffer: &[u8]) -> Result<(), ZodiacError> {
+        let mut written = 0usize;
+
+        if self.len != buffer.len() {
+            return Err(ZodiacError::InvalidArguments);
+        }
+
+        while written < self.len {
+            let current_address = self.address + written;
+
+            let (physical_address, _, page_size) =
+                self.page_table.write().query(current_address)?;
+            let page_offset = page_size.page_offset(current_address);
+            let remaining = self.len - written;
+            let chunk_size = (page_size as usize - page_offset).min(remaining);
+
+            let virtual_address = convert_physical_to_virtual(physical_address);
+
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    buffer[written..written + chunk_size].as_ptr(),
+                    virtual_address as *mut u8,
+                    chunk_size,
+                );
+                written += chunk_size;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+pub struct BinaryFileMapper<'a> {
+    vm_space: &'a VirtualMemorySpace,
+}
+
+impl<'a> BinaryFileMapper<'a> {
+    pub fn map(&mut self, binary: &[u8]) -> Result<fn() -> !, ZodiacError> {
+        let file = File::parse(binary).map_err(|_| ZodiacError::InvalidArguments)?;
+
+        for segment in file.segments() {
+            let origin_address = segment.address() as VirtualAddress;
+            let length = segment.size() as usize;
+
+            let page_size = PageSize::Size4K;
+            let address = page_size.align_down(origin_address);
+            let length = page_size.align_up(origin_address + length);
+
+            let physical_memory = PhysicalMemoryAllocOptions::default()
+                .count(length / page_size as usize)
+                .allocate()?;
+            let mut cursor = self.vm_space.cursor(address, page_size)?;
+
+            let mut flags = MMUFlags::READ | MMUFlags::USER;
+            let raw_flags = segment.flags();
+            match raw_flags {
+                SegmentFlags::Elf { p_flags } => {
+                    if p_flags & PF_W != 0 {
+                        flags |= MMUFlags::WRITE;
+                    }
+                    if p_flags & PF_X != 0 {
+                        flags |= MMUFlags::EXECUTE;
+                    }
+                }
+
+                SegmentFlags::Coff { characteristics } => {
+                    if characteristics & IMAGE_SCN_MEM_WRITE != 0 {
+                        flags |= MMUFlags::WRITE;
+                    }
+                    if characteristics & IMAGE_SCN_MEM_EXECUTE != 0 {
+                        flags |= MMUFlags::EXECUTE;
+                    }
+                }
+
+                _ => return Err(ZodiacError::InvalidArguments),
+            }
+
+            if let Err(_) = cursor.map(&physical_memory, flags) {
+                cursor.protect(length, flags)?;
+            }
+
+            let data = segment.data().map_err(|_| ZodiacError::InvalidArguments)?;
+
+            self.vm_space
+                .writer(origin_address, data.len())
+                .write(data)
+                .map_err(|_| ZodiacError::InvalidArguments)?;
+        }
+
+        Ok(unsafe { transmute(file.entry() as usize) })
     }
 }

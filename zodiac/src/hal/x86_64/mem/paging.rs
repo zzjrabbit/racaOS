@@ -259,7 +259,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
         match self.translate(VirtAddr::new(vaddr as u64)) {
             TranslateResult::Mapped {
                 frame,
-                offset: _,
+                offset,
                 flags,
             } => {
                 let address = frame.start_address().as_u64() as PhysicalAddress;
@@ -272,7 +272,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
                     _ => unreachable!(),
                 };
 
-                Ok((address, flags, size))
+                Ok((address + offset as usize, flags, size))
             }
             TranslateResult::NotMapped => Err(QueryError::NotMappedYet.into()),
             TranslateResult::InvalidFrameAddress(_) => Err(QueryError::InvalidFrameAddress.into()),
@@ -288,7 +288,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
             return Err(UpdateError::NotMappedYet.into());
         };
 
-        let vaddr = VirtAddr::new(vaddr as u64);
+        let vaddr = VirtAddr::new(page_size.align_down(vaddr) as u64);
         let flags = mmu_flags_to_page_table_flags(flags);
 
         unsafe {

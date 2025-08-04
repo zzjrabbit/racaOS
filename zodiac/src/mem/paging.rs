@@ -88,6 +88,9 @@ pub trait GeneralPageTable: Sync + Send {
     ) -> Result<(), ZodiacError>;
     fn unmap(&mut self, vaddr: VirtualAddress) -> Result<(PhysicalAddress, PageSize), ZodiacError>;
     fn update(&mut self, vaddr: VirtualAddress, flags: MMUFlags) -> Result<PageSize, ZodiacError>;
+
+    /// Note that the returned physical address is not necessarily aligned by page size.
+    /// Simple Case: Page 0 is mapped to Frame 0, then querring 0x10 will get physical address 0x10.
     fn query(
         &mut self,
         vaddr: VirtualAddress,
