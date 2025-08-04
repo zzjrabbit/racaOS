@@ -1,5 +1,3 @@
-use core::ptr::copy_nonoverlapping;
-
 pub use error_code::*;
 
 use crate::{
@@ -36,47 +34,30 @@ pub struct TrapFrame {
     pub rip: usize,
     pub cs: usize,
     pub rflags: usize,
-
-    // Pushed by CPU when Ring3->0
     pub rsp: usize,
     pub ss: usize,
 }
 
 impl TrapFrame {
-    pub fn init_in(kernel_stack: &mut [u8], entry: usize, stack: usize, user_mode: bool) -> usize {
+    pub fn init(&mut self, kernel_stack: &[u8], entry: usize, stack: usize, user_mode: bool) {
         let kernel_stack_end = kernel_stack.as_ptr() as usize + kernel_stack.len();
         log::info!("Kernel stack end: {:x}", kernel_stack_end);
 
-        let mut frame = Self::default();
-
-        frame.rip = entry;
-        frame.rsp = if user_mode {
-            stack
-        } else {
-            kernel_stack_end
-        };
-        frame.rflags = 0x200;
+        self.rip = entry;
+        self.rsp = if user_mode { stack } else { kernel_stack_end };
+        self.rflags = 0x200;
         CPUS.with_cpu_info(Cpu::current(), |cpu_info| {
-            frame.cs = if user_mode {
+            self.cs = if user_mode {
                 cpu_info.user_code_selector()
             } else {
                 cpu_info.kernel_code_selector()
             };
-            frame.ss = if user_mode {
+            self.ss = if user_mode {
                 cpu_info.user_data_selector()
             } else {
                 cpu_info.kernel_data_selector()
             };
         });
-
-        unsafe {
-            copy_nonoverlapping(
-                &frame as *const Self,
-                (kernel_stack_end - size_of::<Self>()) as *mut Self,
-                1,
-            );
-        }
-        kernel_stack_end - size_of::<Self>()
     }
 }
 
@@ -191,4 +172,3 @@ impl CpuException {
         Some(exception)
     }
 }
-

@@ -12,6 +12,7 @@ use crate::hal::disable_interrupts;
 mod boot;
 pub mod console;
 mod error;
+pub mod framebuffer;
 #[cfg(target_arch = "x86_64")]
 #[path = "hal/x86_64/mod.rs"]
 pub mod hal;

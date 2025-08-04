@@ -38,7 +38,6 @@ impl IrqManager {
 
 impl IrqManager {
     pub(super) fn allocate_irq(&self, handler: IrqHandler) -> Option<Irq> {
-        
         let mut inner = self.inner.write();
 
         let irq = inner.available.pop()?;
@@ -50,7 +49,7 @@ impl IrqManager {
         if irq_id > MAX_IRQ_NUM - MIN_IRQ_NUM {
             return None;
         }
-        
+
         let mut inner = self.inner.write();
 
         let irq = Irq(irq_id + MIN_IRQ_NUM);
@@ -58,7 +57,7 @@ impl IrqManager {
         if let Some(_) = inner.irqs.get(&irq) {
             return None;
         }
-        
+
         inner.available.retain(|&i| i != irq);
         inner.irqs.insert(irq, handler);
         Some(irq)

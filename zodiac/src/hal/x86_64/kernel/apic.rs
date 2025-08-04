@@ -73,7 +73,7 @@ pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
 
     lapic.enable();
     lapic.disable_timer();
-    
+
     log::trace!("Lapic Initialized");
 
     LockedLocalApic(Mutex::new(lapic))

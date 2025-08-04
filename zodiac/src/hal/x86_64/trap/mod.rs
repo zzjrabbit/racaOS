@@ -5,9 +5,7 @@ use crate::{
         context::{CpuException, TrapFrame},
         cpu::Cpu,
         smp::CPUS,
-    },
-    mem::VirtualAddress,
-    trap::IRQ_MANAGER,
+    }, mem::VirtualAddress, task::schedule, trap::IRQ_MANAGER
 };
 
 pub(super) mod gdt;
@@ -25,6 +23,10 @@ extern "C" fn rust_entry(frame: &mut TrapFrame) {
 
         loop {}
     } else {
+        if frame.int_num == 32 {
+            schedule(frame);
+            return;
+        }
         IRQ_MANAGER.handle_irq(frame);
     }
 }

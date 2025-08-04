@@ -12,25 +12,25 @@ use crate::{
 
 pub type ThreadId = usize;
 
-const KERNEL_STACK_SIZE: usize = 4 * 1024; // 4k
+const KERNEL_STACK_SIZE: usize = 64 * 1024; // 64k
 
 pub struct Thread {
     inner: RwLock<ThreadInner>,
     thread_id: ThreadId,
     process: Weak<Process>,
-    _kernel_stack: Vec<u8>,
+    kernel_stack: Vec<u8>,
 }
 
 struct ThreadInner {
-    kernel_stack_pointer: VirtualAddress,
     thread_state: ThreadState,
+    context: TrapFrame,
 }
 
 impl Thread {
     pub fn current() -> Arc<Self> {
         current_thread()
     }
-    
+
     pub fn spawn(self: &Arc<Self>) {
         add_thread(self.clone());
     }
@@ -53,12 +53,16 @@ impl Thread {
         self.inner.write().thread_state = state;
     }
 
-    pub(crate) fn kernel_stack_pointer(&self) -> VirtualAddress {
-        self.inner.read().kernel_stack_pointer
+    pub(crate) fn context(&self) -> TrapFrame {
+        self.inner.read().context.clone()
+    }
+
+    pub(crate) fn set_context(&self, context: TrapFrame) {
+        self.inner.write().context = context;
     }
     
-    pub(crate) fn set_kernel_stack_pointer(&self, pointer: usize) {
-        self.inner.write().kernel_stack_pointer = pointer;
+    pub(crate) fn kernel_stack(&self) -> VirtualAddress {
+        self.kernel_stack.as_ptr() as VirtualAddress + self.kernel_stack.len()
     }
 }
 
@@ -67,15 +71,15 @@ impl Thread {
         self.set_thread_state(ThreadState::Blocked);
         self.r#yield();
     }
-    
+
     pub fn r#yield(&self) {
         Cpu::current().trigger_schedule();
     }
-    
+
     pub(crate) fn run(&self) {
         self.set_thread_state(ThreadState::RunningOn(Cpu::current()));
     }
-    
+
     pub(crate) fn ready(&self) {
         self.set_thread_state(ThreadState::Ready);
     }
@@ -86,22 +90,22 @@ impl Thread {
         remove_thread(self.thread_id());
         self.process().unwrap().remove_thread(self.thread_id());
         self.set_thread_state(ThreadState::Dead);
-        
+
         self.r#yield();
         loop {}
     }
-    
+
     pub fn kill(&self) {
         remove_thread(self.thread_id());
         self.process().unwrap().remove_thread(self.thread_id());
-        
+
         let cpu = if let ThreadState::RunningOn(cpu) = self.thread_state() {
             Some(cpu)
         } else {
             None
         };
         self.set_thread_state(ThreadState::Dead);
-        
+
         if let Some(cpu) = cpu {
             cpu.trigger_schedule();
         }
@@ -180,7 +184,7 @@ impl ThreadBuilder {
     pub fn build(self) -> Result<Arc<Thread>, ZodiacError> {
         static NEXT_THREAD_ID: AtomicUsize = AtomicUsize::new(0);
 
-        let mut kernel_stack = alloc::vec![0; self.kernel_stack_size];
+        let kernel_stack = alloc::vec![0; self.kernel_stack_size];
 
         let process = self.process.ok_or(ZodiacError::ArgumentsNotEnough)?;
         let entry = self.entry.ok_or(ZodiacError::ArgumentsNotEnough)?;
@@ -190,14 +194,15 @@ impl ThreadBuilder {
             0
         };
 
-        let kernel_stack_pointer = TrapFrame::init_in(&mut kernel_stack, entry, stack, self.user_mode);
+        let mut context = TrapFrame::default();
+        context.init(&kernel_stack, entry, stack, self.user_mode);
 
         let thread = Arc::new(Thread {
             process: Arc::downgrade(&process),
             thread_id: NEXT_THREAD_ID.fetch_add(1, Ordering::SeqCst),
-            _kernel_stack: kernel_stack,
+            kernel_stack: kernel_stack,
             inner: RwLock::new(ThreadInner {
-                kernel_stack_pointer,
+                context,
                 thread_state: ThreadState::Ready,
             }),
         });

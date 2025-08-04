@@ -1,7 +1,10 @@
 use alloc::vec::Vec;
 
 use crate::{
-    hal::{kernel::LAPIC, smp::{BSP_LAPIC_ID, MP_REQUEST}},
+    hal::{
+        kernel::LAPIC,
+        smp::{BSP_LAPIC_ID, MP_REQUEST},
+    },
     trap::Irq,
 };
 
@@ -12,11 +15,11 @@ impl Cpu {
     pub fn new(id: u32) -> Self {
         Self(id)
     }
-    
+
     pub fn bsp() -> Self {
         Self(*BSP_LAPIC_ID)
     }
-    
+
     pub fn current() -> Self {
         unsafe { Self(LAPIC.lock().id()) }
     }

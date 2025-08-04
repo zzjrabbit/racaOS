@@ -9,8 +9,6 @@ use spin::Once;
 use crate::{
     hal::{context::TrapFrame, cpu_num, enable_interrupts, trap::set_kernel_stack},
     task::{Process, Thread, ThreadBuilder, ThreadId},
-    switch_stack,
-    return_from_int,
 };
 
 pub trait Scheduler<T = Arc<Thread>>: Sync + Send {
@@ -99,14 +97,13 @@ impl SchedulerWrapper {
     }
 
     fn schedule(&self, context: &mut TrapFrame) {
-        let mut kernel_stack_pointer = 0;
         self.scheduler
             .get()
             .unwrap()
             .with_local_queue_mut(&mut |queue| {
                 if let Some(current) = queue.current() {
                     if let Some(current) = current.upgrade() {
-                        current.set_kernel_stack_pointer(context as *mut _ as usize);
+                        current.set_context(context.clone());
                         if !current.thread_state().is_blocked() {
                             current.ready();
                             queue.enqueue(current.clone());
@@ -116,45 +113,44 @@ impl SchedulerWrapper {
 
                 let next = queue.deque_next_thread().expect("CPU Hungry.");
                 next.run();
+                *context = next.context();
 
-                set_kernel_stack(next.kernel_stack_pointer() + size_of::<TrapFrame>());
+                set_kernel_stack(next.kernel_stack());
 
                 next.process()
                     .expect("No process contains the next thread.")
                     .vm_space()
                     .switch();
-                
-                kernel_stack_pointer = next.kernel_stack_pointer();
             });
-        
-        switch_stack!(kernel_stack_pointer);
-        return_from_int!();
     }
-    
+
     fn current(&self) -> Arc<Thread> {
         let mut current = None;
-        self.scheduler.get().unwrap().with_local_queue(&mut |queue| {
-            current = queue.current().unwrap().upgrade();
-        });
+        self.scheduler
+            .get()
+            .unwrap()
+            .with_local_queue(&mut |queue| {
+                current = queue.current().unwrap().upgrade();
+            });
         current.unwrap()
     }
 }
 
 mod wrappers {
     use super::*;
-    
+
     pub fn add_thread(thread: Arc<Thread>) {
         SCHEDULER.add(thread);
     }
-    
+
     pub fn remove_thread(thread_id: ThreadId) {
         SCHEDULER.remove(thread_id);
     }
-    
+
     pub fn schedule(context: &mut TrapFrame) {
         SCHEDULER.schedule(context);
     }
-    
+
     pub fn current_thread() -> Arc<Thread> {
         SCHEDULER.current()
     }

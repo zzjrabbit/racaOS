@@ -4,7 +4,10 @@ use alloc::{sync::Arc, vec::Vec};
 use spin::{Lazy, RwLock};
 
 use crate::{
-    hal::cpu::Cpu, mem::VirtualMemorySpace, task::{remove_thread, Thread, ThreadId, ThreadState}, ZodiacError
+    ZodiacError,
+    hal::cpu::Cpu,
+    mem::VirtualMemorySpace,
+    task::{Thread, ThreadId, ThreadState, remove_thread},
 };
 
 pub type ProcessId = usize;
@@ -65,21 +68,21 @@ impl Process {
             } else {
                 None
             };
-            
+
             thread.set_thread_state(ThreadState::Dead);
             remove_thread(thread.thread_id());
-            
+
             if let Some(cpu) = cpu {
                 if cpu != Cpu::current() {
                     cpu.trigger_schedule();
                 }
             }
         }
-        
+
         Cpu::current().trigger_schedule();
         loop {}
     }
-    
+
     pub fn kill(&self) {
         let threads = self.inner.read().threads.clone();
         for thread in threads {

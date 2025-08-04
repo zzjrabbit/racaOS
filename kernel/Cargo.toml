@@ -8,4 +8,5 @@ zodiac = { workspace = true, features = ["default_allocator"] }
 log = "0.4.27"
 good_memory_allocator = "0.1.7"
 spin = "0.10.0"
+os-terminal = { version = "0.6.10", features = ["truetype"] }
 
