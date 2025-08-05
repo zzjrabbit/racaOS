@@ -154,8 +154,6 @@ impl Process {
             PageSize::Size4K
         };
 
-        log::trace!("start: {:x?}", page_size.align_down(region.unwrap().start));
-
         region
             .map(|region| {
                 self.inner()

@@ -86,4 +86,8 @@ impl Irq {
     pub fn allocate(handler: IrqHandler) -> Option<Irq> {
         super::IRQ_MANAGER.allocate_irq(handler)
     }
+    
+    pub fn from_vector(vector: u8) -> Self {
+        Irq(vector)
+    }
 }

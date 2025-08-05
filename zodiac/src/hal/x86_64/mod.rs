@@ -1,6 +1,6 @@
 use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
-use crate::hal::{cpu::Cpu, kernel::apic_timer_irq, smp::CPUS};
+use crate::{hal::{cpu::Cpu, kernel::apic_timer_irq, smp::CPUS}, trap::Irq};
 
 pub mod context;
 pub mod cpu;
@@ -34,7 +34,7 @@ impl Cpu {
                 core::arch::asm!("int 0x20");
             }
         } else {
-            self.send_ipi(apic_timer_irq());
+            self.send_ipi(Irq::from_vector(0x20));
         }
     }
 }

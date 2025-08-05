@@ -11,13 +11,16 @@ use x86_64::structures::tss::TaskStateSegment;
 
 pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
 pub const PAGE_FAULT_IST_INDEX: usize = 1;
+pub const YIELD_IST_INDEX: usize = 2;
 pub const FAULT_STACK_SIZE: usize = 4 * 1024;
+pub const YIELD_STACK_SIZE: usize = 4 * 1024;
 
 pub struct CpuInfo {
     gdt: GlobalDescriptorTable,
     tss: TaskStateSegment,
     selectors: Option<Selectors>,
     fault_stack: &'static mut [u8],
+    yield_stack: &'static mut [u8],
 }
 
 impl Default for CpuInfo {
@@ -27,6 +30,7 @@ impl Default for CpuInfo {
             tss: TaskStateSegment::new(),
             selectors: None,
             fault_stack: Box::leak(Box::new([0; FAULT_STACK_SIZE])),
+            yield_stack: Box::leak(Box::new([0; YIELD_STACK_SIZE])),
         }
     }
 }
@@ -50,6 +54,11 @@ impl CpuInfo {
         self.tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX] = {
             let stack_start = self.fault_stack.as_ptr() as u64;
             VirtAddr::new(stack_start + self.fault_stack.len() as u64)
+        };
+        
+        self.tss.interrupt_stack_table[YIELD_IST_INDEX] = {
+            let stack_start = self.yield_stack.as_ptr() as u64;
+            VirtAddr::new(stack_start + self.yield_stack.len() as u64)
         };
 
         let tss_ref = unsafe { &*addr_of!(self.tss) };

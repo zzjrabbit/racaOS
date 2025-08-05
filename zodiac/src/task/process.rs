@@ -78,7 +78,8 @@ impl Process {
                 cpu.trigger_schedule();
             }
         }
-
+        
+        self.inner.write().threads.clear();
         Cpu::current().trigger_schedule();
         unreachable!()
     }

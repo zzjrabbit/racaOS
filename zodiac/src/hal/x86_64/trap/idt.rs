@@ -2,7 +2,7 @@ use core::mem::transmute;
 use spin::Lazy;
 use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable, PageFaultErrorCode};
 
-use crate::hal::trap::gdt::{DOUBLE_FAULT_IST_INDEX, PAGE_FAULT_IST_INDEX};
+use crate::hal::trap::gdt::{DOUBLE_FAULT_IST_INDEX, PAGE_FAULT_IST_INDEX, YIELD_IST_INDEX};
 
 pub fn init() {
     IDT.load();
@@ -1055,6 +1055,11 @@ static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
                 ) -> (),
             >(intentry0e as usize))
             .set_stack_index(PAGE_FAULT_IST_INDEX as u16);
+        
+        idt[0x20].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry20 as usize)).set_stack_index(YIELD_IST_INDEX as u16);
     }
 
     idt

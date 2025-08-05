@@ -34,9 +34,9 @@ struct ThreadInner {
     thread_state: ThreadState,
     context: TrapFrame,
     #[cfg(target_arch = "x86_64")]
-    fs_base: VirtualAddress,
+    fs_base: Option<VirtualAddress>,
     #[cfg(target_arch = "x86_64")]
-    gs_base: VirtualAddress,
+    gs_base: Option<VirtualAddress>,
 }
 
 impl Thread {
@@ -80,23 +80,23 @@ impl Thread {
 
     #[cfg(target_arch = "x86_64")]
     pub fn set_fs_base(&self, fs_base: VirtualAddress) {
-        self.inner.write().fs_base = fs_base;
+        self.inner.write().fs_base = Some(fs_base);
         FsBase::write(VirtAddr::new(fs_base as u64));
     }
 
     #[cfg(target_arch = "x86_64")]
     pub fn set_gs_base(&self, gs_base: VirtualAddress) {
-        self.inner.write().gs_base = gs_base;
+        self.inner.write().gs_base = Some(gs_base);
         GsBase::write(VirtAddr::new(gs_base as u64));
     }
 
     #[cfg(target_arch = "x86_64")]
-    pub fn fs_base(&self) -> VirtualAddress {
+    pub fn fs_base(&self) -> Option<VirtualAddress> {
         self.inner.read().fs_base
     }
 
     #[cfg(target_arch = "x86_64")]
-    pub fn gs_base(&self) -> VirtualAddress {
+    pub fn gs_base(&self) -> Option<VirtualAddress> {
         self.inner.read().gs_base
     }
 }
@@ -157,7 +157,10 @@ pub enum ThreadState {
 
 impl ThreadState {
     pub fn is_blocked(&self) -> bool {
-        matches!(self, ThreadState::Blocked)
+        match self {
+            Self::Ready | Self::RunningOn(_) => false,
+            _ => true,
+        }
     }
 
     pub fn on_cpu(&self) -> Option<Cpu> {
@@ -240,9 +243,9 @@ impl ThreadBuilder {
                 context,
                 thread_state: ThreadState::Ready,
                 #[cfg(target_arch = "x86_64")]
-                fs_base: 0,
+                fs_base: None,
                 #[cfg(target_arch = "x86_64")]
-                gs_base: 0,
+                gs_base: None,
             }),
         });
 

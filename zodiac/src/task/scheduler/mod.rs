@@ -125,8 +125,12 @@ impl SchedulerWrapper {
                         VirtAddr,
                         registers::model_specific::{FsBase, GsBase},
                     };
-                    FsBase::write(VirtAddr::new(next.fs_base() as u64));
-                    GsBase::write(VirtAddr::new(next.gs_base() as u64));
+                    if let Some(fs_base) = next.fs_base() {
+                        FsBase::write(VirtAddr::new(fs_base as u64));
+                    }
+                    if let Some(gs_base) = next.gs_base() {
+                        GsBase::write(VirtAddr::new(gs_base as u64));
+                    }
                 }
 
                 next.process()
