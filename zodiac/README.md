@@ -6,10 +6,10 @@ Zodiac is a framework for framekernel, inspired by [ostd](https://github.com/ast
 
 - [x] Bootloader: limine
 - [x] Memory Management
-- [ ] SMP
-- [ ] Interrupt handling
-- [ ] Multitask
-- [ ] Syscall
+- [x] SMP
+- [x] Interrupt handling
+- [x] Multitask
+- [x] Syscall
 - [ ] PCIe
 - [ ] MSI & MSI-X
 - [ ] IOMMU

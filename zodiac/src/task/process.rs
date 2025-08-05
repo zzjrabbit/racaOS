@@ -12,6 +12,8 @@ use crate::{
 
 pub type ProcessId = usize;
 
+/// Process structure.
+/// This is basically a container of resources.
 pub struct Process {
     process_id: ProcessId,
     vm_space: VirtualMemorySpace,
@@ -33,6 +35,7 @@ impl Process {
         })
     }
 
+    // Return the kernel process.
     pub fn kernel() -> Arc<Self> {
         static KERNEL: Lazy<Arc<Process>> = Lazy::new(Process::new_kernel);
         KERNEL.clone()
@@ -40,14 +43,17 @@ impl Process {
 }
 
 impl Process {
+    /// Return the process ID.
     pub fn process_id(&self) -> ProcessId {
         self.process_id
     }
 
+    /// Add a thread to the process.
     pub fn add_thread(&self, thread: Arc<Thread>) {
         self.inner.write().threads.push(thread);
     }
 
+    /// Remove a thread from the process.
     pub fn remove_thread(&self, thread_id: ThreadId) {
         self.inner
             .write()
@@ -55,12 +61,14 @@ impl Process {
             .retain(|thread| thread.thread_id() != thread_id);
     }
 
+    /// Return the virtual memory space of the process.
     pub fn vm_space(&self) -> &VirtualMemorySpace {
         &self.vm_space
     }
 }
 
 impl Process {
+    /// Exit the process.
     pub fn exit(&self) -> ! {
         for thread in self.inner.read().threads.iter() {
             let cpu = if let ThreadState::RunningOn(cpu) = thread.thread_state() {
@@ -83,21 +91,25 @@ impl Process {
         Cpu::current().trigger_schedule();
         unreachable!()
     }
-
+    
+    /// Kill the process.
     pub fn kill(&self) {
         let threads = self.inner.read().threads.clone();
         for thread in threads {
             thread.kill();
         }
+        self.inner.write().threads.clear();
     }
 }
 
+/// Builder of a process.
 #[derive(Default)]
 pub struct ProcessBuilder {
     vm_space: Option<VirtualMemorySpace>,
 }
 
 impl ProcessBuilder {
+    /// Set the virtual memory space for the process.
     pub fn vm_space(mut self, vm_space: VirtualMemorySpace) -> Self {
         self.vm_space = Some(vm_space);
         self
@@ -105,6 +117,8 @@ impl ProcessBuilder {
 }
 
 impl ProcessBuilder {
+    /// Build the process.
+    /// You have to contain the process yourself, otherwise it will be dropped.
     pub fn build(self) -> Result<Arc<Process>, ZodiacError> {
         static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(1);
 

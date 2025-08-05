@@ -6,6 +6,7 @@ use crate::hal::{
     kernel::irq::{MAX_IRQ_NUM, MIN_IRQ_NUM},
 };
 
+/// Handler for an IRQ.
 pub type IrqHandler = fn(&mut TrapFrame);
 
 pub(crate) struct IrqManager {
@@ -71,6 +72,7 @@ impl IrqManager {
     }
 }
 
+/// Safe wrapper for IRQs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Irq(u8);
 
@@ -79,14 +81,17 @@ impl Irq {
         self.0
     }
 
+    /// Allocate a specific IRQ.
     pub fn allocate_specific(irq_id: u8, handler: IrqHandler) -> Option<Irq> {
         super::IRQ_MANAGER.allocate_specific_irq(irq_id, handler)
     }
 
+    /// Allocate an IRQ.
     pub fn allocate(handler: IrqHandler) -> Option<Irq> {
         super::IRQ_MANAGER.allocate_irq(handler)
     }
     
+    /// Create an IRQ from a vector.
     pub fn from_vector(vector: u8) -> Self {
         Irq(vector)
     }

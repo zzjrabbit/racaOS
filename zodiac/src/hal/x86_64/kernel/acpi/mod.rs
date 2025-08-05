@@ -22,6 +22,7 @@ static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 
 pub static ACPI: Lazy<Acpi> = Lazy::new(|| init_acpi().unwrap());
 
+#[allow(dead_code)]
 pub struct Acpi<'a> {
     pub apic: Apic<'a, Global>,
     pub hpet_info: HpetInfo,

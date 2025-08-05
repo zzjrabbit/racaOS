@@ -23,6 +23,8 @@ pub type ThreadId = usize;
 
 const KERNEL_STACK_SIZE: usize = 64 * 1024; // 64k
 
+/// Thread structure.
+/// This is basically a container of context.
 pub struct Thread {
     inner: RwLock<ThreadInner>,
     thread_id: ThreadId,
@@ -40,24 +42,29 @@ struct ThreadInner {
 }
 
 impl Thread {
+    /// Get the current thread.
     pub fn current() -> Arc<Self> {
         current_thread()
     }
 
+    /// Spawn this thread.
     pub fn spawn(self: &Arc<Self>) {
         add_thread(self.clone());
     }
 }
 
 impl Thread {
+    /// Get the process of this thread.
     pub fn process(&self) -> Option<Arc<Process>> {
         self.process.upgrade()
     }
 
+    /// Get the thread id of this thread.
     pub fn thread_id(&self) -> ThreadId {
         self.thread_id
     }
 
+    /// Get the thread state of this thread.
     pub fn thread_state(&self) -> ThreadState {
         self.inner.read().thread_state
     }
@@ -78,23 +85,31 @@ impl Thread {
         self.kernel_stack.as_ptr() as VirtualAddress + self.kernel_stack.len()
     }
 
+    /// Set the FS base register for this thread.
+    /// This function only exists on x86_64.
     #[cfg(target_arch = "x86_64")]
     pub fn set_fs_base(&self, fs_base: VirtualAddress) {
         self.inner.write().fs_base = Some(fs_base);
         FsBase::write(VirtAddr::new(fs_base as u64));
     }
 
+    /// Set the GS base register for this thread.
+    /// This function only exists on x86_64.
     #[cfg(target_arch = "x86_64")]
     pub fn set_gs_base(&self, gs_base: VirtualAddress) {
         self.inner.write().gs_base = Some(gs_base);
         GsBase::write(VirtAddr::new(gs_base as u64));
     }
 
+    /// Get the FS base register for this thread.
+    /// This function only exists on x86_64.
     #[cfg(target_arch = "x86_64")]
     pub fn fs_base(&self) -> Option<VirtualAddress> {
         self.inner.read().fs_base
     }
 
+    /// Get the GS base register for this thread.
+    /// This function only exists on x86_64.
     #[cfg(target_arch = "x86_64")]
     pub fn gs_base(&self) -> Option<VirtualAddress> {
         self.inner.read().gs_base
@@ -102,11 +117,13 @@ impl Thread {
 }
 
 impl Thread {
+    /// Block this thread.
     pub fn block(&self) {
         self.set_thread_state(ThreadState::Blocked);
         self.r#yield();
     }
 
+    /// Yield the CPU to another thread.
     pub fn r#yield(&self) {
         Cpu::current().trigger_schedule();
     }
@@ -121,6 +138,7 @@ impl Thread {
 }
 
 impl Thread {
+    /// Exit this thread.
     pub fn exit(&self) -> ! {
         remove_thread(self.thread_id());
         self.process().unwrap().remove_thread(self.thread_id());
@@ -130,6 +148,7 @@ impl Thread {
         unreachable!()
     }
 
+    /// Kill this thread.
     pub fn kill(&self) {
         remove_thread(self.thread_id());
         self.process().unwrap().remove_thread(self.thread_id());
@@ -171,6 +190,7 @@ impl ThreadState {
     }
 }
 
+/// Builder of a thread.
 pub struct ThreadBuilder {
     process: Option<Arc<Process>>,
     kernel_stack_size: usize,
@@ -192,26 +212,35 @@ impl Default for ThreadBuilder {
 }
 
 impl ThreadBuilder {
+    /// Set the entry point of the thread.
+    /// This is a necessary option.
     pub fn entry(mut self, entry: fn() -> !) -> Self {
         self.entry = Some(entry as usize);
         self
     }
 
+    /// Set the stack of the thread.
+    /// This is a necessary option for user threads, and it does nothing for kernel threads.
     pub fn stack(mut self, stack: usize) -> Self {
         self.stack = Some(stack);
         self
     }
 
+    /// Set the process of the thread.
+    /// This is a necessary option.
     pub fn process(mut self, process: Arc<Process>) -> Self {
         self.process = Some(process);
         self
     }
 
+    /// Set the kernel stack size of the thread.
+    /// This is optional.
     pub fn kernel_stack_size(mut self, size: usize) -> Self {
         self.kernel_stack_size = size;
         self
     }
 
+    /// Make the thread in kernel mode.
     pub fn kernel_mode(mut self) -> Self {
         self.user_mode = false;
         self
@@ -219,6 +248,7 @@ impl ThreadBuilder {
 }
 
 impl ThreadBuilder {
+    /// Create the thread.
     pub fn build(self) -> Result<Arc<Thread>, ZodiacError> {
         static NEXT_THREAD_ID: AtomicUsize = AtomicUsize::new(0);
 

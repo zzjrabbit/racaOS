@@ -23,6 +23,7 @@ pub type SyscallHandler = fn(
 
 static SYSCALL_HANDLER: Once<SyscallHandler> = Once::new();
 
+/// Set the syscall handler. So that it will be called when syscalls are invoked.
 pub fn set_syscall_handler(handler: SyscallHandler) {
     SYSCALL_HANDLER.call_once(|| handler);
 }

@@ -2,10 +2,10 @@ use alloc::vec::Vec;
 
 use crate::{
     PhyscialMemoryError, ZodiacError,
-    hal::mem::align_down_by_page_size,
     mem::{FRAME_ALLOCATOR, PageSize, PhysicalAddress},
 };
 
+/// Options for allocating physical memory.
 pub struct PhysicalMemoryAllocOptions {
     count: usize,
     page_size: PageSize,
@@ -25,21 +25,26 @@ impl Default for PhysicalMemoryAllocOptions {
 }
 
 impl PhysicalMemoryAllocOptions {
+    /// Set the number of frames to allocate.
     pub fn count(mut self, count: usize) -> Self {
         self.count = count;
         self
     }
 
+    /// Set the page size for the allocated frames.
     pub fn page_size(mut self, page_size: PageSize) -> Self {
         self.page_size = page_size;
         self
     }
 
+    /// Set whether the allocated frames should be contiguous.
     pub fn contiguous(mut self, contiguous: bool) -> Self {
         self.contiguous = contiguous;
         self
     }
 
+    /// Set the starting address for the allocated frames.
+    /// This is only useful when allocating contiguous frames.
     pub(crate) fn address(mut self, address: PhysicalAddress) -> Self {
         self.address = Some(address);
         self
@@ -47,6 +52,7 @@ impl PhysicalMemoryAllocOptions {
 }
 
 impl PhysicalMemoryAllocOptions {
+    /// Allocate physical memory frames with the specified options.
     pub fn allocate(self) -> Result<PhysicalMemory, ZodiacError> {
         if let Some(address) = self.address {
             if !self.page_size.is_aligned(address) || !self.contiguous {
@@ -64,6 +70,7 @@ impl PhysicalMemoryAllocOptions {
     }
 }
 
+/// Manages multiple physical memory frames.
 pub struct PhysicalMemory {
     count: usize,
     page_size: PageSize,
@@ -124,7 +131,7 @@ impl PhysicalMemory {
     }
 
     pub fn containing_address(address: PhysicalAddress, count: usize, page_size: PageSize) -> Self {
-        let start_address = align_down_by_page_size(address);
+        let start_address = page_size.align_down(address);
 
         Self::from_start_address(start_address, count, page_size)
     }

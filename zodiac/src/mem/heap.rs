@@ -1,5 +1,7 @@
 use core::alloc::GlobalAlloc;
 
+/// Allocator trait for custom memory allocators.
+/// Enable `default_allocator` feature to use the default allocator.
 pub trait Allocator: GlobalAlloc + Sync {
     fn init(&self);
 }
@@ -32,6 +34,8 @@ unsafe impl GlobalAlloc for Heap {
 }
 
 #[cfg(feature = "default_allocator")]
+/// # Default Allocator
+/// This allocator manages 8MB of memory.
 pub struct DefaultAllocator(good_memory_allocator::SpinLockedAllocator);
 
 #[cfg(feature = "default_allocator")]

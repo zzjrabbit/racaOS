@@ -15,6 +15,9 @@ impl Logger {
     }
 }
 
+/// Set the logger.
+/// This function shouldn't be called more than once.
+/// If this function isn't called, the default logger will be used.
 pub fn set_logger(new_logger: &'static dyn log::Log) {
     LOGGER.backend.call_once(|| new_logger);
 }

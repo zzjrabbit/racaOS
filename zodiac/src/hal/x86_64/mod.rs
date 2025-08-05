@@ -1,34 +1,45 @@
 use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
-use crate::{hal::{cpu::Cpu, kernel::apic_timer_irq, smp::CPUS}, trap::Irq};
+use crate::{hal::{cpu::Cpu, smp::CPUS}, trap::Irq};
 
+/// Context structures.
 pub mod context;
+/// CPU structures.
 pub mod cpu;
+/// Device structures.
 pub mod device;
+/// IRQs, power management and others.
 pub mod kernel;
+/// Safe memory management wrappers.
 pub mod mem;
 mod smp;
+/// Timer.
 pub mod timer;
+/// Safe wrappers for interrupts and syscalls.
 pub mod trap;
 
+/// Do something without interrupts.
 pub fn without_interrupts<R>(function: impl Fn() -> R) -> R {
     x86_64::instructions::interrupts::without_interrupts(function)
 }
 
+/// Enable interrupts.
 pub fn enable_interrupts() {
     x86_64::instructions::interrupts::enable();
 }
 
+/// Disable interrupts.
 pub fn disable_interrupts() {
     x86_64::instructions::interrupts::disable();
 }
 
+/// Get the number of CPUs.
 pub fn cpu_num() -> usize {
     smp::CPUS.len()
 }
 
 impl Cpu {
-    pub fn trigger_schedule(&self) {
+    pub(crate) fn trigger_schedule(&self) {
         if Cpu::current() == *self {
             unsafe {
                 core::arch::asm!("int 0x20");
@@ -39,7 +50,7 @@ impl Cpu {
     }
 }
 
-pub fn init() {
+pub(crate) fn init() {
     smp::CPUS.load(Cpu::bsp());
     trap::idt::init();
     init_sse();
@@ -50,7 +61,7 @@ pub fn init() {
     smp::CPUS.init_ap();
 }
 
-pub fn init_sse() {
+fn init_sse() {
     let mut cr0 = Cr0::read();
     cr0.remove(Cr0Flags::EMULATE_COPROCESSOR);
     cr0.insert(Cr0Flags::MONITOR_COPROCESSOR);

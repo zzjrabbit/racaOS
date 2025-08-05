@@ -7,6 +7,8 @@ use crate::{
     mem::{PhysicalAddress, VirtualAddress},
 };
 
+/// Page Size
+/// Interfaces to support huge page.
 #[repr(usize)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PageSize {
@@ -62,6 +64,7 @@ impl Page {
 }
 
 bitflags! {
+    /// Flags for mapping.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub struct MMUFlags: u32 {
         const READ = 1 << 0;
@@ -78,6 +81,7 @@ bitflags! {
     }
 }
 
+#[allow(dead_code)]
 pub trait GeneralPageTable: Sync + Send {
     fn physical_address(&self) -> PhysicalAddress;
     fn map(

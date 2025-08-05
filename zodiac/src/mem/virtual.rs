@@ -17,25 +17,42 @@ use crate::{
     },
 };
 
+/// A structure to manage virtual memory space.
+/// Most interfaces are implemented in other structures.
+/// But you must construct them with this structure.
 pub struct VirtualMemorySpace {
     page_table: Arc<RwLock<dyn GeneralPageTable>>,
 }
 
 impl VirtualMemorySpace {
+    /// Create a kernel virtual memory space.
+    /// This is not a copy, but a direct reference to the kernel space.
     pub fn new_kernel() -> Self {
         Self {
             page_table: kernel_page_table(),
         }
     }
 
+    /// Create a new user virtual memory space.
+    /// This is a copy of kernel virtual memory space.
     pub fn new_user() -> Self {
         Self {
             page_table: kernel_page_table().read().deep_copy(),
         }
     }
+
+    /// Deep copy this virtual memory space.
+    /// Good choice for fork syscall.
+    pub fn deep_copy(&self) -> Self {
+        Self {
+            page_table: self.page_table.read().deep_copy(),
+        }
+    }
 }
 
 impl VirtualMemorySpace {
+    /// Create a cursor at the given virtual address with the given page size.
+    /// So that you can map, unmap and change the flags of virtual memory regions.
     pub fn cursor(
         &self,
         virtual_address: VirtualAddress,
@@ -44,6 +61,8 @@ impl VirtualMemorySpace {
         Cursor::new(self.page_table.clone(), virtual_address, page_size)
     }
 
+    /// Create a reader to help you read data from the virtual memory space.
+    /// See more at `VmReader`. 
     pub fn reader(&self, address: VirtualAddress, len: usize) -> VmReader {
         VmReader {
             address,
@@ -52,6 +71,8 @@ impl VirtualMemorySpace {
         }
     }
 
+    /// Create a writer to help you write data into the virtual memory space.
+    /// See more at `VmWriter`.
     pub fn writer(&self, address: VirtualAddress, len: usize) -> VmWriter {
         VmWriter {
             address,
@@ -60,17 +81,22 @@ impl VirtualMemorySpace {
         }
     }
 
+    /// Create a binary file mapper to map binary files in to the virtual memory space.
+    /// See more at `BinaryFileMapper`.
     pub fn binary_file_mapper<'a>(&'a self) -> BinaryFileMapper<'a> {
         BinaryFileMapper { vm_space: self }
     }
 }
 
 impl VirtualMemorySpace {
+    // Switches to this virtual memory space.
+    // Might cause Page Fault if you are not carefull.
     pub fn switch(&self) {
         self.page_table.read().switch();
     }
 }
 
+/// An interface to map, unmap and change flags of virtual memory regions safely.
 pub struct Cursor {
     page_table: Arc<RwLock<dyn GeneralPageTable>>,
     virtual_address: VirtualAddress,
@@ -95,6 +121,8 @@ impl Cursor {
 }
 
 impl Cursor {
+    /// Map the current virtual memory region to the given physical memory frames.
+    /// This moves the cursor to the end of the region.
     pub fn map(
         &mut self,
         physical_memory: &PhysicalMemory,
@@ -129,6 +157,8 @@ impl Cursor {
         Ok(())
     }
 
+    /// Unmap the current virtual memory region.
+    /// This moves the cursor to the end of the region.
     pub fn unmap(&mut self, len: usize) -> Result<(), ZodiacError> {
         let page_size = self.page_size;
         let vaddr = self.virtual_address;
@@ -142,6 +172,8 @@ impl Cursor {
         Ok(())
     }
 
+    /// Changes the flags of the current virtual memory region.
+    /// This moves the cursor to the end of the region.
     pub fn protect(&mut self, len: usize, flags: MMUFlags) -> Result<(), ZodiacError> {
         let page_size = self.page_size;
         let vaddr = self.virtual_address;
@@ -162,6 +194,7 @@ impl Cursor {
 }
 
 impl Cursor {
+    /// Jump to the given virtual address.
     pub fn jump_to(&mut self, virtual_address: VirtualAddress) -> Result<(), ZodiacError> {
         if !self.page_size.is_aligned(virtual_address) {
             return Err(ZodiacError::InvalidArguments);
@@ -172,6 +205,7 @@ impl Cursor {
     }
 }
 
+/// Safe interface to read data from a virtual memory space.
 pub struct VmReader {
     address: VirtualAddress,
     len: usize,
@@ -179,6 +213,8 @@ pub struct VmReader {
 }
 
 impl VmReader {
+    /// Read data from the virtual memory space into the buffer.
+    /// The virtual memory space doesn't necessarily have to be the current one.
     pub fn read(&self, buffer: &mut [u8]) -> Result<(), ZodiacError> {
         let mut read = 0usize;
 
@@ -211,6 +247,7 @@ impl VmReader {
     }
 }
 
+/// Safe interface to write data into a virtual memory space.
 pub struct VmWriter {
     address: VirtualAddress,
     len: usize,
@@ -218,6 +255,8 @@ pub struct VmWriter {
 }
 
 impl VmWriter {
+    /// Write data from the buffer into the virtual memory space.
+    /// The virtual memory space doesn't necessarily have to be the current one.
     pub fn write(&self, buffer: &[u8]) -> Result<(), ZodiacError> {
         let mut written = 0usize;
 
@@ -250,11 +289,16 @@ impl VmWriter {
     }
 }
 
+/// Safe wrapper to map a binary file.
+/// Supported formats:
+/// * elf
+/// * pe
 pub struct BinaryFileMapper<'a> {
     vm_space: &'a VirtualMemorySpace,
 }
 
 impl<'a> BinaryFileMapper<'a> {
+    /// Simply map the binary file.
     pub fn map(&mut self, binary: &[u8]) -> Result<fn() -> !, ZodiacError> {
         let file = File::parse(binary).map_err(|_| ZodiacError::InvalidArguments)?;
 

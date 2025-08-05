@@ -7,6 +7,7 @@ use crate::{
 
 mod error_code;
 
+/// When interrupt occurs, this structure will be pushed into the stack, either by CPU or by assembly code in Zodiac.
 #[derive(Debug, Clone, Default)]
 #[repr(C)]
 pub struct TrapFrame {
@@ -39,7 +40,7 @@ pub struct TrapFrame {
 }
 
 impl TrapFrame {
-    pub fn init(&mut self, kernel_stack: &[u8], entry: usize, stack: usize, user_mode: bool) {
+    pub(crate) fn init(&mut self, kernel_stack: &[u8], entry: usize, stack: usize, user_mode: bool) {
         let kernel_stack_end = kernel_stack.as_ptr() as usize + kernel_stack.len();
         log::info!("Kernel stack end: {:x}", kernel_stack_end);
 
@@ -61,6 +62,7 @@ impl TrapFrame {
     }
 }
 
+/// Cpu exceptions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CpuException {
     ///  0 – #DE  Divide-by-zero error.

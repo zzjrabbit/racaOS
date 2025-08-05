@@ -9,6 +9,7 @@ use x86_64::structures::port::{PortRead, PortWrite};
 use super::ACPI;
 use crate::mem::convert_physical_to_virtual;
 
+/// Reboot the system.
 pub fn reboot() -> ! {
     loop {
         let reset = ACPI.fadt.reset_register().unwrap();
@@ -16,6 +17,7 @@ pub fn reboot() -> ! {
     }
 }
 
+/// Shutdown the system.
 pub fn shutdown() -> ! {
     let slp_typa = find_slp_typa(&ACPI.aml_table).unwrap();
     loop {

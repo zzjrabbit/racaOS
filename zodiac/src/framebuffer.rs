@@ -6,6 +6,7 @@ static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 
 type Rgb = (u8, u8, u8);
 
+/// The framebuffer structure.
 pub struct FrameBuffer {
     width: usize,
     height: usize,
@@ -16,11 +17,14 @@ pub struct FrameBuffer {
 }
 
 impl FrameBuffer {
+    /// Get the size of the framebuffer. Order: (width, height)
     pub fn size(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 
-    pub fn draw_pixel(&mut self, x: usize, y: usize, color: (u8, u8, u8)) {
+    /// Draw a pixel at the given coordinates with the given color.
+    /// Color format: (red, green, blue)
+    pub fn draw_pixel(&mut self, x: usize, y: usize, color: Rgb) {
         let color = (self.convert_color)(self.shifts, color);
         unsafe { self.buffer.add(y * self.stride + x).write(color) }
     }
