@@ -2,6 +2,11 @@
 name = "zodiac_macro"
 version = "0.1.0"
 edition = "2024"
+authors = ["Zhenjia Zeng"]
+description = "Macros for zodiac"
+license = "Apache-2.0"
+homepage = "https://github.com/zzjrabbit/racaOS/tree/edition19/zodiac_macro"
+repository = "https://github.com/zzjrabbit/racaOS"
 
 [lib]
 proc-macro = true

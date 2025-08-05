@@ -79,10 +79,6 @@ pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
     LockedLocalApic(Mutex::new(lapic))
 });
 
-pub fn apic_timer_irq() -> Irq {
-    *TIMER_IRQ
-}
-
 pub fn ap_init() {
     while !APIC_INIT.load(Ordering::SeqCst) {
         core::hint::spin_loop();

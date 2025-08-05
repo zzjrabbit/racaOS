@@ -2,6 +2,13 @@
 name = "zodiac"
 version = "0.1.0"
 edition = "2024"
+authors = ["Zhenjia Zeng"]
+description = "Rust OS framework that offers safe interfaces for kernel development"
+keywords = ["kernel", "os", "no_std"]
+categories = ["no-std"]
+license = "Apache-2.0"
+homepage = "https://github.com/zzjrabbit/racaOS/tree/edition19/zodiac"
+repository = "https://github.com/zzjrabbit/racaOS"
 
 [dependencies]
 zodiac_macro = { workspace = true }
