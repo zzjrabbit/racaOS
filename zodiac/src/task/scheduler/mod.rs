@@ -43,7 +43,9 @@ pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
 }
 
 fn idle() -> ! {
-    loop {}
+    loop {
+        core::hint::spin_loop();
+    }
 }
 
 pub fn start_schedule() {
@@ -101,13 +103,13 @@ impl SchedulerWrapper {
             .get()
             .unwrap()
             .with_local_queue_mut(&mut |queue| {
-                if let Some(current) = queue.current() {
-                    if let Some(current) = current.upgrade() {
-                        current.set_context(context.clone());
-                        if !current.thread_state().is_blocked() {
-                            current.ready();
-                            queue.enqueue(current.clone());
-                        }
+                if let Some(current) = queue.current()
+                    && let Some(current) = current.upgrade()
+                {
+                    current.set_context(context.clone());
+                    if !current.thread_state().is_blocked() {
+                        current.ready();
+                        queue.enqueue(current.clone());
                     }
                 }
 
@@ -119,7 +121,10 @@ impl SchedulerWrapper {
 
                 #[cfg(target_arch = "x86_64")]
                 {
-                    use x86_64::{registers::model_specific::{FsBase, GsBase}, VirtAddr};
+                    use x86_64::{
+                        VirtAddr,
+                        registers::model_specific::{FsBase, GsBase},
+                    };
                     FsBase::write(VirtAddr::new(next.fs_base() as u64));
                     GsBase::write(VirtAddr::new(next.gs_base() as u64));
                 }

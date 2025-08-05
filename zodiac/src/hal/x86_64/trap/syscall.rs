@@ -1,8 +1,12 @@
 use spin::Once;
 use x86_64::{
+    PrivilegeLevel, VirtAddr,
     registers::{
-        control::{Efer, EferFlags}, model_specific::{LStar, SFMask, Star}, rflags::RFlags
-    }, structures::gdt::SegmentSelector, PrivilegeLevel, VirtAddr
+        control::{Efer, EferFlags},
+        model_specific::{LStar, SFMask, Star},
+        rflags::RFlags,
+    },
+    structures::gdt::SegmentSelector,
 };
 
 use crate::hal::{cpu::Cpu, smp::CPUS};
@@ -29,11 +33,24 @@ pub fn init() {
 
     CPUS.with_cpu_info(Cpu::current(), |cpu_info| {
         Star::write(
-            SegmentSelector::new(cpu_info.user_code_selector() as u16 >> 3, PrivilegeLevel::Ring3),
-            SegmentSelector::new(cpu_info.user_data_selector() as u16 >> 3, PrivilegeLevel::Ring3),
-            SegmentSelector::new(cpu_info.kernel_code_selector() as u16 >> 3, PrivilegeLevel::Ring0),
-            SegmentSelector::new(cpu_info.kernel_data_selector() as u16 >> 3, PrivilegeLevel::Ring0),
-        ).unwrap();
+            SegmentSelector::new(
+                cpu_info.user_code_selector() as u16 >> 3,
+                PrivilegeLevel::Ring3,
+            ),
+            SegmentSelector::new(
+                cpu_info.user_data_selector() as u16 >> 3,
+                PrivilegeLevel::Ring3,
+            ),
+            SegmentSelector::new(
+                cpu_info.kernel_code_selector() as u16 >> 3,
+                PrivilegeLevel::Ring0,
+            ),
+            SegmentSelector::new(
+                cpu_info.kernel_data_selector() as u16 >> 3,
+                PrivilegeLevel::Ring0,
+            ),
+        )
+        .unwrap();
     });
 
     unsafe {
@@ -76,4 +93,3 @@ pub extern "C" fn syscall_matcher(
         None => panic!("No syscall handler"),
     }
 }
-

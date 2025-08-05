@@ -18,7 +18,13 @@ struct FifoSchedulerInner {
 
 impl FifoScheduler {
     pub const fn new() -> Self {
-        FifoScheduler(Lazy::new(|| FifoSchedulerInner::new()))
+        FifoScheduler(Lazy::new(FifoSchedulerInner::new))
+    }
+}
+
+impl Default for FifoScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

@@ -114,10 +114,9 @@ impl Cursor {
                 Page::new_aligned(vaddr + page_size as usize * index, page_size),
                 physical_memory.get_start_address_of_frame(index)?,
                 flags,
-            ) {
-                if first_error.is_none() {
-                    first_error = Some(error);
-                }
+            ) && first_error.is_none()
+            {
+                first_error = Some(error);
             }
         }
 
@@ -296,7 +295,7 @@ impl<'a> BinaryFileMapper<'a> {
                 _ => return Err(ZodiacError::InvalidArguments),
             }
 
-            if let Err(_) = cursor.map(&physical_memory, flags) {
+            if cursor.map(&physical_memory, flags).is_err() {
                 cursor.protect(length, flags)?;
             }
 
@@ -308,6 +307,6 @@ impl<'a> BinaryFileMapper<'a> {
                 .map_err(|_| ZodiacError::InvalidArguments)?;
         }
 
-        Ok(unsafe { transmute(file.entry() as usize) })
+        Ok(unsafe { transmute::<usize, fn() -> !>(file.entry() as usize) })
     }
 }

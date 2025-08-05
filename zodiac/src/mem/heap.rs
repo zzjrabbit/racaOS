@@ -42,6 +42,13 @@ impl DefaultAllocator {
 }
 
 #[cfg(feature = "default_allocator")]
+impl Default for DefaultAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "default_allocator")]
 unsafe impl GlobalAlloc for DefaultAllocator {
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
         unsafe { self.0.alloc(layout) }

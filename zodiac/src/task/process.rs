@@ -72,15 +72,15 @@ impl Process {
             thread.set_thread_state(ThreadState::Dead);
             remove_thread(thread.thread_id());
 
-            if let Some(cpu) = cpu {
-                if cpu != Cpu::current() {
-                    cpu.trigger_schedule();
-                }
+            if let Some(cpu) = cpu
+                && cpu != Cpu::current()
+            {
+                cpu.trigger_schedule();
             }
         }
 
         Cpu::current().trigger_schedule();
-        loop {}
+        unreachable!()
     }
 
     pub fn kill(&self) {

@@ -15,8 +15,8 @@ pub(super) mod gdt;
 pub(super) mod idt;
 pub(super) mod syscall;
 
-pub use syscall::{set_syscall_handler};
 pub(crate) use syscall::init;
+pub use syscall::set_syscall_handler;
 
 #[unsafe(no_mangle)]
 extern "C" fn rust_entry(frame: &mut TrapFrame) {
@@ -28,7 +28,9 @@ extern "C" fn rust_entry(frame: &mut TrapFrame) {
         );
         log::warn!("Trap frame: {:x?}", frame);
 
-        loop {}
+        loop {
+            x86_64::instructions::hlt();
+        }
     } else {
         if frame.int_num == 32 {
             schedule(frame);

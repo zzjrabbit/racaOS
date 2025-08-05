@@ -183,6 +183,13 @@ impl GeneralPageTable for OffsetPageTable<'_> {
         paddr: PhysicalAddress,
         flags: crate::mem::MMUFlags,
     ) -> Result<(), ZodiacError> {
+        log::trace!(
+            "Mapping page {:#b} to physical address {:x?} with flags {:?}",
+            page.vaddr,
+            paddr,
+            flags
+        );
+
         let vaddr = VirtAddr::new(page.vaddr as u64);
         let paddr = PhysAddr::new(paddr as u64);
 

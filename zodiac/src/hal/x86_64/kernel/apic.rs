@@ -80,7 +80,7 @@ pub static LAPIC: Lazy<LockedLocalApic> = Lazy::new(|| unsafe {
 });
 
 pub fn apic_timer_irq() -> Irq {
-    TIMER_IRQ.clone()
+    *TIMER_IRQ
 }
 
 pub fn ap_init() {

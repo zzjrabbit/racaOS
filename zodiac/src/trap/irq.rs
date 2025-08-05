@@ -54,7 +54,7 @@ impl IrqManager {
 
         let irq = Irq(irq_id + MIN_IRQ_NUM);
 
-        if let Some(_) = inner.irqs.get(&irq) {
+        if inner.irqs.contains_key(&irq) {
             return None;
         }
 

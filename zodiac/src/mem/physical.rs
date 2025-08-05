@@ -80,20 +80,20 @@ impl PhysicalMemory {
                 FRAME_ALLOCATOR
                     .lock()
                     .allocate_frames(count * one_frame_in_4k, one_frame_in_4k)
-                    .ok_or_else(|| PhyscialMemoryError::AllocateFailed(count))?,
+                    .ok_or(PhyscialMemoryError::AllocateFailed(count))?,
             )
         } else {
             None
         };
 
         let mut frames = Vec::new();
-        if let None = start_address {
+        if start_address.is_none() {
             for _ in 0..count {
                 frames.push(
                     FRAME_ALLOCATOR
                         .lock()
                         .allocate_frames(one_frame_in_4k, one_frame_in_4k)
-                        .ok_or_else(|| PhyscialMemoryError::AllocateFailed(count))?,
+                        .ok_or(PhyscialMemoryError::AllocateFailed(count))?,
                 );
             }
         }

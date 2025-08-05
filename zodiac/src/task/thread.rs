@@ -14,7 +14,10 @@ use crate::{
 };
 
 #[cfg(target_arch = "x86_64")]
-use x86_64::{registers::model_specific::{GsBase, FsBase}, VirtAddr};
+use x86_64::{
+    VirtAddr,
+    registers::model_specific::{FsBase, GsBase},
+};
 
 pub type ThreadId = usize;
 
@@ -124,7 +127,7 @@ impl Thread {
         self.set_thread_state(ThreadState::Dead);
 
         self.r#yield();
-        loop {}
+        unreachable!()
     }
 
     pub fn kill(&self) {
@@ -232,7 +235,7 @@ impl ThreadBuilder {
         let thread = Arc::new(Thread {
             process: Arc::downgrade(&process),
             thread_id: NEXT_THREAD_ID.fetch_add(1, Ordering::SeqCst),
-            kernel_stack: kernel_stack,
+            kernel_stack,
             inner: RwLock::new(ThreadInner {
                 context,
                 thread_state: ThreadState::Ready,

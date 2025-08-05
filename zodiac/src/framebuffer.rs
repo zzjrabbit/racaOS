@@ -4,13 +4,15 @@ use limine::request::FramebufferRequest;
 #[unsafe(link_section = ".requests")]
 static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
 
+type Rgb = (u8, u8, u8);
+
 pub struct FrameBuffer {
     width: usize,
     height: usize,
     stride: usize,
     buffer: *mut u32,
     shifts: (u8, u8, u8),
-    convert_color: fn((u8, u8, u8), (u8, u8, u8)) -> u32,
+    convert_color: fn(Rgb, Rgb) -> u32,
 }
 
 impl FrameBuffer {
