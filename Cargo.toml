@@ -6,16 +6,14 @@ members = ["zodiac", "zodiac_macro", "builder", "kernel"]
 panic = "abort"
 
 [profile.release]
-# lto = "thin"
-# panic = "unwind"
+lto = "thin"
+panic = "abort"
 
-# [profile.release-lto]
-# inherits = "release"
+[profile.release-lto]
+inherits = "release"
 lto = true
 panic = "abort"
 codegen-units = 1
 
 [workspace.dependencies]
 zodiac = { path = "zodiac" }
-zodiac_macro = { path = "zodiac_macro" }
-

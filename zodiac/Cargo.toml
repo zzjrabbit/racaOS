@@ -11,7 +11,7 @@ homepage = "https://github.com/zzjrabbit/racaOS/tree/edition19/zodiac"
 repository = "https://github.com/zzjrabbit/racaOS"
 
 [dependencies]
-zodiac_macro = { version = "0.1.0", workspace = true }
+zodiac_macro = { version = "0.1.0", path = "../zodiac_macro" }
 bit_field = "0.10.2"
 bitflags = "2.9.1"
 humansize = "2.1.3"
