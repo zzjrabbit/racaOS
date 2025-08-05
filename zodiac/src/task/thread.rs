@@ -13,6 +13,9 @@ use crate::{
     task::{Process, add_thread, current_thread, remove_thread},
 };
 
+#[cfg(target_arch = "x86_64")]
+use x86_64::{registers::model_specific::{GsBase, FsBase}, VirtAddr};
+
 pub type ThreadId = usize;
 
 const KERNEL_STACK_SIZE: usize = 64 * 1024; // 64k
@@ -27,6 +30,10 @@ pub struct Thread {
 struct ThreadInner {
     thread_state: ThreadState,
     context: TrapFrame,
+    #[cfg(target_arch = "x86_64")]
+    fs_base: VirtualAddress,
+    #[cfg(target_arch = "x86_64")]
+    gs_base: VirtualAddress,
 }
 
 impl Thread {
@@ -66,6 +73,28 @@ impl Thread {
 
     pub(crate) fn kernel_stack(&self) -> VirtualAddress {
         self.kernel_stack.as_ptr() as VirtualAddress + self.kernel_stack.len()
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn set_fs_base(&self, fs_base: VirtualAddress) {
+        self.inner.write().fs_base = fs_base;
+        FsBase::write(VirtAddr::new(fs_base as u64));
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn set_gs_base(&self, gs_base: VirtualAddress) {
+        self.inner.write().gs_base = gs_base;
+        GsBase::write(VirtAddr::new(gs_base as u64));
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn fs_base(&self) -> VirtualAddress {
+        self.inner.read().fs_base
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    pub fn gs_base(&self) -> VirtualAddress {
+        self.inner.read().gs_base
     }
 }
 
@@ -207,6 +236,10 @@ impl ThreadBuilder {
             inner: RwLock::new(ThreadInner {
                 context,
                 thread_state: ThreadState::Ready,
+                #[cfg(target_arch = "x86_64")]
+                fs_base: 0,
+                #[cfg(target_arch = "x86_64")]
+                gs_base: 0,
             }),
         });
 

@@ -117,6 +117,13 @@ impl SchedulerWrapper {
 
                 set_kernel_stack(next.kernel_stack());
 
+                #[cfg(target_arch = "x86_64")]
+                {
+                    use x86_64::{registers::model_specific::{FsBase, GsBase}, VirtAddr};
+                    FsBase::write(VirtAddr::new(next.fs_base() as u64));
+                    GsBase::write(VirtAddr::new(next.gs_base() as u64));
+                }
+
                 next.process()
                     .expect("No process contains the next thread.")
                     .vm_space()

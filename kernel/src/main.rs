@@ -52,7 +52,7 @@ pub fn main() {
     const USER_STACK_END: usize = 0x7fffffff0000;
     const USER_STACK_SIZE: usize = 256 * 1024;
 
-    let binary = include_bytes!("../../test");
+    let binary = include_bytes!("../../hello");
     let vm_space = VirtualMemorySpace::new_user();
 
     let stack_address = USER_STACK_END - USER_STACK_SIZE;
@@ -69,6 +69,11 @@ pub fn main() {
             MMUFlags::READ | MMUFlags::WRITE | MMUFlags::USER,
         )
         .unwrap();
+    vm_space.writer(USER_STACK_END - size_of::<usize>(), size_of::<usize>()).write(&0usize.to_le_bytes()).unwrap();
+
+    let envp = USER_STACK_END;
+    vm_space.writer(USER_STACK_END - 4 * size_of::<usize>(), size_of::<usize>()).write(&envp.to_le_bytes()).unwrap();
+
     let entry = vm_space.binary_file_mapper().map(binary).unwrap();
 
     let process = ProcessBuilder::default()
@@ -78,7 +83,7 @@ pub fn main() {
     let thread = ThreadBuilder::default()
         .entry(entry)
         .process(process.clone())
-        .stack(USER_STACK_END)
+        .stack(USER_STACK_END - 6 * size_of::<usize>())
         .build()
         .unwrap();
     thread.spawn();

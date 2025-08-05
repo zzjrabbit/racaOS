@@ -532,10 +532,12 @@ dependencies = [
 name = "kernel"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.9.1",
  "good_memory_allocator",
  "log",
  "os-terminal",
  "spin 0.10.0",
+ "thiserror",
  "zodiac",
 ]
 
