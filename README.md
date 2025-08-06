@@ -16,10 +16,11 @@ Thanks to [wenxuanjun]（ https://github.com/wenxuanjun ）He ushered racaOS int
 - [x] English display
 - [x] Memory management
 - [x] SMP
-- [ ] Hpet timer
-- [ ] ACPI
-- [ ] APIC
-- [ ] Multitask
+- [x] Hpet timer
+- [x] ACPI
+- [x] Local APIC
+- [ ] IOAPIC
+- [x] Multitask
 - [ ] MuQss
 - [ ] AHCI driver
 - [ ] NVMe driver
