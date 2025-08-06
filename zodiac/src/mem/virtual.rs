@@ -62,7 +62,7 @@ impl VirtualMemorySpace {
     }
 
     /// Create a reader to help you read data from the virtual memory space.
-    /// See more at `VmReader`. 
+    /// See more at `VmReader`.
     pub fn reader(&self, address: VirtualAddress, len: usize) -> VmReader {
         VmReader {
             address,

@@ -1,9 +1,6 @@
 use alloc::{string::ToString, vec};
 use thiserror::Error;
-use zodiac::{
-    ZodiacError,
-    hal::trap::set_syscall_handler,
-};
+use zodiac::{ZodiacError, hal::trap::set_syscall_handler};
 
 use crate::task::Process;
 
@@ -30,6 +27,8 @@ pub enum SyscallError {
     SyscallNotSupported = -1,
     #[error("Invalid Arguments.")]
     InvalidArguments = -2,
+    #[error("Permission denied.")]
+    PermissionDenied = -3,
     #[error("Other.")]
     Other = i32::MIN as isize,
 }
@@ -64,13 +63,13 @@ fn syscall_handler(
     );
 
     let matcher = || match syscall_id {
-        1 => write(arg1, arg2, arg3),
+        0 => read(arg1 as u32, arg2, arg3),
+        1 => write(arg1 as u32, arg2, arg3),
         9 => mmap(arg1, arg2, arg3, arg4, arg5, arg6),
         60 => exit(arg1 as i32),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2),
         218 => set_tid_address(arg1),
-        _ => Ok(0)
-        //_ => Err(SyscallError::SyscallNotSupported),
+        _ => Ok(0), //_ => Err(SyscallError::SyscallNotSupported),
     };
 
     let result = matcher();

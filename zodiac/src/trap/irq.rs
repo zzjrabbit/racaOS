@@ -90,7 +90,7 @@ impl Irq {
     pub fn allocate(handler: IrqHandler) -> Option<Irq> {
         super::IRQ_MANAGER.allocate_irq(handler)
     }
-    
+
     /// Create an IRQ from a vector.
     pub fn from_vector(vector: u8) -> Self {
         Irq(vector)

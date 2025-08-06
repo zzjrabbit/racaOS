@@ -15,7 +15,7 @@ mod boot;
 #[doc(hidden)]
 pub mod console;
 mod error;
-/// Functions to access framebuffer. 
+/// Functions to access framebuffer.
 /// Warning: these interfaces are not thread-safe.
 pub mod framebuffer;
 /// Safe wrappers to access hardware.

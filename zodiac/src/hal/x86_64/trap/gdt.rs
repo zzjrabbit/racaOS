@@ -55,7 +55,7 @@ impl CpuInfo {
             let stack_start = self.fault_stack.as_ptr() as u64;
             VirtAddr::new(stack_start + self.fault_stack.len() as u64)
         };
-        
+
         self.tss.interrupt_stack_table[YIELD_IST_INDEX] = {
             let stack_start = self.yield_stack.as_ptr() as u64;
             VirtAddr::new(stack_start + self.yield_stack.len() as u64)

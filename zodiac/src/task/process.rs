@@ -86,12 +86,12 @@ impl Process {
                 cpu.trigger_schedule();
             }
         }
-        
+
         self.inner.write().threads.clear();
         Cpu::current().trigger_schedule();
         unreachable!()
     }
-    
+
     /// Kill the process.
     pub fn kill(&self) {
         let threads = self.inner.read().threads.clone();

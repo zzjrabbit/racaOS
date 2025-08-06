@@ -1,6 +1,9 @@
 use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
 
-use crate::{hal::{cpu::Cpu, smp::CPUS}, trap::Irq};
+use crate::{
+    hal::{cpu::Cpu, smp::CPUS},
+    trap::Irq,
+};
 
 /// Context structures.
 pub mod context;

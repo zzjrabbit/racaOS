@@ -1,4 +1,4 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
 use spin::RwLock;
 use zodiac::{
     ZodiacError,
@@ -8,6 +8,8 @@ use zodiac::{
     },
     task::{ProcessBuilder, Thread, ThreadBuilder},
 };
+
+use crate::filesystem::{File, FileDescriptor};
 
 static PROCESSES: RwLock<Vec<Arc<Process>>> = RwLock::new(Vec::new());
 
@@ -19,6 +21,15 @@ pub struct Process {
 struct ProcessInfo {
     free_memory_space: Vec<MemoryRegion>,
     mapped: Vec<MemoryRegion>,
+    next_descriptor: FileDescriptor,
+    descriptors: BTreeMap<FileDescriptor, (u64, OpenMode, Arc<File>)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum OpenMode {
+    Read,
+    Write,
+    ReadWrite,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -41,13 +52,17 @@ impl MemoryRegion {
 }
 
 impl Process {
-    pub fn new(binary: &[u8]) -> Result<Arc<Self>, ZodiacError> {
+    pub fn new(binary: &[u8], stdin: Arc<File>, stdout: Arc<File>) -> Result<Arc<Self>, ZodiacError> {
         let vm_space = VirtualMemorySpace::new_user();
 
         let entry = vm_space.binary_file_mapper().map(binary)?;
 
         let inner = ProcessBuilder::default().vm_space(vm_space).build()?;
 
+        let mut descriptors = BTreeMap::new();
+        descriptors.insert(0, (0, OpenMode::Read, stdin));
+        descriptors.insert(1, (0, OpenMode::Write, stdout));
+        
         let new_self = Arc::new(Self {
             inner,
             info: RwLock::new(ProcessInfo {
@@ -56,6 +71,8 @@ impl Process {
                     USER_ASPACE_SIZE
                 )],
                 mapped: Vec::new(),
+                next_descriptor: 2,
+                descriptors,
             }),
         });
 
@@ -126,6 +143,25 @@ fn infer_page_size_by_len(len: usize) -> PageSize {
         PageSize::Size2M
     } else {
         PageSize::Size1G
+    }
+}
+
+impl Process {
+    pub fn add_file(&mut self, file: Arc<File>, open_mode: OpenMode) {
+        let mut info = self.info.write();
+        let descriptor = info.next_descriptor;
+        info.descriptors.insert(descriptor, (0, open_mode, file));
+        info.next_descriptor += 1;
+    }
+    
+    pub fn remove_file(&mut self, descriptor: u32) {
+        let mut info = self.info.write();
+        info.descriptors.remove(&descriptor);
+    }
+    
+    pub fn get_file(&self, descriptor: u32) -> Option<(u64, OpenMode, Arc<File>)> {
+        let info = self.info.read();
+        info.descriptors.get(&descriptor).cloned()
     }
 }
 
