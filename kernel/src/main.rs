@@ -6,7 +6,10 @@ use core::panic::PanicInfo;
 
 use zodiac::task::start_schedule;
 
-use crate::{filesystem::{open_file, Path}, task::Process};
+use crate::{
+    filesystem::{FileType, Path, open_file},
+    task::Process,
+};
 
 extern crate alloc;
 
@@ -29,11 +32,22 @@ pub fn main() {
         "total time: {}s",
         zodiac::hal::timer::elapsed().as_secs_f64()
     );
-    
+
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
     tty.write_at(0, b"Hello World, TTY!\n");
 
-    let _hello = Process::new(include_bytes!("../../apps/hello.bin"), tty.clone(), tty.clone());
+    let input = open_file(&Path::new("/"))
+        .unwrap()
+        .create("input.txt".into(), FileType::File)
+        .unwrap();
+    input.write_at(0, b"Hello World, File!\n");
+
+    let _hello = Process::new(
+        include_bytes!("../../target/x86_64-unknown-linux-musl/release/hello"),
+        tty.clone(),
+        tty.clone(),
+        tty.clone(),
+    );
 
     start_schedule();
     unreachable!()

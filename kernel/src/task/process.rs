@@ -9,7 +9,7 @@ use zodiac::{
     task::{ProcessBuilder, Thread, ThreadBuilder},
 };
 
-use crate::filesystem::{File, FileDescriptor};
+use crate::filesystem::{AccessMode, File, FileDescriptor, OpenFlags};
 
 static PROCESSES: RwLock<Vec<Arc<Process>>> = RwLock::new(Vec::new());
 
@@ -22,14 +22,7 @@ struct ProcessInfo {
     free_memory_space: Vec<MemoryRegion>,
     mapped: Vec<MemoryRegion>,
     next_descriptor: FileDescriptor,
-    descriptors: BTreeMap<FileDescriptor, (u64, OpenMode, Arc<File>)>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum OpenMode {
-    Read,
-    Write,
-    ReadWrite,
+    descriptors: BTreeMap<FileDescriptor, (u64, AccessMode, OpenFlags, Arc<File>)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -52,7 +45,12 @@ impl MemoryRegion {
 }
 
 impl Process {
-    pub fn new(binary: &[u8], stdin: Arc<File>, stdout: Arc<File>) -> Result<Arc<Self>, ZodiacError> {
+    pub fn new(
+        binary: &[u8],
+        stdin: Arc<File>,
+        stdout: Arc<File>,
+        stderr: Arc<File>,
+    ) -> Result<Arc<Self>, ZodiacError> {
         let vm_space = VirtualMemorySpace::new_user();
 
         let entry = vm_space.binary_file_mapper().map(binary)?;
@@ -60,9 +58,10 @@ impl Process {
         let inner = ProcessBuilder::default().vm_space(vm_space).build()?;
 
         let mut descriptors = BTreeMap::new();
-        descriptors.insert(0, (0, OpenMode::Read, stdin));
-        descriptors.insert(1, (0, OpenMode::Write, stdout));
-        
+        descriptors.insert(0, (0, AccessMode::O_RDONLY, OpenFlags::empty(), stdin));
+        descriptors.insert(1, (0, AccessMode::O_WRONLY, OpenFlags::empty(), stdout));
+        descriptors.insert(2, (0, AccessMode::O_WRONLY, OpenFlags::empty(), stderr));
+
         let new_self = Arc::new(Self {
             inner,
             info: RwLock::new(ProcessInfo {
@@ -71,7 +70,7 @@ impl Process {
                     USER_ASPACE_SIZE
                 )],
                 mapped: Vec::new(),
-                next_descriptor: 2,
+                next_descriptor: 3,
                 descriptors,
             }),
         });
@@ -147,21 +146,38 @@ fn infer_page_size_by_len(len: usize) -> PageSize {
 }
 
 impl Process {
-    pub fn add_file(&mut self, file: Arc<File>, open_mode: OpenMode) {
+    pub fn add_file(&self, file: Arc<File>, access_mode: AccessMode, open_flags: OpenFlags) -> FileDescriptor {
         let mut info = self.info.write();
         let descriptor = info.next_descriptor;
-        info.descriptors.insert(descriptor, (0, open_mode, file));
+        info.descriptors
+            .insert(descriptor, (0, access_mode, open_flags, file));
         info.next_descriptor += 1;
+        descriptor
     }
-    
-    pub fn remove_file(&mut self, descriptor: u32) {
+
+    pub fn remove_file(&self, descriptor: FileDescriptor) -> Option<()> {
         let mut info = self.info.write();
-        info.descriptors.remove(&descriptor);
+        info.descriptors.remove(&descriptor).map(|_| ())
     }
-    
-    pub fn get_file(&self, descriptor: u32) -> Option<(u64, OpenMode, Arc<File>)> {
+
+    pub fn with_file<R>(
+        &self,
+        descriptor: FileDescriptor,
+        f: impl Fn(u64, AccessMode, OpenFlags, Arc<File>) -> R,
+    ) -> Option<R> {
         let info = self.info.read();
-        info.descriptors.get(&descriptor).cloned()
+        let (offset, access_mode, open_flags, file) = info.descriptors.get(&descriptor)?.clone();
+        Some(f(offset, access_mode, open_flags, file))
+    }
+
+    pub fn with_file_mut<R>(
+        &self,
+        descriptor: FileDescriptor,
+        f: impl Fn(&mut u64, &mut AccessMode, &mut OpenFlags, Arc<File>) -> R,
+    ) -> Option<R> {
+        let mut info = self.info.write();
+        let (offset, access_mode, open_flags, file) = info.descriptors.get_mut(&descriptor)?;
+        Some(f(offset, access_mode, open_flags, file.clone()))
     }
 }
 

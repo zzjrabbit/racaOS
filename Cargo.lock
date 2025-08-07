@@ -463,6 +463,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hello"
+version = "0.1.0"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "http"
 version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -534,6 +541,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.9.1",
  "good_memory_allocator",
+ "libc",
  "log",
  "os-terminal",
  "spin 0.10.0",
@@ -1491,7 +1499,7 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 
 [[package]]
 name = "zodiac"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "acpi",
  "aml",
@@ -1514,7 +1522,7 @@ dependencies = [
 
 [[package]]
 name = "zodiac_macro"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2",
  "quote",

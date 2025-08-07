@@ -7,11 +7,11 @@ impl InodeOperation for ZeroDevice {
         buf.fill(0);
         buf.len()
     }
-    
+
     fn write_at(&self, _offset: u64, buf: &[u8]) -> usize {
         buf.len()
     }
-    
+
     fn len(&self) -> usize {
         0
     }

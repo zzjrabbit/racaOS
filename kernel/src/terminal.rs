@@ -3,12 +3,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use alloc::{
-    boxed::Box,
-    collections::vec_deque::VecDeque,
-    string::String,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, vec::Vec};
 use os_terminal::{DrawTarget, Terminal, font::BitmapFont};
 use spin::RwLock;
 use zodiac::task::{Process, Thread, ThreadBuilder};

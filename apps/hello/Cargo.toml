@@ -1,0 +1,10 @@
+cargo-features = ["per-package-target"]
+
+[package]
+name = "hello"
+version = "0.1.0"
+edition = "2024"
+forced-target = "x86_64-unknown-linux-musl"
+
+[dependencies]
+libc = "0.2.174"

@@ -1,8 +1,8 @@
-use alloc::{string::ToString, vec};
+use alloc::vec;
 use thiserror::Error;
 use zodiac::{ZodiacError, hal::trap::set_syscall_handler};
 
-use crate::task::Process;
+use crate::{filesystem::FileDescriptor, task::Process};
 
 use arch::*;
 use filesystem::*;
@@ -23,12 +23,12 @@ type SyscallResult = Result<isize, SyscallError>;
 #[repr(isize)]
 #[derive(Debug, Error)]
 pub enum SyscallError {
-    #[error("Syscall not supported.")]
-    SyscallNotSupported = -1,
     #[error("Invalid Arguments.")]
     InvalidArguments = -2,
     #[error("Permission denied.")]
     PermissionDenied = -3,
+    #[error("Not found.")]
+    NotFound = -4,
     #[error("Other.")]
     Other = i32::MIN as isize,
 }
@@ -61,15 +61,24 @@ fn syscall_handler(
         arg5,
         arg6
     );
-
+    
     let matcher = || match syscall_id {
-        0 => read(arg1 as u32, arg2, arg3),
-        1 => write(arg1 as u32, arg2, arg3),
+        0 => read(arg1 as FileDescriptor, arg2, arg3),
+        1 => write(arg1 as FileDescriptor, arg2, arg3),
+        2 => open(arg1, arg2 as i32, arg3 as u32),
+        3 => close(arg1 as FileDescriptor),
         9 => mmap(arg1, arg2, arg3, arg4, arg5, arg6),
         60 => exit(arg1 as i32),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2),
         218 => set_tid_address(arg1),
-        _ => Ok(0), //_ => Err(SyscallError::SyscallNotSupported),
+        _ => {
+
+            if syscall_id == 72 {
+                Ok(0)
+            } else {
+                Ok(0)
+            }
+        } //_ => Err(SyscallError::SyscallNotSupported),
     };
 
     let result = matcher();

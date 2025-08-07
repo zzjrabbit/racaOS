@@ -175,7 +175,7 @@ impl File {
             self.data.read_at(offset, buf)
         }
     }
-    
+
     pub fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.write_at(offset, buf)
@@ -183,7 +183,7 @@ impl File {
             self.data.write_at(offset, buf)
         }
     }
-    
+
     pub fn len(&self) -> usize {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.len()
