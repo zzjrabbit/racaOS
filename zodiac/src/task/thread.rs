@@ -8,7 +8,11 @@ use spin::RwLock;
 
 use crate::{
     ZodiacError,
-    hal::{context::TrapFrame, cpu::Cpu},
+    hal::{
+        context::TrapFrame,
+        cpu::Cpu,
+        trap::{ContextSaveAction, change_context_save_action},
+    },
     mem::VirtualAddress,
     task::{Process, add_thread, current_thread, remove_thread},
 };
@@ -45,6 +49,37 @@ impl Thread {
     /// Get the current thread.
     pub fn current() -> Arc<Self> {
         current_thread()
+    }
+    
+    pub fn clone_thread(self: &Arc<Self>, new_stack: VirtualAddress) {
+        change_context_save_action(ContextSaveAction::Clone(self.clone(), new_stack));
+        Cpu::current().trigger_save_context();
+    }
+
+    pub(crate) fn clone_impl(
+        &self,
+        mut context: TrapFrame,
+        new_stack: VirtualAddress,
+    ) -> Arc<Self> {
+        context.set_stack(new_stack);
+        let new_thread = Arc::new(Self {
+            thread_id: NEXT_THREAD_ID.fetch_add(1, Ordering::SeqCst),
+            process: self.process.clone(),
+            kernel_stack: self.kernel_stack.clone(),
+            inner: RwLock::new(ThreadInner {
+                thread_state: self.thread_state(),
+                context,
+                fs_base: self.fs_base(),
+                gs_base: self.gs_base(),
+            }),
+        });
+        if let Some(process) = self.process() {
+            process.add_thread(new_thread.clone());
+        }
+        if !new_thread.thread_state().is_blocked() {
+            new_thread.spawn();
+        }
+        new_thread
     }
 
     /// Spawn this thread.
@@ -125,7 +160,8 @@ impl Thread {
 
     /// Yield the CPU to another thread.
     pub fn r#yield(&self) {
-        Cpu::current().trigger_schedule();
+        change_context_save_action(ContextSaveAction::Yield);
+        Cpu::current().trigger_save_context();
     }
 
     pub(crate) fn run(&self) {
@@ -161,7 +197,8 @@ impl Thread {
         self.set_thread_state(ThreadState::Dead);
 
         if let Some(cpu) = cpu {
-            cpu.trigger_schedule();
+            change_context_save_action(ContextSaveAction::Yield);
+            cpu.trigger_save_context();
         }
     }
 }
@@ -247,11 +284,11 @@ impl ThreadBuilder {
     }
 }
 
+static NEXT_THREAD_ID: AtomicUsize = AtomicUsize::new(0);
+
 impl ThreadBuilder {
     /// Create the thread.
     pub fn build(self) -> Result<Arc<Thread>, ZodiacError> {
-        static NEXT_THREAD_ID: AtomicUsize = AtomicUsize::new(0);
-
         let kernel_stack = alloc::vec![0; self.kernel_stack_size];
 
         let process = self.process.ok_or(ZodiacError::ArgumentsNotEnough)?;

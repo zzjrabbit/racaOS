@@ -66,6 +66,10 @@ impl TrapFrame {
             };
         });
     }
+    
+    pub(crate) fn set_stack(&mut self, stack: VirtualAddress) {
+        self.rsp = stack;
+    }
 }
 
 /// Cpu exceptions.

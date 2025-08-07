@@ -4,10 +4,7 @@ use alloc::{sync::Arc, vec::Vec};
 use spin::{Lazy, RwLock};
 
 use crate::{
-    ZodiacError,
-    hal::cpu::Cpu,
-    mem::VirtualMemorySpace,
-    task::{Thread, ThreadId, ThreadState, remove_thread},
+    hal::{cpu::Cpu, trap::{change_context_save_action, ContextSaveAction}}, mem::VirtualMemorySpace, task::{remove_thread, Thread, ThreadId, ThreadState}, ZodiacError
 };
 
 pub type ProcessId = usize;
@@ -83,12 +80,14 @@ impl Process {
             if let Some(cpu) = cpu
                 && cpu != Cpu::current()
             {
-                cpu.trigger_schedule();
+                change_context_save_action(ContextSaveAction::Yield);
+                cpu.trigger_save_context();
             }
         }
 
         self.inner.write().threads.clear();
-        Cpu::current().trigger_schedule();
+        change_context_save_action(ContextSaveAction::Yield);
+        Cpu::current().trigger_save_context();
         unreachable!()
     }
 

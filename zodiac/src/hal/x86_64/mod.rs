@@ -42,7 +42,7 @@ pub fn cpu_num() -> usize {
 }
 
 impl Cpu {
-    pub(crate) fn trigger_schedule(&self) {
+    pub(crate) fn trigger_save_context(&self) {
         if Cpu::current() == *self {
             unsafe {
                 core::arch::asm!("int 0x20");
