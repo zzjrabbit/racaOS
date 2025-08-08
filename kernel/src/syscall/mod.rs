@@ -61,7 +61,7 @@ fn syscall_handler(
         arg5,
         arg6
     );
-    
+
     let matcher = || match syscall_id {
         0 => read(arg1 as FileDescriptor, arg2, arg3),
         1 => write(arg1 as FileDescriptor, arg2, arg3),
@@ -72,7 +72,6 @@ fn syscall_handler(
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2),
         218 => set_tid_address(arg1),
         _ => {
-
             if syscall_id == 72 {
                 Ok(0)
             } else {

@@ -146,7 +146,12 @@ fn infer_page_size_by_len(len: usize) -> PageSize {
 }
 
 impl Process {
-    pub fn add_file(&self, file: Arc<File>, access_mode: AccessMode, open_flags: OpenFlags) -> FileDescriptor {
+    pub fn add_file(
+        &self,
+        file: Arc<File>,
+        access_mode: AccessMode,
+        open_flags: OpenFlags,
+    ) -> FileDescriptor {
         let mut info = self.info.write();
         let descriptor = info.next_descriptor;
         info.descriptors

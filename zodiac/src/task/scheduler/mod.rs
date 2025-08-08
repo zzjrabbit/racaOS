@@ -8,37 +8,36 @@ use spin::Once;
 
 use crate::{
     hal::{context::TrapFrame, cpu_num, enable_interrupts, trap::set_kernel_stack},
-    task::{Process, Thread, ThreadBuilder, ThreadId},
+    task::{Task, TaskBuilder, TaskId},
 };
 
-pub trait Scheduler<T = Arc<Thread>>: Sync + Send {
+pub trait Scheduler<T = Arc<Task>>: Sync + Send {
     fn with_local_queue(&self, f: &mut dyn FnMut(&dyn LocalQueue));
     fn with_local_queue_mut(&self, f: &mut dyn FnMut(&mut dyn LocalQueue));
-    /// Retain the threads that satisfy the predicate.
+    /// Retain the tasks that satisfy the predicate.
     fn retain(&self, f: &dyn Fn(&T) -> bool);
 }
 
-pub trait LocalQueue<T = Arc<Thread>, W = Weak<Thread>> {
-    /// Returns the current thread.
-    /// Note that the current thread is not in the ready queue.
+pub trait LocalQueue<T = Arc<Task>, W = Weak<Task>> {
+    /// Returns the current task.
+    /// Note that the current task is not in the ready queue.
     fn current(&self) -> Option<W>;
-    /// Push a thread into the local queue.
-    fn enqueue(&mut self, thread: T);
-    /// Pick the next thread to execute, and deque the thread.
-    fn deque_next_thread(&mut self) -> Option<T>;
+    /// Push a task into the local queue.
+    fn enqueue(&mut self, task: T);
+    /// Pick the next task to execute, and deque the task.
+    fn deque_next_task(&mut self) -> Option<T>;
 }
 
 pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
     SCHEDULER.set_scheduler(scheduler);
 
     for _ in 0..cpu_num() {
-        let thread = ThreadBuilder::default()
+        let task = TaskBuilder::default()
             .entry(idle)
             .kernel_mode()
-            .process(Process::kernel())
             .build()
             .unwrap();
-        thread.spawn();
+        task.spawn();
     }
 }
 
@@ -84,18 +83,18 @@ impl SchedulerWrapper {
 }
 
 impl SchedulerWrapper {
-    fn add(&self, thread: Arc<Thread>) {
+    fn add(&self, task: Arc<Task>) {
         self.scheduler
             .get()
             .unwrap()
-            .with_local_queue_mut(&mut |queue| queue.enqueue(thread.clone()));
+            .with_local_queue_mut(&mut |queue| queue.enqueue(task.clone()));
     }
 
-    fn remove(&self, thread_id: ThreadId) {
+    fn remove(&self, task_id: TaskId) {
         self.scheduler
             .get()
             .unwrap()
-            .retain(&|t| t.thread_id() != thread_id);
+            .retain(&|t| t.task_id() != task_id);
     }
 
     fn schedule(&self, context: &mut TrapFrame) {
@@ -107,40 +106,21 @@ impl SchedulerWrapper {
                     && let Some(current) = current.upgrade()
                 {
                     current.set_context(context.clone());
-                    if !current.thread_state().is_blocked() {
+                    if !current.task_state().is_blocked() {
                         current.ready();
                         queue.enqueue(current.clone());
                     }
                 }
 
-                let next = queue.deque_next_thread().expect("CPU Hungry.");
+                let next = queue.deque_next_task().expect("CPU Hungry.");
                 next.run();
                 *context = next.context();
 
                 set_kernel_stack(next.kernel_stack());
-
-                #[cfg(target_arch = "x86_64")]
-                {
-                    use x86_64::{
-                        VirtAddr,
-                        registers::model_specific::{FsBase, GsBase},
-                    };
-                    if let Some(fs_base) = next.fs_base() {
-                        FsBase::write(VirtAddr::new(fs_base as u64));
-                    }
-                    if let Some(gs_base) = next.gs_base() {
-                        GsBase::write(VirtAddr::new(gs_base as u64));
-                    }
-                }
-
-                next.process()
-                    .expect("No process contains the next thread.")
-                    .vm_space()
-                    .switch();
             });
     }
 
-    fn current(&self) -> Arc<Thread> {
+    fn current(&self) -> Arc<Task> {
         let mut current = None;
         self.scheduler
             .get()
@@ -155,19 +135,19 @@ impl SchedulerWrapper {
 mod wrappers {
     use super::*;
 
-    pub fn add_thread(thread: Arc<Thread>) {
-        SCHEDULER.add(thread);
+    pub fn add_task(task: Arc<Task>) {
+        SCHEDULER.add(task);
     }
 
-    pub fn remove_thread(thread_id: ThreadId) {
-        SCHEDULER.remove(thread_id);
+    pub fn remove_task(task_id: TaskId) {
+        SCHEDULER.remove(task_id);
     }
 
     pub fn schedule(context: &mut TrapFrame) {
         SCHEDULER.schedule(context);
     }
 
-    pub fn current_thread() -> Arc<Thread> {
+    pub fn current_task() -> Arc<Task> {
         SCHEDULER.current()
     }
 }

@@ -9,16 +9,10 @@ use x86_64::{
     structures::gdt::SegmentSelector,
 };
 
-use crate::hal::{cpu::Cpu, smp::CPUS};
+use crate::hal::{context::TrapFrame, cpu::Cpu, smp::CPUS};
 
 pub type SyscallHandler = fn(
-    syscall_id: usize,
-    arg1: usize,
-    arg2: usize,
-    arg3: usize,
-    arg4: usize,
-    arg5: usize,
-    arg6: usize,
+    frame: &mut TrapFrame,
 ) -> isize;
 
 static SYSCALL_HANDLER: Once<SyscallHandler> = Once::new();
@@ -62,35 +56,66 @@ pub fn init() {
 #[unsafe(naked)]
 unsafe extern "C" fn syscall_handler() {
     core::arch::naked_asm!(
+        "push 24",
+        "push rsp - 8",
+        "pushfq",
+        "push 8",
+        "push {syscall_handler}",
+        
+        "add rsp, 16",
+        
+        "push rax",
         "push rcx",
+        "push rdx",
+        "push rdi",
+        "push rsi",
+        "push r8",
+        "push r9",
+        "push r10",
         "push r11",
-
-        "mov rcx, r10",
+        
+        "push rbx",
+        "push rbp",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        
+        "mov rdi, rsp",
 
         "call {syscall_matcher}",
-
+        
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop rbp",
+        "pop rbx",
+        
         "pop r11",
+        "pop r10",
+        "pop r9",
+        "pop r8",
+        "pop rsi",
+        "pop rdi",
+        "pop rdx",
         "pop rcx",
+        "pop rax",
+        
+        "add rsp, 56",
 
         "sysretq",
         syscall_matcher = sym syscall_matcher,
+        syscall_handler = sym syscall_handler,
     );
 }
 
 #[allow(unused_variables)]
 pub extern "C" fn syscall_matcher(
-    arg1: usize,
-    arg2: usize,
-    arg3: usize,
-    arg4: usize,
-    arg5: usize,
-    arg6: usize,
+    frame: &mut TrapFrame,
 ) -> isize {
-    let syscall_index: usize;
-    unsafe { core::arch::asm!("mov {0}, rax", out(reg) syscall_index) };
-
     match SYSCALL_HANDLER.get() {
-        Some(handler) => handler(syscall_index, arg1, arg2, arg3, arg4, arg5, arg6),
+        Some(handler) => handler(frame),
         None => panic!("No syscall handler"),
     }
 }

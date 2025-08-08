@@ -2,7 +2,7 @@ use core::mem::transmute;
 use spin::Lazy;
 use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable, PageFaultErrorCode};
 
-use crate::hal::trap::gdt::{DOUBLE_FAULT_IST_INDEX, PAGE_FAULT_IST_INDEX, CONTEXT_SAVE_IST_INDEX};
+use crate::hal::trap::gdt::{CONTEXT_SAVE_IST_INDEX, DOUBLE_FAULT_IST_INDEX, PAGE_FAULT_IST_INDEX};
 
 pub fn init() {
     IDT.load();

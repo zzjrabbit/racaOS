@@ -3,11 +3,18 @@ use alloc::{
     sync::{Arc, Weak},
 };
 use spin::{Lazy, RwLock};
+use zodiac::task::{set_scheduler, Task};
 
 use crate::{
     hal::cpu::Cpu,
     task::{LocalQueue, Scheduler, Task},
 };
+
+static SCHEDULER: FifoScheduler = FifoScheduler::new();
+
+pub fn init() {
+    set_scheduler(&SCHEDULER);
+}
 
 pub struct FifoScheduler(Lazy<FifoSchedulerInner>);
 
@@ -90,6 +97,7 @@ impl LocalQueue for FifoLocalQueue {
     fn deque_next_task(&mut self) -> Option<Arc<Task>> {
         let task = self.queue.write().pop_front()?;
         self.current = Some(Arc::downgrade(&task));
+        let Some(data)task.data();
         Some(task)
     }
 
@@ -97,3 +105,4 @@ impl LocalQueue for FifoLocalQueue {
         self.queue.write().push_back(task);
     }
 }
+

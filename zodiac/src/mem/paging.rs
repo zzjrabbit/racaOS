@@ -99,7 +99,7 @@ pub trait GeneralPageTable: Sync + Send {
         &mut self,
         vaddr: VirtualAddress,
     ) -> Result<(PhysicalAddress, MMUFlags, PageSize), ZodiacError>;
-    fn deep_copy(&self) -> Arc<RwLock<dyn GeneralPageTable>>;
+    fn deep_copy(&self, remove_write: bool) -> Arc<RwLock<dyn GeneralPageTable>>;
     fn switch(&self);
 
     /// Note that start_vaddr and size must be aligned by page size

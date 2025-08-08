@@ -1,7 +1,9 @@
 use alloc::vec::Vec;
 use zodiac::mem::VirtualAddress;
 
-use crate::filesystem::{open_file, AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path};
+use crate::filesystem::{
+    AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path, open_file,
+};
 
 use super::*;
 
@@ -82,10 +84,10 @@ pub fn read(fd: FileDescriptor, address: VirtualAddress, len: usize) -> SyscallR
             if !access_mode.is_readable() {
                 return Err(SyscallError::PermissionDenied);
             };
-            
+
             let mut buf = vec![0; len];
             let len = file.read_at(*offset, &mut buf);
-            
+
             current_process
                 .inner()
                 .vm_space()
@@ -93,7 +95,7 @@ pub fn read(fd: FileDescriptor, address: VirtualAddress, len: usize) -> SyscallR
                 .write(&buf[0..len])?;
 
             *offset += len as u64;
-            
+
             Ok(len as isize)
         })
         .ok_or(ZodiacError::NotFound)?

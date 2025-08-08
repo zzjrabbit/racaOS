@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use crate::{
     PhyscialMemoryError, ZodiacError,
-    mem::{FRAME_ALLOCATOR, PageSize, PhysicalAddress},
+    mem::{FRAME_ALLOCATOR, PageSize, PhysicalAddress, convert_physical_to_virtual},
 };
 
 /// Options for allocating physical memory.
@@ -134,6 +134,22 @@ impl PhysicalMemory {
         let start_address = page_size.align_down(address);
 
         Self::from_start_address(start_address, count, page_size)
+    }
+}
+
+impl PhysicalMemory {
+    pub fn as_slice(&self, id: usize) -> Result<&[u8], ZodiacError> {
+        let paddr = self.get_start_address_of_frame(id)?;
+        let vaddr = convert_physical_to_virtual(paddr);
+
+        Ok(unsafe { core::slice::from_raw_parts(vaddr as *const u8, self.page_size as usize) })
+    }
+
+    pub fn as_mut_slice(&self, id: usize) -> Result<&mut [u8], ZodiacError> {
+        let paddr = self.get_start_address_of_frame(id)?;
+        let vaddr = convert_physical_to_virtual(paddr);
+
+        Ok(unsafe { core::slice::from_raw_parts_mut(vaddr as *mut u8, self.page_size as usize) })
     }
 }
 

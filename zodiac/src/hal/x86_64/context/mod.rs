@@ -66,9 +66,25 @@ impl TrapFrame {
             };
         });
     }
-    
+
+    #[allow(dead_code)]
     pub(crate) fn set_stack(&mut self, stack: VirtualAddress) {
         self.rsp = stack;
+    }
+    
+    pub fn syscall_index(&self) -> usize {
+        self.rax
+    }
+    
+    pub fn syscall_arguments(&self) -> [usize;6] {
+        [
+            self.rdi,
+            self.rsi,
+            self.rdx,
+            self.r10,
+            self.r8,
+            self.r9,
+        ]
     }
 }
 

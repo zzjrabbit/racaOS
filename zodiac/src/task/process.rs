@@ -4,7 +4,9 @@ use alloc::{sync::Arc, vec::Vec};
 use spin::{Lazy, RwLock};
 
 use crate::{
-    hal::{cpu::Cpu, trap::{change_context_save_action, ContextSaveAction}}, mem::VirtualMemorySpace, task::{remove_thread, Thread, ThreadId, ThreadState}, ZodiacError
+    hal::{
+        context::TrapFrame, cpu::Cpu, trap::{change_context_save_action, ContextSaveAction}
+    }, mem::VirtualMemorySpace, task::{remove_thread, Thread, ThreadId, ThreadState}, ZodiacError
 };
 
 pub type ProcessId = usize;
@@ -19,6 +21,7 @@ pub struct Process {
 
 struct ProcessInner {
     threads: Vec<Arc<Thread>>,
+    is_child_process: bool,
 }
 
 impl Process {
@@ -28,6 +31,18 @@ impl Process {
             vm_space: VirtualMemorySpace::new_user(),
             inner: RwLock::new(ProcessInner {
                 threads: Vec::new(),
+                is_child_process: false,
+            }),
+        })
+    }
+    
+    pub(crate) fn fork_impl(&self, context: TrapFrame, cow: bool) -> Arc<Self> {
+        Arc::new(Self {
+            process_id: NEXT_PROCESS_ID.fetch_add(1, Ordering::SeqCst),
+            vm_space: self.vm_space.deep_copy(cow),
+            inner: RwLock::new(ProcessInner {
+                threads: Vec::new(),
+                is_child_process: true,
             }),
         })
     }
@@ -61,6 +76,10 @@ impl Process {
     /// Return the virtual memory space of the process.
     pub fn vm_space(&self) -> &VirtualMemorySpace {
         &self.vm_space
+    }
+
+    pub fn is_child_process(&self) -> bool {
+        self.inner.read().is_child_process
     }
 }
 
@@ -115,17 +134,18 @@ impl ProcessBuilder {
     }
 }
 
+static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(1);
+
 impl ProcessBuilder {
     /// Build the process.
     /// You have to contain the process yourself, otherwise it will be dropped.
     pub fn build(self) -> Result<Arc<Process>, ZodiacError> {
-        static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(1);
-
         Ok(Arc::new(Process {
             process_id: NEXT_PROCESS_ID.fetch_add(1, Ordering::SeqCst),
             vm_space: self.vm_space.ok_or(ZodiacError::ArgumentsNotEnough)?,
             inner: RwLock::new(ProcessInner {
                 threads: Vec::new(),
+                is_child_process: false,
             }),
         }))
     }

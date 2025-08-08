@@ -50,7 +50,7 @@ impl Thread {
     pub fn current() -> Arc<Self> {
         current_thread()
     }
-    
+
     pub fn clone_thread(self: &Arc<Self>, new_stack: VirtualAddress) {
         change_context_save_action(ContextSaveAction::Clone(self.clone(), new_stack));
         Cpu::current().trigger_save_context();

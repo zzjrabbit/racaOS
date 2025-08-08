@@ -33,7 +33,7 @@ And there are other necessary options, which are listed below:
 - allocator
 - scheduler
 
-If you like, you can also specify the logger.
+If you like, you can also specify the logger and the user page fault handler.
 
 For more examples, please refer to [racaOS](https://github.com/zzjrabbit/racaOS).
 

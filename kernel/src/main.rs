@@ -15,14 +15,15 @@ extern crate alloc;
 
 mod filesystem;
 mod heap;
-mod scheduler;
 mod syscall;
 mod task;
 mod terminal;
+mod trap;
 
 #[zodiac::main]
 pub fn main() {
-    scheduler::init();
+    trap::init();
+    task::init();
     syscall::init();
     terminal::init();
     filesystem::init();

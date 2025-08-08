@@ -37,20 +37,36 @@ impl VirtualMemorySpace {
     /// This is a copy of kernel virtual memory space.
     pub fn new_user() -> Self {
         Self {
-            page_table: kernel_page_table().read().deep_copy(),
+            page_table: kernel_page_table().read().deep_copy(false),
         }
     }
 
     /// Deep copy this virtual memory space.
     /// Good choice for fork syscall.
-    pub fn deep_copy(&self) -> Self {
+    pub fn deep_copy(&self, remove_write: bool) -> Self {
         Self {
-            page_table: self.page_table.read().deep_copy(),
+            page_table: self.page_table.read().deep_copy(remove_write),
         }
     }
 }
 
 impl VirtualMemorySpace {
+    pub fn query(
+        &self,
+        address: VirtualAddress,
+    ) -> Result<(PhysicalMemory, MMUFlags, PageSize), ZodiacError> {
+        self.page_table
+            .write()
+            .query(address)
+            .map(|(paddr, flags, page_size)| {
+                (
+                    PhysicalMemory::containing_address(paddr, 1, page_size),
+                    flags,
+                    page_size,
+                )
+            })
+    }
+
     /// Create a cursor at the given virtual address with the given page size.
     /// So that you can map, unmap and change the flags of virtual memory regions.
     pub fn cursor(

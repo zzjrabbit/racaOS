@@ -242,7 +242,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
         Ok(page_size)
     }
 
-    fn deep_copy(&self) -> Arc<RwLock<dyn GeneralPageTable>> {
+    fn deep_copy(&self, remove_write: bool) -> Arc<RwLock<dyn GeneralPageTable>> {
         let frame_allocator = &mut FRAME_ALLOCATOR.lock();
 
         let root_table_frame =
@@ -269,8 +269,13 @@ impl GeneralPageTable for OffsetPageTable<'_> {
                 .filter(|(_, entry)| !entry.is_unused())
             {
                 if level == 1 || entry.flags().contains(PageTableFlags::HUGE_PAGE) {
+                    let mut flags = entry.flags();
+                    if remove_write {
+                        flags.remove(PageTableFlags::WRITABLE);
+                    }
+
                     unsafe {
-                        (&mut *target_table)[index].set_addr(entry.addr(), entry.flags());
+                        (&mut *target_table)[index].set_addr(entry.addr(), flags);
                     }
                 } else {
                     let target_child_frame =
