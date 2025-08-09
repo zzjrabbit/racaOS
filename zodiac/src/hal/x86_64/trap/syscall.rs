@@ -97,7 +97,7 @@ unsafe extern "C" fn syscall_handler() {
 }
 
 #[allow(unused_variables)]
-pub extern "C" fn syscall_matcher(frame: &mut TrapFrame) -> isize {
+extern "C" fn syscall_matcher(frame: &mut TrapFrame) -> isize {
     frame.rsp += 8;
     
     match SYSCALL_HANDLER.get() {

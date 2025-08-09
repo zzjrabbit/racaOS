@@ -51,6 +51,7 @@ fn idle() -> ! {
     }
 }
 
+/// Starts schedule.
 pub fn start_schedule() {
     START_SCHEDULE.store(true, Ordering::SeqCst);
     enable_interrupts();

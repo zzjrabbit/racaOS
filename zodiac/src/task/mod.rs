@@ -21,7 +21,7 @@ pub type TaskId = usize;
 const KERNEL_STACK_SIZE: usize = 64 * 1024; // 64k
 
 /// Task structure.
-/// This is basically a container of context.
+/// This is basically a container of context .
 pub struct Task {
     inner: RwLock<TaskInner>,
     task_id: TaskId,
@@ -200,6 +200,8 @@ impl TaskBuilder {
         self
     }
 
+    /// Set the data of the task.
+    /// You can use this to store process id and so on.
     pub fn data<T>(mut self, data: T) -> Self
     where
         T: Any + Send + Sync,
