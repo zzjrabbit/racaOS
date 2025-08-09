@@ -1,6 +1,9 @@
 use alloc::vec;
 use thiserror::Error;
-use zodiac::{ZodiacError, hal::trap::set_syscall_handler};
+use zodiac::{
+    ZodiacError,
+    hal::{context::TrapFrame, trap::set_syscall_handler},
+};
 
 use crate::{filesystem::FileDescriptor, task::Process};
 
@@ -42,15 +45,10 @@ impl From<ZodiacError> for SyscallError {
     }
 }
 
-fn syscall_handler(
-    syscall_id: usize,
-    arg1: usize,
-    arg2: usize,
-    arg3: usize,
-    arg4: usize,
-    arg5: usize,
-    arg6: usize,
-) -> isize {
+fn syscall_handler(frame: &mut TrapFrame) -> isize {
+    let syscall_id = frame.syscall_index();
+    let [arg1, arg2, arg3, arg4, arg5, arg6] = frame.syscall_arguments();
+
     log::trace!(
         "syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x})",
         syscall_id,

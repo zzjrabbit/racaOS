@@ -1,4 +1,9 @@
-use zodiac::mem::{MMUFlags, PhysicalMemoryAllocOptions};
+use zodiac::{
+    mem::{MMUFlags, PhysicalMemoryAllocOptions},
+    task::Task,
+};
+
+use crate::task::ThreadData;
 
 use super::*;
 
@@ -10,12 +15,13 @@ pub fn mmap(
     _fd: usize,
     _offset: usize,
 ) -> SyscallResult {
-    let current_process = Process::current();
+    let thread = Task::current();
+    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
 
     let (address, mut cursor, page_size) = if address == 0 {
-        current_process.allocate(len, false)
+        data.allocate(len, false)
     } else {
-        current_process.allocate_at(address, len, false)
+        data.allocate_at(address, len, false)
     }?;
 
     let physical_memory = PhysicalMemoryAllocOptions::default()

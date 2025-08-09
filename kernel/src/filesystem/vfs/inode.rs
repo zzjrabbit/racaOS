@@ -16,7 +16,7 @@ pub trait InodeOperation: Sync + Send + 'static {
         0
     }
 
-    fn len(&self) -> usize {
+    fn len(&self) -> u64 {
         0
     }
 
@@ -49,7 +49,7 @@ impl InodeData {
         self.inner.write_at(offset, buf)
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         self.inner.len()
     }
 

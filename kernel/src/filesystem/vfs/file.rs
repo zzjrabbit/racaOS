@@ -184,7 +184,7 @@ impl File {
         }
     }
 
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.len()
         } else {

@@ -11,9 +11,7 @@ use x86_64::{
 
 use crate::hal::{context::TrapFrame, cpu::Cpu, smp::CPUS};
 
-pub type SyscallHandler = fn(
-    frame: &mut TrapFrame,
-) -> isize;
+pub type SyscallHandler = fn(frame: &mut TrapFrame) -> isize;
 
 static SYSCALL_HANDLER: Once<SyscallHandler> = Once::new();
 
@@ -61,9 +59,9 @@ unsafe extern "C" fn syscall_handler() {
         "pushfq",
         "push 8",
         "push {syscall_handler}",
-        
+
         "add rsp, 16",
-        
+
         "push rax",
         "push rcx",
         "push rdx",
@@ -73,25 +71,25 @@ unsafe extern "C" fn syscall_handler() {
         "push r9",
         "push r10",
         "push r11",
-        
+
         "push rbx",
         "push rbp",
         "push r12",
         "push r13",
         "push r14",
         "push r15",
-        
+
         "mov rdi, rsp",
 
         "call {syscall_matcher}",
-        
+
         "pop r15",
         "pop r14",
         "pop r13",
         "pop r12",
         "pop rbp",
         "pop rbx",
-        
+
         "pop r11",
         "pop r10",
         "pop r9",
@@ -101,7 +99,7 @@ unsafe extern "C" fn syscall_handler() {
         "pop rdx",
         "pop rcx",
         "pop rax",
-        
+
         "add rsp, 56",
 
         "sysretq",
@@ -111,9 +109,7 @@ unsafe extern "C" fn syscall_handler() {
 }
 
 #[allow(unused_variables)]
-pub extern "C" fn syscall_matcher(
-    frame: &mut TrapFrame,
-) -> isize {
+pub extern "C" fn syscall_matcher(frame: &mut TrapFrame) -> isize {
     match SYSCALL_HANDLER.get() {
         Some(handler) => handler(frame),
         None => panic!("No syscall handler"),

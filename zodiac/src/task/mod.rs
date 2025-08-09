@@ -8,10 +8,7 @@ use spin::RwLock;
 
 use crate::{
     ZodiacError,
-    hal::{
-        context::TrapFrame,
-        cpu::Cpu,
-    },
+    hal::{context::TrapFrame, cpu::Cpu},
     mem::VirtualAddress,
 };
 
@@ -54,7 +51,7 @@ impl Task {
     pub fn task_id(&self) -> TaskId {
         self.task_id
     }
-    
+
     /// Returns the task data.
     pub fn data(&self) -> &Box<dyn Any + Send + Sync> {
         &self.data

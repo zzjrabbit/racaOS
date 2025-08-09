@@ -6,7 +6,7 @@ use core::{
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, vec::Vec};
 use os_terminal::{DrawTarget, Terminal, font::BitmapFont};
 use spin::RwLock;
-use zodiac::task::{Process, Thread, ThreadBuilder};
+use zodiac::task::{Task, TaskBuilder};
 
 static TERMINAL_BUFFER: RwLock<VecDeque<Vec<u8>>> = RwLock::new(VecDeque::new());
 static NEED_FLUSH: AtomicBool = AtomicBool::new(false);
@@ -69,15 +69,14 @@ fn terminal_thread() -> ! {
 
     loop {
         terminal_flush(&mut terminal);
-        Thread::current().r#yield();
+        Task::current().r#yield();
     }
 }
 
 pub fn init() {
-    let thread = ThreadBuilder::default()
+    let thread = TaskBuilder::default()
         .entry(terminal_thread)
         .kernel_mode()
-        .process(Process::kernel())
         .kernel_stack_size(256 * 1024)
         .build()
         .unwrap();

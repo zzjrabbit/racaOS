@@ -46,8 +46,8 @@ impl InodeOperation for RamInode {
         buf.len()
     }
 
-    fn len(&self) -> usize {
-        self.data.read().len()
+    fn len(&self) -> u64 {
+        self.data.read().len() as u64
     }
 
     fn create(

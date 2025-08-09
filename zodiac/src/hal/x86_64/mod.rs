@@ -1,7 +1,14 @@
-use x86_64::registers::control::{Cr0, Cr0Flags, Cr4, Cr4Flags};
+use x86_64::{
+    VirtAddr,
+    registers::{
+        control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
+        model_specific::{FsBase, GsBase},
+    },
+};
 
 use crate::{
     hal::{cpu::Cpu, smp::CPUS},
+    mem::VirtualAddress,
     trap::Irq,
 };
 
@@ -51,6 +58,14 @@ impl Cpu {
             self.send_ipi(Irq::from_vector(0x20));
         }
     }
+}
+
+pub fn write_fs(fs: VirtualAddress) {
+    FsBase::write(VirtAddr::new(fs as u64));
+}
+
+pub fn write_gs(gs: VirtualAddress) {
+    GsBase::write(VirtAddr::new(gs as u64));
 }
 
 pub(crate) fn init() {

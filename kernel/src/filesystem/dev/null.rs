@@ -11,7 +11,7 @@ impl InodeOperation for NullDevice {
         buf.len()
     }
 
-    fn len(&self) -> usize {
+    fn len(&self) -> u64 {
         0
     }
 }

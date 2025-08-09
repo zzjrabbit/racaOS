@@ -1,14 +1,16 @@
 use alloc::vec::Vec;
-use zodiac::mem::VirtualAddress;
+use zodiac::{mem::VirtualAddress, task::Task};
 
-use crate::filesystem::{
-    AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path, open_file,
+use crate::{
+    filesystem::{AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path, open_file},
+    task::ThreadData,
 };
 
 use super::*;
 
 pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
-    let process = Process::current();
+    let thread = Task::current();
+    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
 
     let access_mode = AccessMode::try_from(flags)?;
     let open_flags = OpenFlags::from(flags);
@@ -18,9 +20,7 @@ pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
     let mut path = Vec::new();
     loop {
         let mut buffer = [0; 1];
-        process
-            .inner()
-            .vm_space()
+        data.vm_space
             .reader(address + path.len(), 1)
             .read(&mut buffer)?;
         if buffer[0] == 0 {
@@ -41,7 +41,7 @@ pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
     );
 
     if let Some(file) = open_file(&path) {
-        let fd = process.add_file(file, access_mode, open_flags);
+        let fd = data.add_file(file, access_mode, open_flags);
         log::info!("fd: {}", fd);
         Ok(fd as isize)
     } else {
@@ -60,7 +60,7 @@ pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
                 )
                 .ok_or(SyscallError::InvalidArguments)?;
 
-            let fd = process.add_file(file, access_mode, open_flags);
+            let fd = data.add_file(file, access_mode, open_flags);
             Ok(fd as isize)
         } else {
             Err(SyscallError::NotFound)
@@ -69,61 +69,53 @@ pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
 }
 
 pub fn close(fd: FileDescriptor) -> SyscallResult {
-    let current_process = Process::current();
-    current_process
-        .remove_file(fd)
-        .ok_or(SyscallError::NotFound)?;
+    let thread = Task::current();
+    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+
+    data.remove_file(fd).ok_or(SyscallError::NotFound)?;
     Ok(0)
 }
 
 pub fn read(fd: FileDescriptor, address: VirtualAddress, len: usize) -> SyscallResult {
-    let current_process = Process::current();
+    let thread = Task::current();
+    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
 
-    current_process
-        .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
-            if !access_mode.is_readable() {
-                return Err(SyscallError::PermissionDenied);
-            };
+    data.with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+        if !access_mode.is_readable() {
+            return Err(SyscallError::PermissionDenied);
+        };
 
-            let mut buf = vec![0; len];
-            let len = file.read_at(*offset, &mut buf);
+        let mut buf = vec![0; len];
+        let len = file.read_at(*offset, &mut buf);
 
-            current_process
-                .inner()
-                .vm_space()
-                .writer(address, len)
-                .write(&buf[0..len])?;
+        data.vm_space.writer(address, len).write(&buf[0..len])?;
 
-            *offset += len as u64;
+        *offset += len as u64;
 
-            Ok(len as isize)
-        })
-        .ok_or(ZodiacError::NotFound)?
+        Ok(len as isize)
+    })
+    .ok_or(ZodiacError::NotFound)?
 }
 
 pub fn write(fd: FileDescriptor, address: VirtualAddress, len: usize) -> SyscallResult {
-    let current_process = Process::current();
+    let thread = Task::current();
+    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
 
-    current_process
-        .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
-            if !access_mode.is_writable() {
-                return Err(SyscallError::PermissionDenied);
-            }
+    data.with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+        if !access_mode.is_writable() {
+            return Err(SyscallError::PermissionDenied);
+        }
 
-            let mut buffer = vec![0; len];
+        let mut buffer = vec![0; len];
 
-            current_process
-                .inner()
-                .vm_space()
-                .reader(address, len)
-                .read(&mut buffer)?;
+        data.vm_space.reader(address, len).read(&mut buffer)?;
 
-            log::info!("writing {:?}", buffer);
+        log::info!("writing {:?}", buffer);
 
-            let len = file.write_at(*offset, &buffer);
-            *offset += len as u64;
+        let len = file.write_at(*offset, &buffer);
+        *offset += len as u64;
 
-            Ok(len as isize)
-        })
-        .ok_or(ZodiacError::NotFound)?
+        Ok(len as isize)
+    })
+    .ok_or(ZodiacError::NotFound)?
 }

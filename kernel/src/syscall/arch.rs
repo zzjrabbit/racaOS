@@ -1,4 +1,6 @@
-use zodiac::{mem::VirtualAddress, task::Thread};
+use zodiac::{mem::VirtualAddress, task::Task};
+
+use crate::task::ThreadData;
 
 use super::*;
 
@@ -33,12 +35,13 @@ impl TryFrom<usize> for ArchPrctlOptions {
 }
 
 pub fn arch_prctl(options: ArchPrctlOptions, address: VirtualAddress) -> SyscallResult {
-    let current_thread = Thread::current();
+    let current_thread = Task::current();
+    let data = current_thread.data().downcast_ref::<ThreadData>().unwrap();
     match options {
-        ArchPrctlOptions::SetFs => current_thread.set_fs_base(address),
-        ArchPrctlOptions::SetGs => current_thread.set_gs_base(address),
-        ArchPrctlOptions::GetFs => return Ok(current_thread.fs_base().unwrap_or(0) as isize),
-        ArchPrctlOptions::GetGs => return Ok(current_thread.gs_base().unwrap_or(0) as isize),
-    }
+        ArchPrctlOptions::SetFs => data.fs.write().replace(address),
+        ArchPrctlOptions::SetGs => data.gs.write().replace(address),
+        ArchPrctlOptions::GetFs => return Ok(data.fs.read().unwrap_or(0) as isize),
+        ArchPrctlOptions::GetGs => return Ok(data.gs.read().unwrap_or(0) as isize),
+    };
     Ok(0)
 }
