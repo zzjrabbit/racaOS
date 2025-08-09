@@ -97,16 +97,14 @@ impl LocalQueue for FifoLocalQueue {
     fn deque_next_task(&mut self) -> Option<Arc<Task>> {
         let task = self.queue.write().pop_front()?;
         self.current = Some(Arc::downgrade(&task));
-        let Some(data) = task.data().downcast_ref::<ThreadData>() else {
-            unreachable!()
-        };
-
-        data.vm_space.switch();
-        if let Some(fs) = *data.fs.read() {
-            write_fs(fs);
-        }
-        if let Some(gs) = *data.gs.read() {
-            write_gs(gs);
+        if let Some(data) = task.data().downcast_ref::<ThreadData>() {
+            data.vm_space.switch();
+            if let Some(fs) = *data.fs.read() {
+                write_fs(fs);
+            }
+            if let Some(gs) = *data.gs.read() {
+                write_gs(gs);
+            }
         }
 
         Some(task)

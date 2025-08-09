@@ -20,7 +20,7 @@ pub use power::{reboot, shutdown};
 #[unsafe(link_section = ".requests")]
 static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 
-pub static ACPI: Lazy<Acpi> = Lazy::new(|| init_acpi().unwrap());
+pub static ACPI: Lazy<Acpi> = Lazy::new(|| init().unwrap());
 
 #[allow(dead_code)]
 pub struct Acpi<'a> {
@@ -31,7 +31,7 @@ pub struct Acpi<'a> {
     pub aml_table: AmlTable,
 }
 
-fn init_acpi() -> Result<Acpi<'static>, AcpiError> {
+fn init() -> Result<Acpi<'static>, AcpiError> {
     let response = RSDP_REQUEST.get_response().unwrap();
 
     let acpi_tables = unsafe {

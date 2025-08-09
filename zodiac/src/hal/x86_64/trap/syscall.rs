@@ -54,13 +54,13 @@ pub fn init() {
 #[unsafe(naked)]
 unsafe extern "C" fn syscall_handler() {
     core::arch::naked_asm!(
-        "push 24",
-        "push rsp - 8",
-        "pushfq",
-        "push 8",
-        "push {syscall_handler}",
+        "push 0x0000000000000018",
+        "push rsp",
+        "push r11",
+        "push 0x0000000000000020",
+        "push rcx",
 
-        "add rsp, 16",
+        "sub rsp, 16",
 
         "push rax",
         "push rcx",
@@ -83,33 +83,23 @@ unsafe extern "C" fn syscall_handler() {
 
         "call {syscall_matcher}",
 
-        "pop r15",
-        "pop r14",
-        "pop r13",
-        "pop r12",
-        "pop rbp",
-        "pop rbx",
+        "add rsp, 48",
 
         "pop r11",
-        "pop r10",
-        "pop r9",
-        "pop r8",
-        "pop rsi",
-        "pop rdi",
-        "pop rdx",
+        "add rsp, 48",
         "pop rcx",
-        "pop rax",
 
-        "add rsp, 56",
+        "add rsp, 64",
 
         "sysretq",
         syscall_matcher = sym syscall_matcher,
-        syscall_handler = sym syscall_handler,
     );
 }
 
 #[allow(unused_variables)]
 pub extern "C" fn syscall_matcher(frame: &mut TrapFrame) -> isize {
+    frame.rsp += 8;
+    
     match SYSCALL_HANDLER.get() {
         Some(handler) => handler(frame),
         None => panic!("No syscall handler"),

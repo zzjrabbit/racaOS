@@ -24,10 +24,6 @@ impl Process {
         stdout: Arc<File>,
         stderr: Arc<File>,
     ) -> Result<Arc<Self>, ZodiacError> {
-        let vm_space = VirtualMemorySpace::new_user();
-
-        let entry = vm_space.binary_file_mapper().map(binary)?;
-
         let new_self = Arc::new(Self {
             threads: RwLock::new(Vec::new()),
             is_child_process: AtomicBool::new(false),
@@ -36,6 +32,8 @@ impl Process {
         PROCESSES.write().push(new_self.clone());
 
         let thread_data = ThreadData::new(stdin, stdout, stderr, &new_self);
+        
+        let entry = thread_data.vm_space.binary_file_mapper().map(binary)?;
 
         let (stack_address, mut cursor, page_size) = thread_data.allocate(USER_STACK_SIZE, true)?;
         const USER_STACK_SIZE: usize = 8 * 1024 * 1024;

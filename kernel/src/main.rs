@@ -48,7 +48,7 @@ pub fn main() {
         tty.clone(),
         tty.clone(),
         tty.clone(),
-    );
+    ).unwrap();
 
     start_schedule();
     unreachable!()

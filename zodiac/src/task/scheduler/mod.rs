@@ -2,9 +2,9 @@ mod fifo;
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use alloc::sync::{Arc, Weak};
+use alloc::{sync::{Arc, Weak}, vec::Vec};
 pub use fifo::*;
-use spin::Once;
+use spin::{Once, RwLock};
 
 use crate::{
     hal::{context::TrapFrame, cpu_num, enable_interrupts, trap::set_kernel_stack},
@@ -28,6 +28,8 @@ pub trait LocalQueue<T = Arc<Task>, W = Weak<Task>> {
     fn deque_next_task(&mut self) -> Option<T>;
 }
 
+static IDLES: RwLock<Vec<Arc<Task>>> = RwLock::new(Vec::new());
+
 pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
     SCHEDULER.set_scheduler(scheduler);
 
@@ -37,6 +39,8 @@ pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
             .kernel_mode()
             .build()
             .unwrap();
+        
+        IDLES.write().push(task.clone());
         task.spawn();
     }
 }

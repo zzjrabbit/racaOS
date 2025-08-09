@@ -38,7 +38,7 @@ fn find_slp_typa(aml_table: &AmlTable) -> Result<u16, AmlError> {
 
     match dsdt.namespace.get_by_path(&AmlName::from_str("\\_S5")?)? {
         AmlValue::Package(values) => Ok(values[0].as_integer(&dsdt)? as u16),
-        _ => panic!("Failed to find S5 as it's not a package"),
+        _ => Err(AmlError::FatalError),
     }
 }
 

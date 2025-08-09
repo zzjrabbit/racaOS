@@ -23,6 +23,8 @@ pub fn mmap(
     } else {
         data.allocate_at(address, len, false)
     }?;
+    
+    log::info!("address: {:x}", address);
 
     let physical_memory = PhysicalMemoryAllocOptions::default()
         .count(

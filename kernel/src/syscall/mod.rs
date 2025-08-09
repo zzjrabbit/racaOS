@@ -49,8 +49,10 @@ fn syscall_handler(frame: &mut TrapFrame) -> isize {
     let syscall_id = frame.syscall_index();
     let [arg1, arg2, arg3, arg4, arg5, arg6] = frame.syscall_arguments();
 
+    //log::info!("frame: {:x?}", frame);
+    
     log::trace!(
-        "syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x})",
+        "from syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x})",
         syscall_id,
         arg1,
         arg2,

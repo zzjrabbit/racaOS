@@ -1,0 +1,6 @@
+[unstable]
+bindeps = true
+
+[target.'cfg(target_os = "linux")']
+rustflags = ["-C", "relocation-model=static"]
+

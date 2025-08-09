@@ -3,9 +3,9 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, vec::Vec};
+use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
 use os_terminal::{DrawTarget, Terminal, font::BitmapFont};
-use spin::RwLock;
+use spin::{Lazy, RwLock};
 use zodiac::task::{Task, TaskBuilder};
 
 static TERMINAL_BUFFER: RwLock<VecDeque<Vec<u8>>> = RwLock::new(VecDeque::new());
@@ -73,7 +73,7 @@ fn terminal_thread() -> ! {
     }
 }
 
-pub fn init() {
+static TERMINAL_THREAD: Lazy<Arc<Task>> = Lazy::new(|| {
     let thread = TaskBuilder::default()
         .entry(terminal_thread)
         .kernel_mode()
@@ -81,4 +81,9 @@ pub fn init() {
         .build()
         .unwrap();
     thread.spawn();
+    thread
+});
+
+pub fn init() {
+    Lazy::force(&TERMINAL_THREAD);
 }
