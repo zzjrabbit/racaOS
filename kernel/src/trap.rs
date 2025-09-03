@@ -30,7 +30,7 @@ fn user_page_fault_handler(frame: &mut TrapFrame, cpu_exception: CpuException) {
     {
         let (physical_memory, flags, page_size) = data.vm_space.query(address).unwrap();
 
-        let new_physical_memory = PhysicalMemoryAllocOptions::default()
+        let mut new_physical_memory = PhysicalMemoryAllocOptions::default()
             .count(1)
             .page_size(page_size)
             .allocate()
@@ -47,12 +47,47 @@ fn user_page_fault_handler(frame: &mut TrapFrame, cpu_exception: CpuException) {
             .map(&physical_memory, flags | MMUFlags::WRITE)
             .unwrap();
     } else {
+        {
+            let mut unused = data.unused_region.write();
+            let mut id = None;
+            for (index, (region, flags, page_size)) in unused.iter().enumerate() {
+                log::info!("{:x} {:x}", region.start_address(), region.len());
+                if region.contains(address) {
+                    log::info!("found");
+                    let physical_memory = PhysicalMemoryAllocOptions::default()
+                        .count(
+                            page_size
+                                .align_up(region.len() + region.start_address() - page_size.align_down(region.start_address()))
+                                / *page_size as usize,
+                        )
+                        .page_size(*page_size)
+                        .allocate()
+                        .unwrap();
+
+                    data.vm_space
+                        .cursor(page_size.align_down(region.start_address()), *page_size)
+                        .unwrap()
+                        .map(&physical_memory, *flags)
+                        .unwrap();
+
+                    id = Some(index);
+                }
+            }
+
+            if let Some(id) = id {
+                unused.remove(id);
+                return;
+            }
+        }
+
         log::warn!(
-            "{:?} on {:?} frame: {:?}",
+            "{:x?} on {:?} frame: {:#x?}",
             cpu_exception,
             Cpu::current(),
             frame
         );
-        process.kill();
+        let (_, flags, _) = data.vm_space.query(address).unwrap();
+        log::warn!("Fault address flags: {:?}", flags);
+        process.exit();
     }
 }

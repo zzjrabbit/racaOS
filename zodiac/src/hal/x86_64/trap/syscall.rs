@@ -99,7 +99,7 @@ unsafe extern "C" fn syscall_handler() {
 #[allow(unused_variables)]
 extern "C" fn syscall_matcher(frame: &mut TrapFrame) -> isize {
     frame.rsp += 8;
-    
+
     match SYSCALL_HANDLER.get() {
         Some(handler) => handler(frame),
         None => panic!("No syscall handler"),

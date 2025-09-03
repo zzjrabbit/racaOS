@@ -50,7 +50,7 @@ fn syscall_handler(frame: &mut TrapFrame) -> isize {
     let [arg1, arg2, arg3, arg4, arg5, arg6] = frame.syscall_arguments();
 
     //log::info!("frame: {:x?}", frame);
-    
+
     log::trace!(
         "from syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x})",
         syscall_id,
@@ -67,16 +67,33 @@ fn syscall_handler(frame: &mut TrapFrame) -> isize {
         1 => write(arg1 as FileDescriptor, arg2, arg3),
         2 => open(arg1, arg2 as i32, arg3 as u32),
         3 => close(arg1 as FileDescriptor),
-        9 => mmap(arg1, arg2, arg3, arg4, arg5, arg6),
+        8 => lseek(
+            arg1 as FileDescriptor,
+            arg2 as isize,
+            LseekWhence::from_i32(arg3 as i32).ok_or(SyscallError::InvalidArguments)?,
+        ),
+        9 => mmap(
+            arg1,
+            arg2,
+            MMapProtection::from_bits_truncate(arg3 as i32),
+            MMapFlags::from_bits_truncate(arg4 as i32),
+            arg5,
+            arg6,
+        ),
+        10 => mprotect(arg1, arg2, MMapProtection::from_bits_truncate(arg3 as i32)),
+        11 => munmap(arg1, arg2),
         60 => exit(arg1 as i32),
+        72 => fcntl(
+            arg1 as FileDescriptor,
+            FcntlCommand::from_i32(arg2 as i32).ok_or(SyscallError::InvalidArguments)?,
+            arg3 as u32,
+        ),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2),
+        186 => get_tid(),
         218 => set_tid_address(arg1),
         _ => {
-            if syscall_id == 72 {
-                Ok(0)
-            } else {
-                Ok(0)
-            }
+            log::warn!("Unimplemented syscall{}", syscall_id);
+            Ok(0)
         } //_ => Err(SyscallError::SyscallNotSupported),
     };
 

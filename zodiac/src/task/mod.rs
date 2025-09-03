@@ -137,10 +137,7 @@ pub enum TaskState {
 
 impl TaskState {
     pub fn is_blocked(&self) -> bool {
-        match self {
-            Self::Ready | Self::RunningOn(_) => false,
-            _ => true,
-        }
+        !matches!(self, Self::Ready | Self::RunningOn(_))
     }
 
     pub fn on_cpu(&self) -> Option<Cpu> {

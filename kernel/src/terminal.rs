@@ -39,7 +39,7 @@ impl DrawTarget for Display {
 
 fn terminal_flush(terminal: &mut Terminal<Display>) {
     while let Some(s) = TERMINAL_BUFFER.write().pop_back() {
-        let _ = terminal.process(&s);
+        terminal.process(&s);
         NEED_FLUSH.store(true, Ordering::Relaxed);
     }
 

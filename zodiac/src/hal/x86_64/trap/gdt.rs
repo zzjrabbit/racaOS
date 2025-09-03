@@ -12,7 +12,7 @@ use x86_64::structures::tss::TaskStateSegment;
 pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
 pub const PAGE_FAULT_IST_INDEX: usize = 1;
 pub const CONTEXT_SAVE_IST_INDEX: usize = 2;
-pub const FAULT_STACK_SIZE: usize = 4 * 1024;
+pub const FAULT_STACK_SIZE: usize = 8 * 1024;
 pub const CONTEXT_SAVE_STACK_SIZE: usize = 4 * 1024;
 
 pub struct CpuInfo {

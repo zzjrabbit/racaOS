@@ -7,9 +7,7 @@ use alloc::{
 };
 use spin::RwLock;
 use zodiac::{
-    ZodiacError,
-    hal::mem::{USER_ASPACE_BASE, USER_ASPACE_SIZE},
-    mem::{Cursor, PageSize, VirtualAddress, VirtualMemorySpace},
+    hal::mem::{USER_ASPACE_BASE, USER_ASPACE_SIZE}, mem::{Cursor, MMUFlags, PageSize, VirtualAddress, VirtualMemorySpace}, ZodiacError
 };
 
 use crate::{
@@ -17,29 +15,46 @@ use crate::{
     task::Process,
 };
 
+type FileDescriptorInfo = (u64, AccessMode, OpenFlags, Arc<File>);
+
 pub struct ThreadData {
     pub vm_space: Arc<VirtualMemorySpace>,
-    fd_table: Arc<RwLock<BTreeMap<FileDescriptor, (u64, AccessMode, OpenFlags, Arc<File>)>>>,
+    fd_table: Arc<RwLock<BTreeMap<FileDescriptor, FileDescriptorInfo>>>,
     pub process: Weak<Process>,
     next_fd: Arc<AtomicI32>,
     free_memory_space: RwLock<Vec<MemoryRegion>>,
-    mapped: RwLock<Vec<MemoryRegion>>,
+    allocated: RwLock<Vec<MemoryRegion>>,
+    pub unused_region: RwLock<Vec<(MemoryRegion, MMUFlags, PageSize)>>,
     pub fs: RwLock<Option<VirtualAddress>>,
     pub gs: RwLock<Option<VirtualAddress>>,
+    pub tid_address: RwLock<Option<VirtualAddress>>,
 }
 
 #[derive(Debug, Clone, Copy)]
-struct MemoryRegion {
+pub struct MemoryRegion {
     start: usize,
     end: usize,
 }
 
+#[allow(dead_code)]
 impl MemoryRegion {
     pub fn new(start: usize, len: usize) -> Self {
         MemoryRegion {
             start,
             end: start + len,
         }
+    }
+    
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
+    
+    pub fn start_address(&self) -> usize {
+        self.start
+    }
+    
+    pub fn contains(&self, addr: usize) -> bool {
+        self.start <= addr && addr < self.end
     }
 
     pub fn overlap(&self, other: &MemoryRegion) -> bool {
@@ -68,9 +83,11 @@ impl ThreadData {
                 USER_ASPACE_BASE,
                 USER_ASPACE_SIZE
             )]),
-            mapped: RwLock::new(Vec::new()),
+            allocated: RwLock::new(Vec::new()),
+            unused_region: RwLock::new(Vec::new()),
             fs: RwLock::new(None),
             gs: RwLock::new(None),
+            tid_address: RwLock::new(None),
         }
     }
 }
@@ -84,6 +101,7 @@ fn infer_page_size_by_len(len: usize) -> PageSize {
     }
 }
 
+#[allow(dead_code)]
 impl ThreadData {
     pub fn add_file(
         &self,
@@ -159,7 +177,7 @@ impl ThreadData {
         };
 
         if let Some(region) = region {
-            self.mapped.write().push(region);
+            self.allocated.write().push(region);
         }
 
         region
@@ -177,17 +195,17 @@ impl ThreadData {
         len: usize,
         huge_page: bool,
     ) -> Result<(VirtualAddress, Cursor, PageSize), ZodiacError> {
-        let mut mapped = self.mapped.write();
+        let mut allocated = self.allocated.write();
         let mut free_memory_space = self.free_memory_space.write();
         let required_region = MemoryRegion::new(address, len);
 
-        for mapped in mapped.iter() {
+        for mapped in allocated.iter() {
             if mapped.overlap(&required_region) {
                 return Err(ZodiacError::NoMemory);
             }
         }
 
-        mapped.push(required_region);
+        allocated.push(required_region);
 
         let mut new_region = None;
 

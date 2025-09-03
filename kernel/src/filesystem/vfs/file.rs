@@ -3,12 +3,24 @@ use spin::RwLock;
 
 use crate::filesystem::{InodeData, InodeOperation, Path};
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FileType {
     File,
     Directory,
     CharDevice,
     BlockDevice,
+}
+
+impl FileType {
+    pub fn seekable(&self) -> bool {
+        match self {
+            FileType::File => true,
+            FileType::BlockDevice => true,
+            FileType::Directory => false,
+            FileType::CharDevice => false,
+        }
+    }
 }
 
 pub struct File {
@@ -50,6 +62,7 @@ impl File {
     }
 }
 
+#[allow(dead_code)]
 impl File {
     pub fn r#type(&self) -> FileType {
         if let Some(mount) = self.mount.read().as_ref() {
@@ -169,6 +182,10 @@ impl File {
 
 impl File {
     pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
+        if offset > self.len() {
+            return 0;
+        }
+
         if let Some(mount) = self.mount.read().as_ref() {
             mount.read_at(offset, buf)
         } else {

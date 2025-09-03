@@ -4,7 +4,7 @@ use alloc::{sync::Arc, vec::Vec};
 use spin::RwLock;
 use zodiac::{
     ZodiacError,
-    mem::{MMUFlags, PhysicalMemoryAllocOptions, VirtualMemorySpace},
+    mem::{MMUFlags, PhysicalMemoryAllocOptions},
     task::{Task, TaskBuilder},
 };
 
@@ -32,7 +32,7 @@ impl Process {
         PROCESSES.write().push(new_self.clone());
 
         let thread_data = ThreadData::new(stdin, stdout, stderr, &new_self);
-        
+
         let entry = thread_data.vm_space.binary_file_mapper().map(binary)?;
 
         let (stack_address, mut cursor, page_size) = thread_data.allocate(USER_STACK_SIZE, true)?;
@@ -101,6 +101,7 @@ impl Process {
     }
 }
 
+#[allow(dead_code)]
 impl Process {
     pub fn exit(&self) -> ! {
         let current = Task::current();

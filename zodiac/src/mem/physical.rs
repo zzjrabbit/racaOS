@@ -135,6 +135,13 @@ impl PhysicalMemory {
 
         Self::from_start_address(start_address, count, page_size)
     }
+
+    pub fn deallocate(&self) {
+        for id in 0..self.count() {
+            let start_address = self.get_start_address_of_frame(id).unwrap();
+            FRAME_ALLOCATOR.lock().deallocate_frames(start_address, 1);
+        }
+    }
 }
 
 impl PhysicalMemory {
@@ -145,7 +152,7 @@ impl PhysicalMemory {
         Ok(unsafe { core::slice::from_raw_parts(vaddr as *const u8, self.page_size as usize) })
     }
 
-    pub fn as_mut_slice(&self, id: usize) -> Result<&mut [u8], ZodiacError> {
+    pub fn as_mut_slice(&mut self, id: usize) -> Result<&mut [u8], ZodiacError> {
         let paddr = self.get_start_address_of_frame(id)?;
         let vaddr = convert_physical_to_virtual(paddr);
 

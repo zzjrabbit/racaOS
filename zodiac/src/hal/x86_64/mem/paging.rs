@@ -1,13 +1,9 @@
 use alloc::{sync::Arc, vec::Vec};
 use spin::{Lazy, RwLock};
 use x86_64::{
-    PhysAddr, VirtAddr,
-    registers::control::Cr3,
-    structures::paging::{
-        FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageSize, PageTable,
-        PageTableFlags, PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate,
-        mapper::{MapToError, TranslateResult},
-    },
+    registers::control::Cr3, structures::paging::{
+        mapper::{MapToError, TranslateResult}, FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate
+    }, PhysAddr, VirtAddr
 };
 
 use crate::mem::{
@@ -38,10 +34,7 @@ pub fn kernel_page_table() -> Arc<RwLock<dyn GeneralPageTable>> {
 }
 
 fn mmu_flags_to_page_table_flags(mmu_flags: MMUFlags) -> PageTableFlags {
-    let mut result = PageTableFlags::empty();
-    if mmu_flags.contains(MMUFlags::READ) {
-        result |= PageTableFlags::PRESENT;
-    }
+    let mut result = PageTableFlags::PRESENT;
     if mmu_flags.contains(MMUFlags::WRITE) {
         result |= PageTableFlags::WRITABLE;
     }
@@ -58,10 +51,7 @@ fn mmu_flags_to_page_table_flags(mmu_flags: MMUFlags) -> PageTableFlags {
 }
 
 fn page_table_flags_to_mmu_flags(flags: PageTableFlags) -> MMUFlags {
-    let mut result = MMUFlags::empty();
-    if flags.contains(PageTableFlags::PRESENT) {
-        result |= MMUFlags::READ;
-    }
+    let mut result = MMUFlags::READ;
     if flags.contains(PageTableFlags::WRITABLE) {
         result |= MMUFlags::WRITE;
     }
@@ -222,7 +212,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
 
         let vaddr = VirtAddr::new(page_size.align_down(vaddr) as u64);
         let flags = mmu_flags_to_page_table_flags(flags);
-
+        
         unsafe {
             match page_size {
                 crate::mem::PageSize::Size4K => self

@@ -2,7 +2,10 @@ mod fifo;
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
-use alloc::{sync::{Arc, Weak}, vec::Vec};
+use alloc::{
+    sync::{Arc, Weak},
+    vec::Vec,
+};
 pub use fifo::*;
 use spin::{Once, RwLock};
 
@@ -39,7 +42,7 @@ pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
             .kernel_mode()
             .build()
             .unwrap();
-        
+
         IDLES.write().push(task.clone());
         task.spawn();
     }

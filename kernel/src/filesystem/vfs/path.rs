@@ -67,7 +67,7 @@ impl Path {
         self.inner
             .split("/")
             .filter(|s| !s.is_empty())
-            .map(|s| Path::new(s))
+            .map(Path::new)
             .collect::<Vec<_>>()
     }
 

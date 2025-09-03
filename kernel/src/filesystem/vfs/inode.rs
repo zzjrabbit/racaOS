@@ -6,6 +6,7 @@ pub struct InodeData {
     inner: Arc<dyn InodeOperation>,
 }
 
+#[allow(dead_code)]
 pub trait InodeOperation: Sync + Send + 'static {
     fn read_at(&self, _offset: u64, _buf: &mut [u8]) -> usize {
         log::warn!("Attempt to read unreadable inodes.");
@@ -31,6 +32,7 @@ pub trait InodeOperation: Sync + Send + 'static {
     }
 }
 
+#[allow(dead_code)]
 impl InodeData {
     pub(in crate::filesystem) fn new<T>(func: T) -> Self
     where
@@ -60,6 +62,6 @@ impl InodeData {
     }
 
     pub fn remove(&self, name: String) -> Option<()> {
-        Some(self.inner.remove(name)?)
+        self.inner.remove(name)
     }
 }

@@ -41,14 +41,15 @@ pub fn main() {
         .unwrap()
         .create("input.txt".into(), FileType::File)
         .unwrap();
-    input.write_at(0, b"Hello World, File!\n");
+    input.write_at(0, b"   Hello World, File!\n");
 
     let _hello = Process::new(
         include_bytes!("../../target/x86_64-unknown-linux-musl/release/hello"),
         tty.clone(),
         tty.clone(),
         tty.clone(),
-    ).unwrap();
+    )
+    .unwrap();
 
     start_schedule();
     unreachable!()

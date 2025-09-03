@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["zodiac", "zodiac_macro", "builder", "kernel", "apps/hello"]
+default-members = ["builder"]
 
 [profile.dev]
 panic = "abort"

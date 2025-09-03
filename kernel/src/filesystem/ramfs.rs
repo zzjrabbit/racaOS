@@ -21,8 +21,8 @@ impl InodeOperation for RamInode {
 
         let len = buf.len().min(self.data.read().len() - offset);
 
-        for index in 0..len {
-            buf[index] = self.data.read()[offset + index];
+        for (index, byte) in buf.iter_mut().enumerate().take(len) {
+            *byte = self.data.read()[offset + index];
         }
 
         len
@@ -31,15 +31,22 @@ impl InodeOperation for RamInode {
     fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
         let offset = offset as usize;
 
+        {
+            let mut data = self.data.write();
+            while data.len() < offset {
+                data.push(0);
+            }
+        }
+
         let len = buf.len().min(self.data.read().len() - offset);
 
-        for index in 0..len {
-            self.data.write()[offset + index] = buf[index];
+        for (index, byte) in buf.iter().enumerate().take(len) {
+            self.data.write()[offset + index] = *byte;
         }
 
         if len < buf.len() {
-            for index in len..buf.len() {
-                self.data.write().push(buf[index]);
+            for byte in buf.iter().skip(len) {
+                self.data.write().push(*byte);
             }
         }
 

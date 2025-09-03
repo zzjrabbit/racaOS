@@ -21,7 +21,6 @@
             llvmPackages.bintools
             rustup
             qemu_full
-            musl
           ];
 
           RUSTC_VERSION = overrides.toolchain.channel;

@@ -34,6 +34,7 @@ pub fn init() {
     dev::init();
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Error)]
 pub enum FileSystemError {
     #[error("Inode not found")]
