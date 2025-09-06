@@ -107,6 +107,9 @@ fn main() -> Result<()> {
         .get_file(Arch::X64, FileType::Code);
     cmd.args(["-drive", &format!("{param},file={}", ovmf_path.display())]);
 
+    cmd.args(["-netdev", "user,id=net0"]);
+    cmd.args(["-device", "e1000,netdev=net0"]);
+
     cmd.spawn()?.wait()?;
     Ok(())
 }

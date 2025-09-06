@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
+#![feature(allocator_api)]
 
 use core::panic::PanicInfo;
 
@@ -13,6 +14,7 @@ use crate::{
 
 extern crate alloc;
 
+mod drivers;
 mod filesystem;
 mod heap;
 mod syscall;
@@ -27,6 +29,7 @@ pub fn main() {
     syscall::init();
     terminal::init();
     filesystem::init();
+    drivers::init();
     log::info!("Zodiac Initialize done, entering kernel.");
 
     log::info!(

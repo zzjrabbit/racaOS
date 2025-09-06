@@ -116,7 +116,7 @@ impl PhysicalMemory {
 }
 
 impl PhysicalMemory {
-    fn from_start_address(
+    pub fn from_start_address(
         start_address: PhysicalAddress,
         count: usize,
         page_size: PageSize,

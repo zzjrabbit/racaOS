@@ -3,6 +3,9 @@ use core::time::Duration;
 mod apic;
 #[allow(dead_code)]
 mod hpet;
+mod rtc;
+
+pub use rtc::RtcDateTime as DateTime;
 
 pub(crate) fn init() {
     hpet::init();

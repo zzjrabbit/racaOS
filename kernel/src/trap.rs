@@ -56,9 +56,10 @@ fn user_page_fault_handler(frame: &mut TrapFrame, cpu_exception: CpuException) {
                     log::info!("found");
                     let physical_memory = PhysicalMemoryAllocOptions::default()
                         .count(
-                            page_size
-                                .align_up(region.len() + region.start_address() - page_size.align_down(region.start_address()))
-                                / *page_size as usize,
+                            page_size.align_up(
+                                region.len() + region.start_address()
+                                    - page_size.align_down(region.start_address()),
+                            ) / *page_size as usize,
                         )
                         .page_size(*page_size)
                         .allocate()

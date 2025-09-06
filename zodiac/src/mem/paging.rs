@@ -10,8 +10,9 @@ use crate::{
 /// Page Size
 /// Interfaces to support huge page.
 #[repr(usize)]
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PageSize {
+    #[default]
     Size4K = 0x1000,
     Size2M = 0x20_0000,
     Size1G = 0x4000_0000,

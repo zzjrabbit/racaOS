@@ -5,7 +5,7 @@ use crate::{
     hal::{
         context::{CpuException, TrapFrame},
         cpu::Cpu,
-        mem::USER_ASPACE_BASE,
+        mem::KERNEL_ASPACE_BASE,
         smp::CPUS,
     },
     mem::VirtualAddress,
@@ -31,8 +31,8 @@ pub fn set_user_page_fault_handler(handler: PageFaultHandler) {
 #[unsafe(no_mangle)]
 extern "C" fn rust_entry(frame: &mut TrapFrame) {
     if let Some(cpu_exception) = CpuException::new(frame.int_num, frame.error_code) {
-        if let CpuException::PageFault(_, address) = cpu_exception
-            && address >= USER_ASPACE_BASE
+        if let CpuException::PageFault(_, _) = cpu_exception
+            && frame.rip < KERNEL_ASPACE_BASE
             && let Some(handler) = PAGE_FAULT_HANDLER.get()
         {
             handler(frame, cpu_exception);
@@ -44,7 +44,7 @@ extern "C" fn rust_entry(frame: &mut TrapFrame) {
             Cpu::current().id(),
             cpu_exception
         );
-        log::warn!("Trap frame: {:x?}", frame);
+        log::warn!("Trap frame: {:#x?}", frame);
 
         loop {
             x86_64::instructions::hlt();

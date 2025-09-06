@@ -3,12 +3,14 @@ use spin::{Lazy, Mutex};
 
 mod frame;
 mod heap;
+mod mmio;
 mod paging;
 mod physical;
 mod r#virtual;
 
 pub(crate) use frame::BitmapFrameAllocator;
 pub use heap::Allocator;
+pub use mmio::*;
 pub(crate) use paging::{GeneralPageTable, Page};
 pub use paging::{MMUFlags, PageSize};
 pub use physical::*;
@@ -40,10 +42,10 @@ pub(crate) static FRAME_ALLOCATOR: Lazy<Mutex<BitmapFrameAllocator>> = Lazy::new
 pub type VirtualAddress = usize;
 pub type PhysicalAddress = usize;
 
-pub(crate) fn convert_physical_to_virtual(physical: PhysicalAddress) -> VirtualAddress {
+pub fn convert_physical_to_virtual(physical: PhysicalAddress) -> VirtualAddress {
     physical + *PHYSICAL_MEMORY_OFFSET
 }
 
-pub(crate) fn convert_virtual_to_physical(r#virtual: VirtualAddress) -> PhysicalAddress {
+pub fn convert_virtual_to_physical(r#virtual: VirtualAddress) -> PhysicalAddress {
     r#virtual - *PHYSICAL_MEMORY_OFFSET
 }

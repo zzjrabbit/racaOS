@@ -12,6 +12,7 @@ use crate::{
     trap::Irq,
 };
 
+pub mod bus;
 /// Context structures.
 pub mod context;
 /// CPU structures.
@@ -75,6 +76,7 @@ pub(crate) fn init() {
     kernel::init();
     timer::init();
     trap::init();
+    bus::init();
 
     smp::CPUS.init_ap();
 }

@@ -1,9 +1,13 @@
 use alloc::{sync::Arc, vec::Vec};
 use spin::{Lazy, RwLock};
 use x86_64::{
-    registers::control::Cr3, structures::paging::{
-        mapper::{MapToError, TranslateResult}, FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageSize, PageTable, PageTableFlags, PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate
-    }, PhysAddr, VirtAddr
+    PhysAddr, VirtAddr,
+    registers::control::Cr3,
+    structures::paging::{
+        FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageSize, PageTable,
+        PageTableFlags, PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate,
+        mapper::{MapToError, TranslateResult},
+    },
 };
 
 use crate::mem::{
@@ -212,7 +216,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
 
         let vaddr = VirtAddr::new(page_size.align_down(vaddr) as u64);
         let flags = mmu_flags_to_page_table_flags(flags);
-        
+
         unsafe {
             match page_size {
                 crate::mem::PageSize::Size4K => self

@@ -7,7 +7,9 @@ use alloc::{
 };
 use spin::RwLock;
 use zodiac::{
-    hal::mem::{USER_ASPACE_BASE, USER_ASPACE_SIZE}, mem::{Cursor, MMUFlags, PageSize, VirtualAddress, VirtualMemorySpace}, ZodiacError
+    ZodiacError,
+    hal::mem::{USER_ASPACE_BASE, USER_ASPACE_SIZE},
+    mem::{Cursor, MMUFlags, PageSize, VirtualAddress, VirtualMemorySpace},
 };
 
 use crate::{
@@ -44,15 +46,15 @@ impl MemoryRegion {
             end: start + len,
         }
     }
-    
+
     pub fn len(&self) -> usize {
         self.end - self.start
     }
-    
+
     pub fn start_address(&self) -> usize {
         self.start
     }
-    
+
     pub fn contains(&self, addr: usize) -> bool {
         self.start <= addr && addr < self.end
     }

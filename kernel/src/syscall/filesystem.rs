@@ -45,25 +45,25 @@ pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
         log::info!("fd: {}", fd);
         Ok(fd as isize)
     } else if open_flags.contains(OpenFlags::O_CREAT) {
-            let parent = path.parent().ok_or(SyscallError::PermissionDenied)?;
-            let file = open_file(&parent).ok_or(SyscallError::NotFound)?;
+        let parent = path.parent().ok_or(SyscallError::PermissionDenied)?;
+        let file = open_file(&parent).ok_or(SyscallError::NotFound)?;
 
-            let file = file
-                .create(
-                    path.name(),
-                    if open_flags.contains(OpenFlags::O_DIRECTORY) {
-                        FileType::Directory
-                    } else {
-                        FileType::File
-                    },
-                )
-                .ok_or(SyscallError::InvalidArguments)?;
+        let file = file
+            .create(
+                path.name(),
+                if open_flags.contains(OpenFlags::O_DIRECTORY) {
+                    FileType::Directory
+                } else {
+                    FileType::File
+                },
+            )
+            .ok_or(SyscallError::InvalidArguments)?;
 
-            let fd = data.add_file(file, access_mode, open_flags);
-            Ok(fd as isize)
-        } else {
-            Err(SyscallError::NotFound)
-        }
+        let fd = data.add_file(file, access_mode, open_flags);
+        Ok(fd as isize)
+    } else {
+        Err(SyscallError::NotFound)
+    }
 }
 
 pub fn close(fd: FileDescriptor) -> SyscallResult {
@@ -190,13 +190,11 @@ pub fn fcntl(fd: FileDescriptor, cmd: FcntlCommand, _arg: u32) -> SyscallResult 
     let thread = Task::current();
     let data = thread.data().downcast_ref::<ThreadData>().unwrap();
 
-    data.with_file_mut(fd, |_, _access_mode, open_flags, _file| {
-        match cmd {
-            FcntlCommand::GetFd => Ok(open_flags.bits() as isize),
-            FcntlCommand::SetFd => {
-                *open_flags |= OpenFlags::O_CLOEXEC;
-                Ok(open_flags.bits() as isize)
-            }
+    data.with_file_mut(fd, |_, _access_mode, open_flags, _file| match cmd {
+        FcntlCommand::GetFd => Ok(open_flags.bits() as isize),
+        FcntlCommand::SetFd => {
+            *open_flags |= OpenFlags::O_CLOEXEC;
+            Ok(open_flags.bits() as isize)
         }
     })
     .unwrap_or(Err(SyscallError::NotFound))

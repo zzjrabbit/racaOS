@@ -63,9 +63,16 @@ pub fn mmap(
     } else {
         data.allocate_at(address, len, false)
     }?;
-    log::trace!("mmap: address: {:x} prot: {:?} flags: {:?}", address, protection_flags, flags);
+    log::trace!(
+        "mmap: address: {:x} prot: {:?} flags: {:?}",
+        address,
+        protection_flags,
+        flags
+    );
 
-    data.unused_region.write().push((MemoryRegion::new(address, len), protection_flags, page_size));
+    data.unused_region
+        .write()
+        .push((MemoryRegion::new(address, len), protection_flags, page_size));
 
     Ok(address as isize)
 }
@@ -77,7 +84,11 @@ pub fn mprotect(address: VirtualAddress, len: usize, protection: MMapProtection)
     let protection_flags = protection.to_mmu_flags();
     let mut found = false;
 
-    log::trace!("mprotect address: {:x} prot: {:?}", address, protection_flags);
+    log::trace!(
+        "mprotect address: {:x} prot: {:?}",
+        address,
+        protection_flags
+    );
 
     for (region, flags, page_size) in data.unused_region.write().iter_mut() {
         if region.contains(address) {
@@ -93,9 +104,11 @@ pub fn mprotect(address: VirtualAddress, len: usize, protection: MMapProtection)
         let (_, flags, page_size) = data.vm_space.query(address)?;
         let len = page_size.align_up(len);
 
-        data.vm_space.cursor(address, page_size)?.protect(len, flags | protection_flags)?;
+        data.vm_space
+            .cursor(address, page_size)?
+            .protect(len, flags | protection_flags)?;
     }
-    
+
     Ok(0)
 }
 
