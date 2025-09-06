@@ -38,8 +38,7 @@ pub fn main() {
     );
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
-    tty.write_at(0, b"Hello World, TTY!\n");
-
+    
     let input = open_file(&Path::new("/"))
         .unwrap()
         .create("input.txt".into(), FileType::File)
@@ -47,7 +46,7 @@ pub fn main() {
     input.write_at(0, b"   Hello World, File!\n");
 
     let _hello = Process::new(
-        include_bytes!("../../target/x86_64-unknown-linux-musl/release/hello"),
+        include_bytes!("../../apps/hello.bin"),
         tty.clone(),
         tty.clone(),
         tty.clone(),

@@ -2,3 +2,5 @@ target/
 racaOS.img
 **/*.bin
 **/*.o
+input.txt
+*.dump

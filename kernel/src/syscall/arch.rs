@@ -1,4 +1,4 @@
-use zodiac::{mem::VirtualAddress, task::Task};
+use zodiac::{hal::{write_fs, write_gs}, mem::VirtualAddress, task::Task};
 
 use crate::task::ThreadData;
 
@@ -38,8 +38,14 @@ pub fn arch_prctl(options: ArchPrctlOptions, address: VirtualAddress) -> Syscall
     let current_thread = Task::current();
     let data = current_thread.data().downcast_ref::<ThreadData>().unwrap();
     match options {
-        ArchPrctlOptions::SetFs => data.fs.write().replace(address),
-        ArchPrctlOptions::SetGs => data.gs.write().replace(address),
+        ArchPrctlOptions::SetFs => {
+            data.fs.write().replace(address);
+            write_fs(address);
+        },
+        ArchPrctlOptions::SetGs => {
+            data.gs.write().replace(address);
+            write_gs(address);
+        }
         ArchPrctlOptions::GetFs => return Ok(data.fs.read().unwrap_or(0) as isize),
         ArchPrctlOptions::GetGs => return Ok(data.gs.read().unwrap_or(0) as isize),
     };

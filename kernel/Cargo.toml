@@ -11,7 +11,6 @@ spin = "0.10.0"
 os-terminal = { version = "0.6.10", features = ["truetype"] }
 thiserror = { version = "2.0.12", default-features = false }
 bitflags = "2.9.1"
-libc = { version = "0.2.174", default-features = false }
 x86_64 = "0.15.2"
 smoltcp = { version = "0.12.0", default-features = false, features = ["alloc", "log", "proto-ipv4", "proto-dhcpv4", "medium-ethernet", "socket-icmp", "socket-udp", "socket-tcp", "socket-raw", "socket-dhcpv4"] }
 bit_field = "0.10.3"

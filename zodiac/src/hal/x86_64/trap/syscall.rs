@@ -83,13 +83,29 @@ unsafe extern "C" fn syscall_handler() {
 
         "call {syscall_matcher}",
 
-        "add rsp, 48",
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop rbp",
+        "pop rbx",
 
         "pop r11",
-        "add rsp, 48",
+        "pop r10",
+        "pop r9",
+        "pop r8",
+        "pop rsi",
+        "pop rdi",
+        "pop rdx",
         "pop rcx",
+        "add rsp, 8",
 
-        "add rsp, 64",
+        "add rsp, 16",
+        
+        "pop rcx",
+        "add rsp, 8",
+        "pop r11",
+        "add rsp, 16",
 
         "sysretq",
         syscall_matcher = sym syscall_matcher,

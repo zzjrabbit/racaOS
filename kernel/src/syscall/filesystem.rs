@@ -118,6 +118,44 @@ pub fn write(fd: FileDescriptor, address: VirtualAddress, len: usize) -> Syscall
     .ok_or(ZodiacError::NotFound)?
 }
 
+pub fn writev(fd: FileDescriptor, iov_address: VirtualAddress, count: usize) -> SyscallResult {
+    let thread = Task::current();
+    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    
+    log::info!("writev({}, {:x}, {})", fd, iov_address, count);
+    
+    data.with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+        if !access_mode.is_writable() {
+            return Err(SyscallError::PermissionDenied);
+        }
+        
+        let mut buffer = [0; 8];
+        let mut total_len = 0;
+        
+        for i in 0..count {
+            data.vm_space.reader(iov_address + (i * 2 * 8), 8).read(&mut buffer)?;
+            let address = VirtualAddress::from_le_bytes(buffer.try_into().unwrap());
+            
+            data.vm_space.reader(iov_address + (i * 2 * 8) + 8, 8).read(&mut buffer)?;
+            let len = usize::from_le_bytes(buffer.try_into().unwrap());
+            
+            log::info!("address {:x} len {:x}", address, len);
+            if len > 0xffffff {
+                return Ok(0);
+            }
+            let mut buffer = vec![0; len];
+            data.vm_space.reader(address, len).read(&mut buffer)?;
+            let len = file.write_at(*offset, &buffer);
+            
+            *offset += len as u64;
+            total_len += len;
+        }
+
+        Ok(total_len as isize)
+    })
+    .ok_or(ZodiacError::NotFound)?
+}
+
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LseekWhence {
@@ -194,7 +232,7 @@ pub fn fcntl(fd: FileDescriptor, cmd: FcntlCommand, _arg: u32) -> SyscallResult 
         FcntlCommand::GetFd => Ok(open_flags.bits() as isize),
         FcntlCommand::SetFd => {
             *open_flags |= OpenFlags::O_CLOEXEC;
-            Ok(open_flags.bits() as isize)
+            Ok(0)
         }
     })
     .unwrap_or(Err(SyscallError::NotFound))
