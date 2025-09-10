@@ -22,7 +22,7 @@ pub fn open(address: VirtualAddress, flags: i32, mode: u32) -> SyscallResult {
         let mut buffer = [0; 1];
         data.vm_space
             .reader(address + path.len(), 1)
-            .read(&mut buffer)?;
+            .read_bytes(&mut buffer)?;
         if buffer[0] == 0 {
             break;
         }
@@ -86,7 +86,7 @@ pub fn read(fd: FileDescriptor, address: VirtualAddress, len: usize) -> SyscallR
         let mut buf = vec![0; len];
         let len = file.read_at(*offset, &mut buf);
 
-        data.vm_space.writer(address, len).write(&buf[0..len])?;
+        data.vm_space.writer(address, len).write_bytes(&buf[0..len])?;
 
         *offset += len as u64;
 
@@ -106,7 +106,7 @@ pub fn write(fd: FileDescriptor, address: VirtualAddress, len: usize) -> Syscall
 
         let mut buffer = vec![0; len];
 
-        data.vm_space.reader(address, len).read(&mut buffer)?;
+        data.vm_space.reader(address, len).read_bytes(&mut buffer)?;
 
         log::info!("writing {:?}", buffer);
 
@@ -116,6 +116,13 @@ pub fn write(fd: FileDescriptor, address: VirtualAddress, len: usize) -> Syscall
         Ok(len as isize)
     })
     .ok_or(ZodiacError::NotFound)?
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct IoVec {
+    base: VirtualAddress,
+    len: usize,
 }
 
 pub fn writev(fd: FileDescriptor, iov_address: VirtualAddress, count: usize) -> SyscallResult {
@@ -129,26 +136,22 @@ pub fn writev(fd: FileDescriptor, iov_address: VirtualAddress, count: usize) -> 
             return Err(SyscallError::PermissionDenied);
         }
 
-        let mut buffer = [0; 8];
         let mut total_len = 0;
 
         for i in 0..count {
+            let mut vec = IoVec::default();
             data.vm_space
-                .reader(iov_address + (i * 2 * 8), 8)
-                .read(&mut buffer)?;
-            let address = VirtualAddress::from_le_bytes(buffer.try_into().unwrap());
-
-            data.vm_space
-                .reader(iov_address + (i * 2 * 8) + 8, 8)
-                .read(&mut buffer)?;
-            let len = usize::from_le_bytes(buffer.try_into().unwrap());
-
-            log::info!("address {:x} len {:x}", address, len);
+                .reader(iov_address + (i * 2 * 8), size_of::<IoVec>())
+                .read(&mut vec)?;
+            
+            let IoVec { base, len } = vec;
+            
+            log::info!("address {:x} len {:x}", base, len);
             if len > 0xffffff {
                 return Ok(0);
             }
             let mut buffer = vec![0; len];
-            data.vm_space.reader(address, len).read(&mut buffer)?;
+            data.vm_space.reader(base, len).read_bytes(&mut buffer)?;
             let len = file.write_at(*offset, &buffer);
 
             *offset += len as u64;
