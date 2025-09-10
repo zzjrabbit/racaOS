@@ -55,21 +55,21 @@ impl Cpus {
         }
     }
 
-    pub fn with_cpu_info<F>(&self, cpu: Cpu, f: F)
+    pub fn with_cpu_info<F, R>(&self, cpu: Cpu, f: F) -> R
     where
-        F: FnOnce(&CpuInfo),
+        F: FnOnce(&CpuInfo) -> R,
     {
         let inner = self.0.read();
         let cpu_info = inner.get(&cpu).unwrap();
-        f(cpu_info);
+        f(cpu_info)
     }
 
-    pub fn with_cpu_info_mut<F>(&self, cpu: Cpu, f: F)
+    pub fn with_cpu_info_mut<F, R>(&self, cpu: Cpu, f: F) -> R
     where
-        F: FnOnce(&mut CpuInfo),
+        F: FnOnce(&mut CpuInfo) -> R,
     {
         let mut inner = self.0.write();
         let cpu_info = inner.get_mut(&cpu).unwrap();
-        f(cpu_info);
+        f(cpu_info)
     }
 }

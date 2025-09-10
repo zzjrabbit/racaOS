@@ -76,7 +76,6 @@ fn terminal_thread() -> ! {
 static TERMINAL_THREAD: Lazy<Arc<Task>> = Lazy::new(|| {
     let thread = TaskBuilder::default()
         .entry(terminal_thread)
-        .kernel_mode()
         .kernel_stack_size(256 * 1024)
         .build()
         .unwrap();

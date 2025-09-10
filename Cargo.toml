@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["zodiac", "zodiac_macro", "builder", "kernel", "apps/hello"]
+members = ["zodiac", "zodiac_macro", "builder", "kernel", "apps/hello", "simple_muqss"]
 default-members = ["builder"]
 
 [profile.dev]

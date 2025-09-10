@@ -1,6 +1,5 @@
 use core::ptr::addr_of;
 
-use alloc::boxed::Box;
 use spin::Lazy;
 use x86_64::VirtAddr;
 use x86_64::instructions::segmentation::{CS, SS, Segment};
@@ -9,18 +8,10 @@ use x86_64::structures::gdt::GlobalDescriptorTable;
 use x86_64::structures::gdt::{Descriptor, SegmentSelector};
 use x86_64::structures::tss::TaskStateSegment;
 
-pub const DOUBLE_FAULT_IST_INDEX: usize = 0;
-pub const PAGE_FAULT_IST_INDEX: usize = 1;
-pub const CONTEXT_SAVE_IST_INDEX: usize = 2;
-pub const FAULT_STACK_SIZE: usize = 8 * 1024;
-pub const CONTEXT_SAVE_STACK_SIZE: usize = 4 * 1024;
-
 pub struct CpuInfo {
     gdt: GlobalDescriptorTable,
     tss: TaskStateSegment,
     selectors: Option<Selectors>,
-    fault_stack: &'static mut [u8],
-    context_save_stack: &'static mut [u8],
 }
 
 impl Default for CpuInfo {
@@ -29,37 +20,39 @@ impl Default for CpuInfo {
             gdt: GlobalDescriptorTable::new(),
             tss: TaskStateSegment::new(),
             selectors: None,
-            fault_stack: Box::leak(Box::new([0; FAULT_STACK_SIZE])),
-            context_save_stack: Box::leak(Box::new([0; CONTEXT_SAVE_STACK_SIZE])),
         }
     }
 }
 
 impl CpuInfo {
+    pub fn tss_mut(&mut self) -> &mut TaskStateSegment {
+        &mut self.tss
+    }
+
     #[inline]
     pub fn set_ring0_rsp(&mut self, rsp: VirtAddr) {
         self.tss.privilege_stack_table[0] = rsp;
+    }
+
+    #[inline]
+    pub fn get_ring0_rsp(&self) -> VirtAddr {
+        self.tss.privilege_stack_table[0]
+    }
+
+    #[inline]
+    pub fn set_ring3_rsp(&mut self, rsp: VirtAddr) {
+        self.tss.privilege_stack_table[1] = rsp;
+    }
+
+    #[inline]
+    pub fn get_ring3_rsp(&self) -> VirtAddr {
+        self.tss.privilege_stack_table[1]
     }
 }
 
 impl CpuInfo {
     pub fn init(&mut self) {
         let (mut gdt, mut selectors) = COMMON_GDT.clone();
-
-        self.tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = {
-            let stack_start = self.fault_stack.as_ptr() as u64;
-            VirtAddr::new(stack_start + self.fault_stack.len() as u64)
-        };
-
-        self.tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX] = {
-            let stack_start = self.fault_stack.as_ptr() as u64;
-            VirtAddr::new(stack_start + self.fault_stack.len() as u64)
-        };
-
-        self.tss.interrupt_stack_table[CONTEXT_SAVE_IST_INDEX] = {
-            let stack_start = self.context_save_stack.as_ptr() as u64;
-            VirtAddr::new(stack_start + self.context_save_stack.len() as u64)
-        };
 
         let tss_ref = unsafe { &*addr_of!(self.tss) };
         let tss_selector = Some(gdt.append(Descriptor::tss_segment(tss_ref)));
@@ -103,6 +96,9 @@ static COMMON_GDT: Lazy<(GlobalDescriptorTable, Selectors)> = Lazy::new(|| {
     let data_selector = gdt.append(Descriptor::kernel_data_segment());
     let user_data_selector = gdt.append(Descriptor::user_data_segment());
     let user_code_selector = gdt.append(Descriptor::user_code_segment());
+
+    //log::info!("kernel code selector: {:x?}, kernel data selector: {:x?}", code_selector.0, data_selector.0);
+    //log::info!("user code selector: {:x?}, user data selector: {:x?}", user_code_selector.0, user_data_selector.0);
 
     let selectors = Selectors {
         code_selector,

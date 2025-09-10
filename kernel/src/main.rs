@@ -38,7 +38,7 @@ pub fn main() {
     );
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
-    
+
     let input = open_file(&Path::new("/"))
         .unwrap()
         .create("input.txt".into(), FileType::File)

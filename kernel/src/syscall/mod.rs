@@ -1,8 +1,6 @@
 use alloc::vec;
 use thiserror::Error;
-use zodiac::{
-    hal::{context::TrapFrame, trap::set_syscall_handler}, mem::VirtualAddress, ZodiacError
-};
+use zodiac::{ZodiacError, hal::context::TrapFrame, mem::VirtualAddress};
 
 use crate::{filesystem::FileDescriptor, task::Process};
 
@@ -16,9 +14,7 @@ mod filesystem;
 mod mem;
 mod task;
 
-pub fn init() {
-    set_syscall_handler(syscall_handler);
-}
+pub fn init() {}
 
 type SyscallResult = Result<isize, SyscallError>;
 
@@ -44,11 +40,11 @@ impl From<ZodiacError> for SyscallError {
     }
 }
 
-fn syscall_handler(frame: &mut TrapFrame) -> isize {
+pub fn syscall_handler(frame: &mut TrapFrame) {
     let syscall_id = frame.syscall_index();
     let [arg1, arg2, arg3, arg4, arg5, arg6] = frame.syscall_arguments();
 
-    let mut matcher = || match syscall_id {
+    let matcher = || match syscall_id {
         0 => read(arg1 as FileDescriptor, arg2, arg3),
         1 => write(arg1 as FileDescriptor, arg2, arg3),
         2 => open(arg1, arg2 as i32, arg3 as u32),
@@ -68,9 +64,7 @@ fn syscall_handler(frame: &mut TrapFrame) -> isize {
         ),
         10 => mprotect(arg1, arg2, MMapProtection::from_bits_truncate(arg3 as i32)),
         11 => munmap(arg1, arg2),
-        20 => {
-            writev(arg1 as FileDescriptor, arg2 as VirtualAddress, arg3)
-        },
+        20 => writev(arg1 as FileDescriptor, arg2 as VirtualAddress, arg3),
         60 => exit(arg1 as i32),
         72 => fcntl(
             arg1 as FileDescriptor,
@@ -93,7 +87,7 @@ fn syscall_handler(frame: &mut TrapFrame) -> isize {
         Ok(value) => value,
         Err(error) => error as isize,
     };
-    
+
     log::trace!(
         "syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x}) = {}",
         syscall_id,
@@ -105,5 +99,5 @@ fn syscall_handler(frame: &mut TrapFrame) -> isize {
         arg6,
         result,
     );
-    result
+    frame.set_return_value(result as usize);
 }

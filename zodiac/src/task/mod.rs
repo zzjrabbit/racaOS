@@ -13,8 +13,10 @@ use crate::{
 };
 
 mod scheduler;
+mod user;
 
 pub use scheduler::*;
+pub use user::*;
 
 pub type TaskId = usize;
 
@@ -25,7 +27,9 @@ const KERNEL_STACK_SIZE: usize = 64 * 1024; // 64k
 pub struct Task {
     inner: RwLock<TaskInner>,
     task_id: TaskId,
-    kernel_stack: Vec<u8>,
+    _kernel_stack: Vec<u8>,
+    kernel_stack_ptr: RwLock<VirtualAddress>,
+    user_stack_ptr: RwLock<VirtualAddress>,
     data: Box<dyn Any + Sync + Send>,
 }
 
@@ -75,7 +79,19 @@ impl Task {
     }
 
     pub(crate) fn kernel_stack(&self) -> VirtualAddress {
-        self.kernel_stack.as_ptr() as VirtualAddress + self.kernel_stack.len()
+        *self.kernel_stack_ptr.read()
+    }
+
+    pub(crate) fn set_kernel_stack(&self, stack: VirtualAddress) {
+        *self.kernel_stack_ptr.write() = stack;
+    }
+
+    pub(crate) fn user_stack(&self) -> VirtualAddress {
+        *self.user_stack_ptr.read()
+    }
+
+    pub(crate) fn set_user_stack(&self, stack: VirtualAddress) {
+        *self.user_stack_ptr.write() = stack;
     }
 }
 
@@ -105,9 +121,9 @@ impl Task {
     pub fn exit(&self) -> ! {
         remove_task(self.task_id());
         self.set_task_state(TaskState::Dead);
-
-        self.r#yield();
-        unreachable!()
+        loop {}
+        //self.r#yield();
+        //unreachable!()
     }
 
     /// Kill this task.
@@ -151,9 +167,7 @@ impl TaskState {
 /// Builder of a task.
 pub struct TaskBuilder {
     kernel_stack_size: usize,
-    user_mode: bool,
-    entry: Option<usize>,
-    stack: Option<usize>,
+    entry: Option<fn() -> !>,
     data: Option<Box<dyn Any + Send + Sync>>,
 }
 
@@ -161,9 +175,7 @@ impl Default for TaskBuilder {
     fn default() -> Self {
         Self {
             kernel_stack_size: KERNEL_STACK_SIZE,
-            user_mode: true,
             entry: None,
-            stack: None,
             data: None,
         }
     }
@@ -173,14 +185,7 @@ impl TaskBuilder {
     /// Set the entry point of the task.
     /// This is a necessary option.
     pub fn entry(mut self, entry: fn() -> !) -> Self {
-        self.entry = Some(entry as usize);
-        self
-    }
-
-    /// Set the stack of the task.
-    /// This is a necessary option for user tasks, and it does nothing for kernel tasks.
-    pub fn stack(mut self, stack: usize) -> Self {
-        self.stack = Some(stack);
+        self.entry = Some(entry);
         self
     }
 
@@ -188,12 +193,6 @@ impl TaskBuilder {
     /// This is optional.
     pub fn kernel_stack_size(mut self, size: usize) -> Self {
         self.kernel_stack_size = size;
-        self
-    }
-
-    /// Make the task in kernel mode.
-    pub fn kernel_mode(mut self) -> Self {
-        self.user_mode = false;
         self
     }
 
@@ -214,20 +213,18 @@ impl TaskBuilder {
     /// Create the task.
     pub fn build(self) -> Result<Arc<Task>, ZodiacError> {
         let kernel_stack = alloc::vec![0; self.kernel_stack_size];
+        let kernel_stack_ptr = kernel_stack.as_ptr() as VirtualAddress + self.kernel_stack_size;
 
         let entry = self.entry.ok_or(ZodiacError::ArgumentsNotEnough)?;
-        let stack = if self.user_mode {
-            self.stack.ok_or(ZodiacError::ArgumentsNotEnough)?
-        } else {
-            0
-        };
 
         let mut context = TrapFrame::default();
-        context.init(&kernel_stack, entry, stack, self.user_mode);
+        context.init(&kernel_stack, entry as usize);
 
         let task = Arc::new(Task {
             task_id: NEXT_TASK_ID.fetch_add(1, Ordering::SeqCst),
-            kernel_stack,
+            _kernel_stack: kernel_stack,
+            kernel_stack_ptr: RwLock::new(kernel_stack_ptr),
+            user_stack_ptr: RwLock::new(0),
             data: if let Some(data) = self.data {
                 data
             } else {

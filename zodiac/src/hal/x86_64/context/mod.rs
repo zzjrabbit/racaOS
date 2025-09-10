@@ -1,11 +1,77 @@
 pub use error_code::*;
+use x86_64::registers::rflags::RFlags;
 
 use crate::{
-    hal::{cpu::Cpu, smp::CPUS},
+    hal::{cpu::Cpu, smp::CPUS, trap::syscall::syscall_return},
     mem::VirtualAddress,
+    task::ReturnReason,
+    trap::IRQ_MANAGER,
 };
 
 mod error_code;
+
+#[derive(Debug, Clone)]
+pub(crate) struct RawUserContext(TrapFrame);
+
+impl RawUserContext {
+    pub fn new(entry: usize, stack: usize) -> Self {
+        let mut frame = TrapFrame::default();
+        frame.rsp = stack;
+        frame.rip = entry;
+
+        frame.rflags = 0x200;
+        CPUS.with_cpu_info(Cpu::current(), |cpu_info| {
+            frame.cs = cpu_info.user_code_selector();
+            frame.ss = cpu_info.user_data_selector();
+            log::info!("cs: {:x}, ss: {:x}", frame.cs, frame.ss);
+        });
+
+        Self(frame)
+    }
+
+    fn error_code(&self) -> usize {
+        self.0.error_code
+    }
+
+    fn int_num(&self) -> usize {
+        self.0.int_num
+    }
+
+    fn run(&mut self) {
+        unsafe {
+            syscall_return(&mut self.0);
+        }
+    }
+
+    pub fn execute<F>(&mut self, mut has_kernel_event: F) -> ReturnReason
+    where
+        F: FnMut() -> bool,
+    {
+        self.0.rflags |= (RFlags::INTERRUPT_FLAG | RFlags::ID).bits() as usize;
+
+        loop {
+            self.run();
+
+            let exception = CpuException::new(self.int_num(), self.error_code());
+
+            match exception {
+                Some(exception) => return ReturnReason::Exception(exception),
+                None if self.int_num() == usize::MAX => return ReturnReason::Syscall,
+                None => {
+                    IRQ_MANAGER.handle_irq(&mut self.0);
+                }
+            }
+
+            if has_kernel_event() {
+                return ReturnReason::KernelEvent;
+            }
+        }
+    }
+
+    pub fn trap_frame(&mut self) -> &mut TrapFrame {
+        &mut self.0
+    }
+}
 
 /// When interrupt occurs, this structure will be pushed into the stack, either by CPU or by assembly code in Zodiac.
 #[derive(Debug, Clone, Default)]
@@ -40,30 +106,16 @@ pub struct TrapFrame {
 }
 
 impl TrapFrame {
-    pub(crate) fn init(
-        &mut self,
-        kernel_stack: &[u8],
-        entry: usize,
-        stack: usize,
-        user_mode: bool,
-    ) {
+    pub(crate) fn init(&mut self, kernel_stack: &[u8], entry: usize) {
         let kernel_stack_end = kernel_stack.as_ptr() as usize + kernel_stack.len();
         log::info!("Kernel stack end: {:x}", kernel_stack_end);
 
         self.rip = entry;
-        self.rsp = if user_mode { stack } else { kernel_stack_end };
+        self.rsp = kernel_stack_end;
         self.rflags = 0x200;
         CPUS.with_cpu_info(Cpu::current(), |cpu_info| {
-            self.cs = if user_mode {
-                cpu_info.user_code_selector()
-            } else {
-                cpu_info.kernel_code_selector()
-            };
-            self.ss = if user_mode {
-                cpu_info.user_data_selector()
-            } else {
-                cpu_info.kernel_data_selector()
-            };
+            self.cs = cpu_info.kernel_code_selector();
+            self.ss = cpu_info.kernel_data_selector();
         });
     }
 
@@ -78,6 +130,10 @@ impl TrapFrame {
 
     pub fn syscall_arguments(&self) -> [usize; 6] {
         [self.rdi, self.rsi, self.rdx, self.r10, self.r8, self.r9]
+    }
+
+    pub fn set_return_value(&mut self, value: usize) {
+        self.rax = value;
     }
 }
 
@@ -110,14 +166,14 @@ pub enum CpuException {
     SegmentNotPresent(SelectorErrorCode),
     /// 12 – #SS  Stack-segment fault.
     StackSegmentFault(SelectorErrorCode),
-    /// 13 – #GP  General protection fault  
+    /// 13 – #GP  General protection fault
     GeneralProtectionFault(Option<SelectorErrorCode>),
     /// 14 – #PF  Page fault.
     PageFault(PageFaultErrorCode, VirtualAddress),
     // 15: Reserved
     /// 16 – #MF  x87 floating-point exception.
     X87FloatingPointException,
-    /// 17 – #AC  Alignment check.  
+    /// 17 – #AC  Alignment check.
     AlignmentCheck,
     /// 18 – #MC  Machine check.
     MachineCheck,

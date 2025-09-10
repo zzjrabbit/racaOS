@@ -2,8 +2,6 @@ use core::mem::transmute;
 use spin::Lazy;
 use x86_64::structures::idt::{Entry, HandlerFunc, InterruptDescriptorTable, PageFaultErrorCode};
 
-use crate::hal::trap::gdt::{CONTEXT_SAVE_IST_INDEX, DOUBLE_FAULT_IST_INDEX, PAGE_FAULT_IST_INDEX};
-
 pub fn init() {
     IDT.load();
 }
@@ -1039,29 +1037,23 @@ static IDT: Lazy<InterruptDescriptorTable> = Lazy::new(|| {
     }
 
     unsafe {
-        idt.double_fault
-            .set_handler_fn(transmute::<
-                usize,
-                extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame, u64) -> !,
-            >(intentry08 as usize))
-            .set_stack_index(DOUBLE_FAULT_IST_INDEX as u16);
+        idt.double_fault.set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame, u64) -> !,
+        >(intentry08 as usize));
 
-        idt.page_fault
-            .set_handler_fn(transmute::<
-                usize,
-                extern "x86-interrupt" fn(
-                    x86_64::structures::idt::InterruptStackFrame,
-                    PageFaultErrorCode,
-                ) -> (),
-            >(intentry0e as usize))
-            .set_stack_index(PAGE_FAULT_IST_INDEX as u16);
+        idt.page_fault.set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(
+                x86_64::structures::idt::InterruptStackFrame,
+                PageFaultErrorCode,
+            ) -> (),
+        >(intentry0e as usize));
 
-        idt[0x20]
-            .set_handler_fn(transmute::<
-                usize,
-                extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
-            >(intentry20 as usize))
-            .set_stack_index(CONTEXT_SAVE_IST_INDEX as u16);
+        idt[0x20].set_handler_fn(transmute::<
+            usize,
+            extern "x86-interrupt" fn(x86_64::structures::idt::InterruptStackFrame),
+        >(intentry20 as usize));
     }
 
     idt

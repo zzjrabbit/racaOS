@@ -5,7 +5,7 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use spin::RwLock;
+use spin::{Once, RwLock};
 use zodiac::{
     ZodiacError,
     hal::mem::{USER_ASPACE_BASE, USER_ASPACE_SIZE},
@@ -30,6 +30,8 @@ pub struct ThreadData {
     pub fs: RwLock<Option<VirtualAddress>>,
     pub gs: RwLock<Option<VirtualAddress>>,
     pub tid_address: RwLock<Option<VirtualAddress>>,
+    pub entry: Once<usize>,
+    pub stack: Once<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -90,6 +92,8 @@ impl ThreadData {
             fs: RwLock::new(None),
             gs: RwLock::new(None),
             tid_address: RwLock::new(None),
+            entry: Once::new(),
+            stack: Once::new(),
         }
     }
 }

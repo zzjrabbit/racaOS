@@ -16,7 +16,62 @@ intentry\n:
 .endm
 
 interrupt:
+    cld                     # clear DF before calling/returning to any C function to conform to x86-64 calling convention
     push rax
+    mov ax, [rsp + 4*8]     # load cs
+    and ax, 0x3             # test
+    jz __from_kernel        # continue trap
+
+__from_user:
+    swapgs
+    mov rax, [rsp + 6*8]
+    mov gs:12, rax
+
+    mov rsp, [rsp + 8*8]
+    add rsp, 22*8
+    mov rax, gs:4
+
+    push [rax - 1*8]
+    push [rax - 2*8]
+    push [rax - 3*8]
+    push [rax - 4*8]
+    push [rax - 5*8]
+    push [rax - 6*8]
+    push [rax - 7*8]
+    
+    push [rax - 8*8]
+    push rcx
+    push rdx
+    push rdi
+    push rsi
+    push r8
+    push r9
+    push r10
+    push r11
+
+    push rbx
+    push rbp
+    push r12
+    push r13
+    push r14
+    push r15
+    
+    mov rsp, gs:4
+    add rsp, 8
+    
+    pop rbx
+    pop rbp
+    pop r12
+    pop r13
+    pop r14
+    pop r15
+    
+    swapgs
+    
+    ret
+   
+
+__from_kernel:
     push rcx
     push rdx
     push rdi

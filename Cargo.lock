@@ -1028,6 +1028,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c11532d9d241904f095185f35dcdaf930b1427a94d5b01d7002d74ba19b44cc4"
 
 [[package]]
+name = "simple_muqss"
+version = "0.1.0"
+dependencies = [
+ "zodiac",
+]
+
+[[package]]
 name = "smoltcp"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1652,7 +1659,7 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 
 [[package]]
 name = "zodiac"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "acpi",
  "aml",

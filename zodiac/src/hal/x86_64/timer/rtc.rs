@@ -1,5 +1,5 @@
-use time::{Date, Month, Time};
 use time::PrimitiveDateTime;
+use time::{Date, Month, Time};
 use x86_64::instructions::port::Port;
 
 #[derive(Debug)]

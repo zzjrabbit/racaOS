@@ -2,7 +2,7 @@ use x86_64::{
     VirtAddr,
     registers::{
         control::{Cr0, Cr0Flags, Cr4, Cr4Flags},
-        model_specific::{FsBase, GsBase},
+        model_specific::{FsBase, GsBase, KernelGsBase},
     },
 };
 
@@ -30,7 +30,7 @@ pub mod timer;
 pub mod trap;
 
 /// Do something without interrupts.
-pub fn without_interrupts<R>(function: impl Fn() -> R) -> R {
+pub fn without_interrupts<R>(function: impl FnMut() -> R) -> R {
     x86_64::instructions::interrupts::without_interrupts(function)
 }
 
@@ -78,6 +78,12 @@ pub(crate) fn init() {
     trap::init();
     bus::init();
 
+    smp::CPUS.with_cpu_info_mut(Cpu::bsp(), |info| {
+        KernelGsBase::write(VirtAddr::from_ptr(info.tss_mut()));
+        log::info!("kernel gs base: {:x}", KernelGsBase::read());
+    });
+    GsBase::write(VirtAddr::zero());
+
     smp::CPUS.init_ap();
 }
 
@@ -103,6 +109,11 @@ unsafe extern "C" fn ap_entry(smp_info: &limine::mp::Cpu) -> ! {
     kernel::ap_init();
     timer::ap_init();
     trap::init();
+
+    smp::CPUS.with_cpu_info_mut(Cpu::current(), |info| {
+        KernelGsBase::write(VirtAddr::from_ptr(info.tss_mut()));
+    });
+    GsBase::write(VirtAddr::zero());
 
     log::debug!("Application Processor {} started", smp_info.id);
 

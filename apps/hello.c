@@ -22,5 +22,7 @@ int main() {
     }
     
     fclose(file);
+    //printf("Hello, World!\n");
+    //while(1);
     return 0;
 }

@@ -10,7 +10,11 @@ pub use fifo::*;
 use spin::{Once, RwLock};
 
 use crate::{
-    hal::{context::TrapFrame, cpu_num, enable_interrupts, trap::set_kernel_stack},
+    hal::{
+        context::TrapFrame,
+        cpu_num, enable_interrupts,
+        trap::{get_kernel_stack, get_user_stack, set_kernel_stack, set_user_stack},
+    },
     task::{Task, TaskBuilder, TaskId},
 };
 
@@ -37,11 +41,7 @@ pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
     SCHEDULER.set_scheduler(scheduler);
 
     for _ in 0..cpu_num() {
-        let task = TaskBuilder::default()
-            .entry(idle)
-            .kernel_mode()
-            .build()
-            .unwrap();
+        let task = TaskBuilder::default().entry(idle).build().unwrap();
 
         IDLES.write().push(task.clone());
         task.spawn();
@@ -113,6 +113,8 @@ impl SchedulerWrapper {
                 if let Some(current) = queue.current()
                     && let Some(current) = current.upgrade()
                 {
+                    current.set_kernel_stack(get_kernel_stack());
+                    current.set_user_stack(get_user_stack());
                     current.set_context(context.clone());
                     if !current.task_state().is_blocked() {
                         current.ready();
@@ -125,6 +127,7 @@ impl SchedulerWrapper {
                 *context = next.context();
 
                 set_kernel_stack(next.kernel_stack());
+                set_user_stack(next.user_stack());
             });
     }
 
@@ -140,6 +143,18 @@ impl SchedulerWrapper {
     }
 }
 
+static PRE_SCHEDULE_HANDLER: Once<fn()> = Once::new();
+
+static POST_SCHEDULE_HANDLER: Once<fn()> = Once::new();
+
+pub fn set_pre_schedule_handler(handler: fn()) {
+    PRE_SCHEDULE_HANDLER.call_once(|| handler);
+}
+
+pub fn set_post_schedule_handler(handler: fn()) {
+    POST_SCHEDULE_HANDLER.call_once(|| handler);
+}
+
 mod wrappers {
     use super::*;
 
@@ -152,7 +167,13 @@ mod wrappers {
     }
 
     pub fn schedule(context: &mut TrapFrame) {
+        if let Some(pre_schedule_handler) = PRE_SCHEDULE_HANDLER.get() {
+            pre_schedule_handler();
+        }
         SCHEDULER.schedule(context);
+        if let Some(post_schedule_handler) = POST_SCHEDULE_HANDLER.get() {
+            post_schedule_handler();
+        }
     }
 
     pub fn current_task() -> Arc<Task> {

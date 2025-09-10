@@ -2,7 +2,6 @@ use zodiac::{
     hal::{
         context::{CpuException, PageFaultErrorCode, TrapFrame},
         cpu::Cpu,
-        trap::set_user_page_fault_handler,
     },
     mem::{MMUFlags, PhysicalMemoryAllocOptions},
     task::Task,
@@ -10,11 +9,9 @@ use zodiac::{
 
 use crate::task::ThreadData;
 
-pub fn init() {
-    set_user_page_fault_handler(user_page_fault_handler);
-}
+pub fn init() {}
 
-fn user_page_fault_handler(frame: &mut TrapFrame, cpu_exception: CpuException) {
+pub fn user_page_fault_handler(frame: &mut TrapFrame, cpu_exception: CpuException) {
     let CpuException::PageFault(flags, address) = cpu_exception else {
         unreachable!()
     };

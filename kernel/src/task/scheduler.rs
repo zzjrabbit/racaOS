@@ -5,15 +5,29 @@ use alloc::{
 use spin::{Lazy, RwLock};
 use zodiac::{
     hal::{cpu::Cpu, write_fs, write_gs},
-    task::{LocalQueue, Scheduler, Task, set_scheduler},
+    task::{LocalQueue, Scheduler, Task, set_post_schedule_handler, set_scheduler},
 };
 
 use crate::task::ThreadData;
 
 static SCHEDULER: FifoScheduler = FifoScheduler::new();
 
+fn post_schedule_handler() {
+    let task = Task::current();
+    if let Some(data) = task.data().downcast_ref::<ThreadData>() {
+        data.vm_space.switch();
+        if let Some(fs) = *data.fs.read() {
+            write_fs(fs);
+        }
+        if let Some(gs) = *data.gs.read() {
+            write_gs(gs);
+        }
+    }
+}
+
 pub fn init() {
     set_scheduler(&SCHEDULER);
+    set_post_schedule_handler(post_schedule_handler);
 }
 
 pub struct FifoScheduler(Lazy<FifoSchedulerInner>);
@@ -97,15 +111,6 @@ impl LocalQueue for FifoLocalQueue {
     fn deque_next_task(&mut self) -> Option<Arc<Task>> {
         let task = self.queue.write().pop_front()?;
         self.current = Some(Arc::downgrade(&task));
-        if let Some(data) = task.data().downcast_ref::<ThreadData>() {
-            data.vm_space.switch();
-            if let Some(fs) = *data.fs.read() {
-                write_fs(fs);
-            }
-            if let Some(gs) = *data.gs.read() {
-                write_gs(gs);
-            }
-        }
 
         Some(task)
     }
