@@ -1,4 +1,7 @@
-use core::{mem::transmute, slice::{from_raw_parts, from_raw_parts_mut}};
+use core::{
+    mem::transmute,
+    slice::{from_raw_parts, from_raw_parts_mut},
+};
 
 use alloc::sync::Arc;
 use object::{
@@ -231,7 +234,7 @@ pub struct VmReader {
 impl VmReader {
     pub fn read_bytes(&self, buffer: &mut [u8]) -> Result<(), ZodiacError> {
         let mut read = 0usize;
-        
+
         if self.len != buffer.len() {
             return Err(ZodiacError::InvalidArguments);
         }
@@ -259,12 +262,13 @@ impl VmReader {
 
         Ok(())
     }
-    
+
     /// Read data from the virtual memory space into the buffer.
     /// The virtual memory space doesn't necessarily have to be the current one.
     pub fn read<T>(&self, buffer: &mut T) -> Result<(), ZodiacError> {
-        let buffer = unsafe { from_raw_parts_mut(buffer as *mut T as *mut u8, size_of_val(buffer)) };
-        
+        let buffer =
+            unsafe { from_raw_parts_mut(buffer as *mut T as *mut u8, size_of_val(buffer)) };
+
         self.read_bytes(buffer)
     }
 }
@@ -279,7 +283,7 @@ pub struct VmWriter {
 impl VmWriter {
     pub fn write_bytes(&self, buffer: &[u8]) -> Result<(), ZodiacError> {
         let mut written = 0usize;
-        
+
         if self.len != buffer.len() {
             return Err(ZodiacError::InvalidArguments);
         }
@@ -307,12 +311,13 @@ impl VmWriter {
 
         Ok(())
     }
-    
+
     /// Write data from the buffer into the virtual memory space.
     /// The virtual memory space doesn't necessarily have to be the current one.
     pub fn write<T>(&self, buffer: &T) -> Result<(), ZodiacError> {
-        let buffer = unsafe { from_raw_parts(buffer as *const T as *const u8, size_of_val(buffer)) };
-        
+        let buffer =
+            unsafe { from_raw_parts(buffer as *const T as *const u8, size_of_val(buffer)) };
+
         self.write_bytes(buffer)
     }
 }

@@ -86,7 +86,9 @@ pub fn read(fd: FileDescriptor, address: VirtualAddress, len: usize) -> SyscallR
         let mut buf = vec![0; len];
         let len = file.read_at(*offset, &mut buf);
 
-        data.vm_space.writer(address, len).write_bytes(&buf[0..len])?;
+        data.vm_space
+            .writer(address, len)
+            .write_bytes(&buf[0..len])?;
 
         *offset += len as u64;
 
@@ -143,9 +145,9 @@ pub fn writev(fd: FileDescriptor, iov_address: VirtualAddress, count: usize) -> 
             data.vm_space
                 .reader(iov_address + (i * 2 * 8), size_of::<IoVec>())
                 .read(&mut vec)?;
-            
+
             let IoVec { base, len } = vec;
-            
+
             log::info!("address {:x} len {:x}", base, len);
             if len > 0xffffff {
                 return Ok(0);
