@@ -38,7 +38,6 @@ If you like, you can also specify the logger.
 When you want to run user tasks, you can do something like this:
 
 ```rust
-
 use zodiac::task::{ReturnReason, Task, TaskBuilder, UserContext};
 
 let thread = TaskBuilder::default()

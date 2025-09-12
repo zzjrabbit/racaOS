@@ -2,6 +2,13 @@
 name = "cargo-zoo"
 version = "0.1.0"
 edition = "2024"
+authors = ["Zhenjia Zeng"]
+description = "A tool for OS development"
+keywords = ["os", "development", "tool", "kernel"]
+categories = ["development-tools"]
+license = "Apache-2.0"
+homepage = "https://github.com/zzjrabbit/racaOS/tree/edition19/zoo"
+repository = "https://github.com/zzjrabbit/racaOS"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive", "cargo"] }
