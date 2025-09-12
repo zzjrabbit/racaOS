@@ -1,0 +1,10 @@
+[build]
+kernel_crate = "kernel"
+features = []
+
+[qemu]
+args = ["-machine", "q35", "-cpu", "qemu64,+x2apic"]
+hw_virt = true
+serial_target = "stdio"
+smp_cores = 2
+memory_size = "256m"

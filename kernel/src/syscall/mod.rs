@@ -6,11 +6,13 @@ use crate::{filesystem::FileDescriptor, task::Process};
 
 use arch::*;
 use filesystem::*;
+use kernel::*;
 use mem::*;
 use task::*;
 
 mod arch;
 mod filesystem;
+mod kernel;
 mod mem;
 mod task;
 
@@ -66,6 +68,7 @@ pub fn syscall_handler(frame: &mut TrapFrame) {
         11 => munmap(arg1, arg2),
         20 => writev(arg1 as FileDescriptor, arg2 as VirtualAddress, arg3),
         60 => exit(arg1 as i32),
+        63 => uname(arg1 as VirtualAddress),
         72 => fcntl(
             arg1 as FileDescriptor,
             FcntlCommand::from_i32(arg2 as i32).ok_or(SyscallError::InvalidArguments)?,

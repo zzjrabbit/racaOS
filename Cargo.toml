@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["zodiac", "zodiac_macro", "builder", "kernel", "apps/hello", "simple_muqss"]
-default-members = ["builder"]
+members = ["zodiac", "zodiac_macro", "kernel", "apps/hello", "simple_muqss", "zoo"]
 
 [profile.dev]
 panic = "abort"
@@ -18,3 +17,4 @@ codegen-units = 1
 
 [workspace.dependencies]
 zodiac = { path = "zodiac" }
+simple_muqss = { path = "simple_muqss" }
