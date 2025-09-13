@@ -9,6 +9,7 @@ use crate::mem::{
     MMUFlags, PageSize, PhysicalAddress, PhysicalMemoryAllocOptions, VirtualMemorySpace,
     convert_physical_to_virtual,
 };
+use crate::timer::TIMER_CALLBACKS;
 use crate::trap::Irq;
 
 pub fn init() {
@@ -106,6 +107,8 @@ impl Hpet {
     }
 }
 
-fn hpet_timer_handler(_: &mut TrapFrame) {
-    // Handle the HPET timer interrupt
+fn hpet_timer_handler(frame: &mut TrapFrame) {
+    for callback in TIMER_CALLBACKS.read().iter() {
+        callback(frame);
+    }
 }

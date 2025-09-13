@@ -1,21 +1,17 @@
 mod fifo;
 
-use core::sync::atomic::{AtomicBool, Ordering};
-
 use alloc::{
-    sync::{Arc, Weak},
-    vec::Vec,
+    boxed::Box, sync::{Arc, Weak}
 };
 pub use fifo::*;
-use spin::{Once, RwLock};
+use spin::Once;
 
 use crate::{
     hal::{
         context::TrapFrame,
-        cpu_num, enable_interrupts,
         trap::{get_kernel_stack, get_user_stack, set_kernel_stack, set_user_stack},
     },
-    task::{Task, TaskBuilder, TaskId},
+    task::{Task, TaskId},
 };
 
 pub trait Scheduler<T = Arc<Task>>: Sync + Send {
@@ -35,40 +31,16 @@ pub trait LocalQueue<T = Arc<Task>, W = Weak<Task>> {
     fn deque_next_task(&mut self) -> Option<T>;
 }
 
-static IDLES: RwLock<Vec<Arc<Task>>> = RwLock::new(Vec::new());
-
 pub fn set_scheduler(scheduler: &'static dyn Scheduler) {
     SCHEDULER.set_scheduler(scheduler);
+    crate::timer::register_callback(|ctx| schedule(ctx));
+}
 
-    for _ in 0..cpu_num() {
-        let task = TaskBuilder::default().entry(idle).build().unwrap();
-
-        IDLES.write().push(task.clone());
-        task.spawn();
+pub(crate) fn sheduler_check() {
+    if !SCHEDULER.is_set() {
+        set_scheduler(Box::leak(Box::new(fifo::FifoScheduler::new())));
     }
 }
-
-fn idle() -> ! {
-    loop {
-        core::hint::spin_loop();
-    }
-}
-
-/// Starts schedule.
-pub fn start_schedule() {
-    START_SCHEDULE.store(true, Ordering::SeqCst);
-    enable_interrupts();
-}
-
-pub(crate) fn ap_init() {
-    while !START_SCHEDULE.load(Ordering::SeqCst) {
-        core::hint::spin_loop();
-    }
-    log::info!("AP interrupts enabled.");
-    enable_interrupts();
-}
-
-static START_SCHEDULE: AtomicBool = AtomicBool::new(false);
 
 static SCHEDULER: SchedulerWrapper = SchedulerWrapper::new();
 
@@ -85,6 +57,10 @@ impl SchedulerWrapper {
 }
 
 impl SchedulerWrapper {
+    fn is_set(&self) -> bool {
+        self.scheduler.is_completed()
+    }
+    
     fn set_scheduler(&self, scheduler: &'static dyn Scheduler) {
         self.scheduler.call_once(|| scheduler);
     }

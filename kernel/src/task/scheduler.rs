@@ -26,8 +26,8 @@ fn post_schedule_handler() {
 }
 
 pub fn init() {
-    set_scheduler(&SCHEDULER);
     set_post_schedule_handler(post_schedule_handler);
+    set_scheduler(&SCHEDULER);
 }
 
 pub struct FifoScheduler(Lazy<FifoSchedulerInner>);

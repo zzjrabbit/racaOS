@@ -46,6 +46,7 @@ impl Task {
 
     /// Spawn this task.
     pub fn spawn(self: &Arc<Self>) {
+        sheduler_check();
         add_task(self.clone());
     }
 }
@@ -104,7 +105,7 @@ impl Task {
 
     /// Yield the CPU to another task.
     pub fn r#yield(&self) {
-        Cpu::current().trigger_save_context();
+        Cpu::current().trigger_schedule();
     }
 
     pub(crate) fn run(&self) {
@@ -121,9 +122,8 @@ impl Task {
     pub fn exit(&self) -> ! {
         remove_task(self.task_id());
         self.set_task_state(TaskState::Dead);
+        Cpu::current().trigger_schedule();
         loop {}
-        //self.r#yield();
-        //unreachable!()
     }
 
     /// Kill this task.
@@ -138,7 +138,7 @@ impl Task {
         self.set_task_state(TaskState::Dead);
 
         if let Some(cpu) = cpu {
-            cpu.trigger_save_context();
+            cpu.trigger_schedule();
         }
     }
 }

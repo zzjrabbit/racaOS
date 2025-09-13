@@ -1,3 +1,5 @@
+use core::hint::spin_loop;
+
 use x86_64::{
     VirtAddr,
     registers::{
@@ -44,13 +46,21 @@ pub fn disable_interrupts() {
     x86_64::instructions::interrupts::disable();
 }
 
+pub fn interrupts_enabled() -> bool {
+    x86_64::instructions::interrupts::are_enabled()
+}
+
+pub fn halt() {
+    x86_64::instructions::hlt();
+}
+
 /// Get the number of CPUs.
 pub fn cpu_num() -> usize {
     smp::CPUS.len()
 }
 
 impl Cpu {
-    pub(crate) fn trigger_save_context(&self) {
+    pub(crate) fn trigger_schedule(&self) {
         if Cpu::current() == *self {
             unsafe {
                 core::arch::asm!("int 0x20");
@@ -117,9 +127,9 @@ unsafe extern "C" fn ap_entry(smp_info: &limine::mp::Cpu) -> ! {
 
     log::debug!("Application Processor {} started", smp_info.id);
 
-    crate::task::ap_init();
-
-    loop {
-        x86_64::instructions::hlt();
+    while !crate::smp::AP_ENTRY_SET.load(core::sync::atomic::Ordering::SeqCst) {
+        spin_loop();
     }
+    enable_interrupts();
+    crate::smp::ap_entry()();
 }

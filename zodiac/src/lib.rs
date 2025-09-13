@@ -9,7 +9,7 @@ extern crate alloc;
 pub use error::*;
 pub use zodiac_macro::{global_allocator, main, panic_handler};
 
-use crate::hal::disable_interrupts;
+use crate::hal::{disable_interrupts, enable_interrupts};
 
 mod boot;
 #[doc(hidden)]
@@ -29,12 +29,15 @@ pub mod mem;
 mod panic;
 /// Task structure definition and scheduling.
 pub mod task;
+pub mod timer;
 /// Irq allocation and page fault handling.
 pub mod trap;
+pub mod smp;
 
 fn init() {
     disable_interrupts();
     mem::init();
     logger::init();
     hal::init();
+    enable_interrupts();
 }

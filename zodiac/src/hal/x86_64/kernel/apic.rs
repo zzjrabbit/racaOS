@@ -12,7 +12,7 @@ use crate::{
         MMUFlags, PageSize, PhysicalAddress, PhysicalMemoryAllocOptions, VirtualMemorySpace,
         convert_physical_to_virtual,
     },
-    task::schedule,
+    timer::TIMER_CALLBACKS,
     trap::Irq,
 };
 
@@ -25,7 +25,9 @@ unsafe impl Send for LockedLocalApic {}
 unsafe impl Sync for LockedLocalApic {}
 
 fn timer_handler(frame: &mut TrapFrame) {
-    schedule(frame);
+    for callback in TIMER_CALLBACKS.read().iter() {
+        callback(frame);
+    }
 }
 
 static TIMER_IRQ: Lazy<Irq> = Lazy::new(|| Irq::allocate(timer_handler).unwrap());

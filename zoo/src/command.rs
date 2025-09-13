@@ -53,11 +53,14 @@ pub fn run(config: &Config, args: &RunArgs) {
     let param = "if=pflash,format=raw";
     let ovmf_path = Prebuilt::fetch(Source::LATEST, "target/ovmf")
         .expect("failed to update prebuilt")
-        .get_file(match target {
-            crate::arch::Arch::X86_64 => Arch::X64,
-        }, FileType::Code);
+        .get_file(
+            match target {
+                crate::arch::Arch::X86_64 => Arch::X64,
+            },
+            FileType::Code,
+        );
     qemu.args(["-drive", &format!("{param},file={}", ovmf_path.display())]);
-    
+
     if let Some(qemu_config) = &config.qemu {
         if let Some(true) = qemu_config.hw_virt {
             if let Some(opt) = match std::env::consts::OS {
@@ -67,21 +70,25 @@ pub fn run(config: &Config, args: &RunArgs) {
                 qemu.arg(opt);
             }
         }
-        
+
         if let Some(serial_target) = &qemu_config.serial_target {
             qemu.arg("-serial").arg(serial_target);
         }
-        
+
         if let Some(smp_cores) = &qemu_config.smp_cores {
             qemu.arg("-smp").arg(format!("{}", smp_cores));
         }
-        
+
         if let Some(memory_size) = &qemu_config.memory_size {
             qemu.arg("-m").arg(memory_size);
         }
     }
 
-    qemu.spawn().unwrap().wait().unwrap();
+    let exit_code = qemu.spawn().unwrap().wait().unwrap();
+
+    if !exit_code.success() {
+        panic!("Qemu exited with code {}!", exit_code);
+    }
 }
 
 pub fn build_kernel(config: &Config, args: &CommonArgs) -> PathBuf {
@@ -107,10 +114,13 @@ pub fn build_kernel(config: &Config, args: &CommonArgs) -> PathBuf {
 
     let target = args.target_arch.unwrap_or(get_default_arch());
     cargo.args(["--target", target.triple()]);
-    
+
     cargo.args(["--package", &kernel_crate]);
-    
-    cargo.spawn().unwrap().wait().unwrap();
+
+    let exit_code = cargo.spawn().unwrap().wait().unwrap();
+    if !exit_code.success() {
+        panic!("Cargo exited with code {}!", exit_code);
+    }
 
     let kernel_elf_path = target_dir
         .join(target.triple())
@@ -119,7 +129,7 @@ pub fn build_kernel(config: &Config, args: &CommonArgs) -> PathBuf {
             _ => "release",
         })
         .join(&kernel_crate);
-    
+
     let mut limine_conf_file = NamedTempFile::new().unwrap();
 
     let limine_conf = include_str!("../assets/limine.conf");
@@ -127,22 +137,22 @@ pub fn build_kernel(config: &Config, args: &CommonArgs) -> PathBuf {
     limine_conf_file.write(limine_conf.as_bytes()).unwrap();
 
     let limine_conf_path = limine_conf_file.path().to_path_buf();
-    
+
     limine_conf_file.flush().unwrap();
-    
+
     let mut limine_file = NamedTempFile::new().unwrap();
     let limine = include_bytes!("../assets/BOOTX64.EFI");
     limine_file.write(limine).unwrap();
-    
+
     let limine_path = limine_file.path().to_path_buf();
-    
+
     limine_file.flush().unwrap();
-    
+
     let mut files = BTreeMap::new();
     files.insert("kernel", kernel_elf_path);
     files.insert("efi/boot/bootx64.efi", limine_path);
     files.insert("limine.conf", limine_conf_path);
-    
+
     build_img(files, &image_path).unwrap();
 
     image_path
