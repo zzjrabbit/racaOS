@@ -60,6 +60,30 @@ pub struct BuildArgs {
 pub struct RunArgs {
     #[command(flatten)]
     pub common_args: CommonArgs,
+    #[arg(
+        long = "cpu",
+        short = 'c',
+        help = "The number of CPUs to use",
+        default_value = "0",
+        global = true
+    )]
+    pub cpu: u32,
+    #[arg(
+        long = "memory",
+        short = 'm',
+        help = "The amount of memory to allocate",
+        default_value = "",
+        global = true
+    )]
+    pub memory: String,
+    #[arg(
+        long = "serial",
+        short = 's',
+        help = "The serial target of qemu",
+        default_value = "",
+        global = true
+    )]
+    pub serial: String,
 }
 
 #[derive(Debug, Args, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]

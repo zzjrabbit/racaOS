@@ -71,15 +71,29 @@ pub fn run(config: &Config, args: &RunArgs) {
             }
         }
 
-        if let Some(serial_target) = &qemu_config.serial_target {
+        let serial_target = if args.serial.is_empty() {
+            qemu_config.serial_target.clone()
+        } else {
+            Some(args.serial.clone())
+        };
+        if let Some(serial_target) = &serial_target {
             qemu.arg("-serial").arg(serial_target);
         }
 
-        if let Some(smp_cores) = &qemu_config.smp_cores {
-            qemu.arg("-smp").arg(format!("{}", smp_cores));
-        }
+        let smp_cores = if args.cpu != 0 {
+            args.cpu
+        } else {
+            qemu_config.smp_cores.unwrap_or(1)
+        };
 
-        if let Some(memory_size) = &qemu_config.memory_size {
+        qemu.arg("-smp").arg(format!("{}", smp_cores));
+        
+        let memory_size = if !args.memory.is_empty() {
+            Some(args.memory.clone())
+        } else {
+            qemu_config.memory_size.clone()
+        };
+        if let Some(memory_size) = &memory_size {
             qemu.arg("-m").arg(memory_size);
         }
     }

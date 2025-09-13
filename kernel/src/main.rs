@@ -5,7 +5,11 @@
 
 use core::panic::PanicInfo;
 
-use zodiac::{hal::{disable_interrupts, enable_interrupts, halt}, smp::set_ap_entry, task::TaskBuilder};
+use zodiac::{
+    hal::{disable_interrupts, enable_interrupts, halt},
+    smp::set_ap_entry,
+    task::TaskBuilder,
+};
 
 use crate::{
     filesystem::{FileType, Path, open_file},
@@ -39,16 +43,16 @@ fn ap_entry() -> ! {
 #[zodiac::main]
 pub fn main() {
     disable_interrupts();
-    
+
     trap::init();
     task::init();
     syscall::init();
     terminal::init();
     filesystem::init();
     drivers::init();
-    
+
     set_ap_entry(ap_entry);
-    
+
     log::info!("Zodiac Initialize done, entering kernel.");
 
     log::info!(
@@ -63,7 +67,7 @@ pub fn main() {
         .create("input.txt".into(), FileType::File)
         .unwrap();
     input.write_at(0, b"   Hello World, File!\n");
-    
+
     let idle_task = TaskBuilder::default().entry(idle).build().unwrap();
     idle_task.spawn();
 

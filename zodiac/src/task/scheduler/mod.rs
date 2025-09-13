@@ -1,7 +1,8 @@
 mod fifo;
 
 use alloc::{
-    boxed::Box, sync::{Arc, Weak}
+    boxed::Box,
+    sync::{Arc, Weak},
 };
 pub use fifo::*;
 use spin::Once;
@@ -60,7 +61,7 @@ impl SchedulerWrapper {
     fn is_set(&self) -> bool {
         self.scheduler.is_completed()
     }
-    
+
     fn set_scheduler(&self, scheduler: &'static dyn Scheduler) {
         self.scheduler.call_once(|| scheduler);
     }

@@ -27,12 +27,12 @@ pub mod logger;
 /// Safe memory management.
 pub mod mem;
 mod panic;
+pub mod smp;
 /// Task structure definition and scheduling.
 pub mod task;
 pub mod timer;
 /// Irq allocation and page fault handling.
 pub mod trap;
-pub mod smp;
 
 fn init() {
     disable_interrupts();
