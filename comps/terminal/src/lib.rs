@@ -1,16 +1,20 @@
 #![no_std]
 
 use component::{ComponentInitError, init_component};
-use spin::Lazy;
 use core::{
     fmt::{self, Write},
     sync::atomic::{AtomicBool, Ordering},
 };
+use spin::Lazy;
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
 use os_terminal::{DrawTarget, Terminal, font::BitmapFont};
 use ostd::{
-    boot::boot_info, io::IoMem, mm::VmIo, sync::RwLock, task::{Task, TaskOptions}
+    boot::boot_info,
+    io::IoMem,
+    mm::VmIo,
+    sync::RwLock,
+    task::{Task, TaskOptions},
 };
 
 extern crate alloc;

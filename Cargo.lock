@@ -34,6 +34,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ahci"
+version = "0.1.0"
+dependencies = [
+ "block",
+ "component",
+ "log",
+ "ostd",
+]
+
+[[package]]
 name = "align_ext"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -92,7 +102,9 @@ name = "block"
 version = "0.1.0"
 dependencies = [
  "component",
+ "log",
  "ostd",
+ "thiserror",
 ]
 
 [[package]]
@@ -425,6 +437,7 @@ checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
 name = "kernel"
 version = "0.1.0"
 dependencies = [
+ "ahci",
  "bit_field",
  "bitflags 2.9.4",
  "block",
