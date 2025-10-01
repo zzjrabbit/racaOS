@@ -1,0 +1,11 @@
+[package]
+name = "component"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+comp-macro = { path = "comp-macro" }
+log = "0.4.28"
+
+[build-dependencies]
+json = "0.12.4"

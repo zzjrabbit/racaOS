@@ -1,0 +1,10 @@
+[workspace.dependencies]
+ostd = "0.16.1"
+component = { path = "component" }
+log = "0.4.28"
+
+[workspace]
+exclude = ["target/osdk/base", "target/osdk/test-base"]
+members = [".", "component", "component/comp-macro", "comps/*", "kernel"]
+resolver = "3"
+default-members = ["kernel"]

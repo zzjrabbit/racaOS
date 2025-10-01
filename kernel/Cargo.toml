@@ -1,0 +1,21 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bit_field = "0.10.3"
+bitflags = "2.9.4"
+elf = { version = "0.8.0", default-features = false }
+good_memory_allocator = "0.1.7"
+smoltcp = { version = "0.12.0", default-features = false, features = ["alloc", "log", "proto-ipv4", "proto-dhcpv4", "medium-ethernet", "socket-icmp", "socket-udp", "socket-tcp", "socket-raw", "socket-dhcpv4"] }
+spin = "0.10.0"
+thiserror = { version = "2.0.16", default-features = false }
+time = { version = "0.3.44", default-features = false }
+ostd = { workspace = true }
+component = { workspace = true }
+log = { workspace = true }
+pci = { path = "../comps/pci" }
+terminal = { path = "../comps/terminal" }
+logger = { version = "0.1.0", path = "../comps/logger" }
+block = { version = "0.1.0", path = "../comps/block" }

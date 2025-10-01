@@ -1,0 +1,24 @@
+project_type = "kernel"
+
+[boot]
+method = "grub-rescue-iso"
+kcmd_args = ["ostd.log_level=DEBUG\ninsmod efi_gop"]
+
+[grub]
+boot_protocol = "multiboot2"
+
+[qemu]
+args = """\
+    --enable-kvm \
+    -machine q35 \
+    -cpu host,+x2apic \
+    --no-reboot \
+    -m 1G \
+    -smp cores=4 \
+    -serial stdio \
+    -drive if=pflash,format=raw,unit=0,readonly=on,file=assets/code.fd \
+    -drive if=pflash,format=raw,unit=1,file=assets/vars.fd \
+    -drive id=disk,file=target/apk/rootfs.img,if=none \
+    -device ahci,id=ahci \
+    -device ide-hd,drive=disk,bus=ahci.0 \
+"""
