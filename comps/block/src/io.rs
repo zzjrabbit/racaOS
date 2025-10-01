@@ -1,5 +1,7 @@
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 use ostd::mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo};
+
+use crate::BLOCK_SIZE;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BlockOperation {
@@ -13,19 +15,27 @@ pub struct BlockIo {
 
 struct BlockIoInner {
     operation: BlockOperation,
-    dma_stream: DmaStream,
+    dma_streams: Vec<DmaStream>,
     on_complete: Option<Box<dyn Fn()>>,
 }
 
 impl BlockIo {
     pub fn new(operation: BlockOperation, block_num: usize) -> Self {
-        let frames = FrameAllocOptions::new().alloc_segment(block_num).unwrap();
-        let dma_stream = DmaStream::map(frames.into(), DmaDirection::Bidirectional, false).unwrap();
+        let dma_streams = (0..block_num)
+            .map(|_| {
+                DmaStream::map(
+                    FrameAllocOptions::new().alloc_segment(1).unwrap().into(),
+                    DmaDirection::Bidirectional,
+                    false,
+                )
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
 
         Self {
             inner: BlockIoInner {
                 operation,
-                dma_stream,
+                dma_streams,
                 on_complete: None,
             },
         }
@@ -36,11 +46,27 @@ impl BlockIo {
     }
 
     pub fn read(&self, buf: &mut [u8]) {
-        self.dma_stream().read_bytes(0, buf).unwrap();
+        for (id, stream) in self.inner.dma_streams.iter().enumerate() {
+            stream
+                .read_bytes(
+                    id * BLOCK_SIZE,
+                    &mut buf[id * BLOCK_SIZE..(id + 1) * BLOCK_SIZE],
+                )
+                .unwrap();
+            stream.sync(0..BLOCK_SIZE).unwrap();
+        }
     }
 
     pub fn write(&self, buf: &[u8]) {
-        self.dma_stream().write_bytes(0, buf).unwrap();
+        for (id, stream) in self.inner.dma_streams.iter().enumerate() {
+            stream
+                .write_bytes(
+                    id * BLOCK_SIZE,
+                    &buf[id * BLOCK_SIZE..(id + 1) * BLOCK_SIZE],
+                )
+                .unwrap();
+            stream.sync(0..BLOCK_SIZE).unwrap();
+        }
     }
 }
 
@@ -51,8 +77,8 @@ impl BlockIo {
         }
     }
 
-    pub fn dma_stream(&self) -> &DmaStream {
-        &self.inner.dma_stream
+    pub fn dma_stream(&self) -> &[DmaStream] {
+        &self.inner.dma_streams
     }
 
     pub fn operation(&self) -> BlockOperation {
