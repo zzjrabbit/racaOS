@@ -158,10 +158,7 @@ impl Process {
     pub fn remove_thread(&self, tid: usize) {
         self.threads.write().retain(|t| {
             let t_data = t
-                .as_thread()
-                .unwrap()
-                .data()
-                .downcast_ref::<UserThreadData>()
+                .direct_downcast::<UserThreadData>()
                 .unwrap();
             t_data.tid() != tid
         });
@@ -172,15 +169,17 @@ impl Process {
 impl Process {
     pub fn exit(&self, exit_code: i32) {
         self.exit_code.store(exit_code, Ordering::SeqCst);
-        for thread in self.threads.read().clone().iter() {
+        let threads = self.threads.read().clone();
+        for thread in threads.iter() {
             thread.as_thread().unwrap().exit();
         }
     }
 
     pub fn kill(&self) {
         self.exit_code.store(-1, Ordering::SeqCst);
-        for thread in self.threads.read().iter() {
-            thread.as_thread().unwrap().on_kill();
+        let threads = self.threads.read().clone();
+        for thread in threads.iter() {
+            thread.as_thread().unwrap().exit();
         }
     }
 

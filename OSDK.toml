@@ -20,4 +20,5 @@ args = """\
     -drive if=pflash,format=raw,unit=1,file=assets/vars.fd \
     -drive id=disk,file=target/apk/rootfs.img,if=none \
     -device nvme,serial=deadbeef,drive=disk \
+     -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
 """

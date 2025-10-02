@@ -8,10 +8,7 @@ use core::panic::PanicInfo;
 
 use component::InitStage;
 use ostd::{
-    boot::smp::register_ap_entry,
-    cpu::CpuId,
-    prelude::*,
-    task::{halt_cpu, scheduler::enable_preemption_on_cpu},
+    arch::qemu::{QemuExitCode, exit_qemu}, boot::smp::register_ap_entry, cpu::CpuId, prelude::*, task::{halt_cpu, scheduler::enable_preemption_on_cpu}
 };
 
 use crate::{
@@ -77,7 +74,7 @@ fn first_kernel_thread() {
     input.write_at(0, b"   Hello World, File!\n");
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
-    let _hello = Process::new(
+    let hello = Process::new(
         include_bytes!("../../apps/hello.bin"),
         tty.clone(),
         tty.clone(),
@@ -87,9 +84,17 @@ fn first_kernel_thread() {
 
     println!("init process spawned!");
 
+    while hello.exit_code().is_none() {
+        halt_cpu();
+    }
+    
+    log::error!("Init process exited.");
+    
     loop {
         halt_cpu();
     }
+    
+    /*exit_qemu(QemuExitCode::Failed);*/
 }
 
 #[ostd::panic_handler]

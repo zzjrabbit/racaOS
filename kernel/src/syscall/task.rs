@@ -18,8 +18,8 @@ pub fn set_tid_address(address: Vaddr) -> SyscallResult {
 
 pub fn exit(exit_code: i32) -> SyscallResult {
     let process = Process::current();
-    ostd::early_println!("process exits");
     process.exit(exit_code);
+    log::warn!("Process exits.");
 
     Ok(0)
 }
