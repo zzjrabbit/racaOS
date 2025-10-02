@@ -6,7 +6,7 @@ use ostd::{
 
 use crate::{
     mem::{align_down_by_page_size, align_up_by_page_size},
-    task::{MemoryRegion, ThreadData},
+    task::{AsThread, MemoryRegion, UserThreadData},
 };
 
 use super::*;
@@ -57,7 +57,7 @@ pub fn mmap(
     _offset: usize,
 ) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
     let memory_info = data.memory_info();
 
     let protection_flags = protection.to_mmu_flags();
@@ -75,17 +75,19 @@ pub fn mmap(
         flags
     );
 
-    memory_info.with_unused_regions_mut(|regions| regions.push((
-        MemoryRegion::new(address, len),
-        PageProperty::new_user(protection_flags, CachePolicy::Writeback),
-    )));
+    memory_info.with_unused_regions_mut(|regions| {
+        regions.push((
+            MemoryRegion::new(address, len),
+            PageProperty::new_user(protection_flags, CachePolicy::Writeback),
+        ))
+    });
 
     Ok(address as isize)
 }
 
 pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
     let memory_info = data.memory_info();
 
     let protection_flags = protection.to_mmu_flags();
@@ -96,7 +98,7 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
         address,
         protection_flags
     );
-    
+
     memory_info.with_unused_regions_mut(|regions| {
         for (region, flags) in regions.iter_mut() {
             if region.contains(address) {
@@ -110,7 +112,7 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
         let disable_preempt_guard = disable_preempt();
 
         let len = align_up_by_page_size(len);
-        
+
         let vm_space = memory_info.vm_space();
 
         vm_space
@@ -118,8 +120,7 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
             .protect_next(len, |flags, _| *flags |= protection_flags)
             .unwrap();
 
-        let mut cursor = vm_space
-            .cursor_mut(&disable_preempt_guard, &(address..address + len))?;
+        let mut cursor = vm_space.cursor_mut(&disable_preempt_guard, &(address..address + len))?;
         cursor
             .flusher()
             .issue_tlb_flush(TlbFlushOp::for_range(address..address + len));
@@ -131,14 +132,15 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
 
 pub fn munmap(address: Vaddr, len: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
     let aligned_address = align_down_by_page_size(address);
     let len = align_up_by_page_size(address + len - aligned_address);
 
     let disable_preempt_guard = disable_preempt();
 
-    data.memory_info().vm_space()
+    data.memory_info()
+        .vm_space()
         .cursor_mut(&disable_preempt_guard, &(address..address + len))?
         .unmap(len);
 

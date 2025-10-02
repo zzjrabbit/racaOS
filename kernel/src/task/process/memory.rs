@@ -1,5 +1,9 @@
 use alloc::{sync::Arc, vec::Vec};
-use ostd::{Error as OstdError, mm::{PageProperty, Vaddr, VmSpace}, sync::RwLock};
+use ostd::{
+    mm::{PageProperty, Vaddr, VmSpace},
+    sync::RwLock,
+    Error as OstdError,
+};
 
 /// The base of kernel address space.
 pub const KERNEL_ASPACE_BASE: usize = 0xffff_ff80_0000_0000;
@@ -22,9 +26,9 @@ struct MemoryInfoInner {
 }
 
 impl MemoryInfo {
-    pub fn new() -> Self {
+    pub fn new(vm_space: Arc<VmSpace>) -> Self {
         MemoryInfo {
-            vm_space: Arc::new(VmSpace::new()),
+            vm_space,
             inner: RwLock::new(MemoryInfoInner {
                 free_memory_space: alloc::vec![MemoryRegion::new(
                     USER_ASPACE_BASE,
@@ -42,14 +46,14 @@ impl MemoryInfo {
     pub fn vm_space(&self) -> Arc<VmSpace> {
         self.vm_space.clone()
     }
-    
+
     pub fn with_unused_regions<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&Vec<(MemoryRegion, PageProperty)>) -> R,
     {
         f(&self.inner.read().unused_regions)
     }
-    
+
     pub fn with_unused_regions_mut<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&mut Vec<(MemoryRegion, PageProperty)>) -> R,
@@ -61,7 +65,7 @@ impl MemoryInfo {
 impl MemoryInfo {
     pub fn allocate(&self, len: usize) -> Result<MemoryRegion, OstdError> {
         let mut inner = self.inner.write();
-        
+
         let mut region = None;
 
         for free_region in inner.free_memory_space.iter_mut() {
@@ -82,7 +86,7 @@ impl MemoryInfo {
 
     pub fn allocate_at(&self, address: Vaddr, len: usize) -> Result<MemoryRegion, OstdError> {
         let mut inner = self.inner.write();
-        
+
         let required_region = MemoryRegion::new(address, len);
 
         for mapped in inner.allocated.iter() {

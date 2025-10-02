@@ -3,9 +3,10 @@ use core::sync::atomic::{AtomicI32, Ordering};
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use spin::RwLock;
 
-use crate::{filesystem::{AccessMode, File, FileDescriptor, OpenFlags}, task::thread::FileDescriptorInfo};
+use crate::filesystem::{AccessMode, File, FileDescriptor, OpenFlags};
 
-type FileDescriptorTable = Arc<RwLock<BTreeMap<FileDescriptor, FileDescriptorInfo>>>;
+type FileDescription = (u64, AccessMode, OpenFlags, Arc<File>);
+type FileDescriptorTable = Arc<RwLock<BTreeMap<FileDescriptor, FileDescription>>>;
 
 pub struct FileSystemInfo {
     fd_table: FileDescriptorTable,
@@ -18,7 +19,7 @@ impl FileSystemInfo {
         fd_table.insert(0, (0, AccessMode::O_RDONLY, OpenFlags::empty(), stdin));
         fd_table.insert(1, (0, AccessMode::O_WRONLY, OpenFlags::empty(), stdout));
         fd_table.insert(2, (0, AccessMode::O_WRONLY, OpenFlags::empty(), stderr));
-        
+
         FileSystemInfo {
             fd_table: Arc::new(RwLock::new(fd_table)),
             next_fd: Arc::new(AtomicI32::new(3)),

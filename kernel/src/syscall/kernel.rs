@@ -1,6 +1,9 @@
 use ostd::{mm::Vaddr, task::Task, Pod};
 
-use crate::{syscall::SyscallResult, task::ThreadData};
+use crate::{
+    syscall::SyscallResult,
+    task::{AsThread, UserThreadData},
+};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
@@ -31,7 +34,7 @@ impl UtsName {
 
 pub fn uname(address: Vaddr) -> SyscallResult {
     let task = Task::current().unwrap();
-    let data = task.data().downcast_ref::<ThreadData>().unwrap();
+    let data = task.direct_downcast::<UserThreadData>().unwrap();
 
     let mut utsname = UtsName::new();
     utsname.sysname.copy_from_slice(b"racaOS");
@@ -42,7 +45,8 @@ pub fn uname(address: Vaddr) -> SyscallResult {
     utsname.machine.copy_from_slice(b"x86_64");
     utsname.nodename.copy_from_slice(b"root");
 
-    data.memory_info().vm_space()
+    data.memory_info()
+        .vm_space()
         .writer(address, size_of::<UtsName>())
         .unwrap()
         .write_val(&utsname)?;

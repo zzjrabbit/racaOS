@@ -2,10 +2,9 @@ use core::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    arch::cpu::context::{CpuException, UserContext},
-    mm::{CachePolicy, FrameAllocOptions, PageFlags, PageProperty, PAGE_SIZE},
-    task::{disable_preempt, Task, TaskOptions},
-    user::{ReturnReason, UserMode},
+    arch::cpu::context::UserContext,
+    mm::{CachePolicy, FrameAllocOptions, PageFlags, PageProperty, VmSpace, PAGE_SIZE},
+    task::{disable_preempt, Task},
     Error as OstdError,
 };
 use spin::RwLock;
@@ -13,13 +12,13 @@ use spin::RwLock;
 use crate::{
     filesystem::File,
     mem::VmReadWrite,
-    syscall::syscall_handler,
-    task::ThreadData,
-    trap::user_page_fault_handler,
+    task::{spawn_user_thread, AsThread, UserThreadData},
 };
 use loader::BinaryLoader;
+pub use memory::{MemoryInfo, MemoryRegion};
 
 mod loader;
+mod memory;
 
 static PROCESSES: RwLock<Vec<Arc<Process>>> = RwLock::new(Vec::new());
 
@@ -27,6 +26,7 @@ pub struct Process {
     threads: RwLock<Vec<Arc<Task>>>,
     is_child_process: AtomicBool,
     exit_code: AtomicI32,
+    default_files: [Arc<File>; 3],
 }
 
 impl Process {
@@ -36,81 +36,35 @@ impl Process {
         stdout: Arc<File>,
         stderr: Arc<File>,
     ) -> Result<Arc<Self>, OstdError> {
-        fn thread_entry() {
-            let mut user_mode = {
-                let task = Task::current().unwrap();
-                let data = task.data().downcast_ref::<ThreadData>().unwrap();
-
-                data.memory_info().vm_space().activate();
-                let mut user_context = UserContext::default();
-                user_context.set_rip(*data.entry.get().unwrap());
-                user_context.set_rsp(*data.stack.get().unwrap());
-
-                UserMode::new(user_context)
-            };
-            
-            loop {
-                {
-                    let current = Task::current().unwrap();
-                    let data = current.data().downcast_ref::<ThreadData>().unwrap();
-                    
-                    if data.is_dead() {
-                        break;
-                    }
-                }
-                
-                let return_reason = user_mode.execute(|| false);
-
-                match return_reason {
-                    ReturnReason::UserSyscall => {
-                        syscall_handler(user_mode.context_mut());
-                    }
-                    ReturnReason::UserException => {
-                        let context = user_mode.context_mut();
-                        let exception = context.take_exception().unwrap();
-
-                        match exception {
-                            CpuException::PageFault(_) => {
-                                user_page_fault_handler(&exception).unwrap()
-                            }
-                            _ => panic!("Unhandled exception: {:?}", exception),
-                        }
-                    }
-                    _ => panic!("Thread error: {:x?}", return_reason),
-                }
-
-                Task::yield_now();
-            }
-        }
-
         let new_self = Arc::new(Self {
             threads: RwLock::new(Vec::new()),
             is_child_process: AtomicBool::new(false),
             exit_code: AtomicI32::new(0),
+            default_files: [stdin, stdout, stderr],
         });
 
         PROCESSES.write().push(new_self.clone());
 
-        let thread_data = ThreadData::new(stdin, stdout, stderr, &new_self);
+        let vm_space = Arc::new(VmSpace::new());
+        let memory_info = Arc::new(MemoryInfo::new(vm_space));
 
-        let entry = thread_data.memory_info().vm_space().load(binary)?;
+        let entry = memory_info.vm_space().load(binary)?;
 
-        let stack_region = thread_data.memory_info().allocate(USER_STACK_SIZE)?;
+        let stack_region = memory_info.allocate(USER_STACK_SIZE)?;
         const USER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
         let user_stack_end = stack_region.end_address();
 
         let disable_preempt_guard = disable_preempt();
-        
-        let vm_space = thread_data
-            .memory_info()
-            .vm_space();
-        
-        let mut cursor = vm_space.cursor_mut(
-            &disable_preempt_guard,
-            &(stack_region.start_address()..stack_region.end_address()),
-        )
-        .unwrap();
+
+        let vm_space = memory_info.vm_space();
+
+        let mut cursor = vm_space
+            .cursor_mut(
+                &disable_preempt_guard,
+                &(stack_region.start_address()..stack_region.end_address()),
+            )
+            .unwrap();
 
         for _ in 0..USER_STACK_SIZE / PAGE_SIZE {
             let frame = FrameAllocOptions::new().alloc_frame().unwrap();
@@ -134,7 +88,8 @@ impl Process {
 
         let auxv_ptr = aligned_argv - 2 * size_of::<usize>();
         vm_space.write_val(auxv_ptr, &0usize).unwrap();
-        vm_space.write_val(auxv_ptr + size_of::<usize>(), &0usize)
+        vm_space
+            .write_val(auxv_ptr + size_of::<usize>(), &0usize)
             .unwrap();
 
         // write envp
@@ -149,14 +104,14 @@ impl Process {
         let argc_ptr = argv_ptr - size_of::<usize>();
         vm_space.write_val(argc_ptr, &1usize).unwrap();
 
-        thread_data.entry.call_once(|| entry as usize);
-        thread_data.stack.call_once(|| argc_ptr);
+        let user_stack_end = argc_ptr;
 
-        let thread = Arc::new(TaskOptions::new(thread_entry).data(thread_data).build()?);
+        let mut user_context = UserContext::default();
+        user_context.set_rip(entry);
+        user_context.set_rsp(user_stack_end);
 
-        new_self.add_thread(thread.clone());
-
-        thread.run();
+        let thread = spawn_user_thread(&new_self, user_context, memory_info);
+        new_self.add_thread(thread);
 
         Ok(new_self)
     }
@@ -164,12 +119,28 @@ impl Process {
     pub fn current() -> Arc<Self> {
         let current_thread = Task::current().unwrap();
         current_thread
+            .as_thread()
+            .unwrap()
             .data()
-            .downcast_ref::<ThreadData>()
+            .downcast_ref::<UserThreadData>()
             .unwrap()
             .process
             .upgrade()
             .unwrap()
+    }
+}
+
+impl Process {
+    pub fn default_stdin(&self) -> Arc<File> {
+        self.default_files[0].clone()
+    }
+
+    pub fn default_stdout(&self) -> Arc<File> {
+        self.default_files[1].clone()
+    }
+
+    pub fn default_stderr(&self) -> Arc<File> {
+        self.default_files[2].clone()
     }
 }
 
@@ -183,10 +154,15 @@ impl Process {
     pub fn add_thread(&self, thread: Arc<Task>) {
         self.threads.write().push(thread);
     }
-    
+
     pub fn remove_thread(&self, tid: usize) {
         self.threads.write().retain(|t| {
-            let t_data = t.data().downcast_ref::<ThreadData>().unwrap();
+            let t_data = t
+                .as_thread()
+                .unwrap()
+                .data()
+                .downcast_ref::<UserThreadData>()
+                .unwrap();
             t_data.tid() != tid
         });
     }
@@ -197,19 +173,17 @@ impl Process {
     pub fn exit(&self, exit_code: i32) {
         self.exit_code.store(exit_code, Ordering::SeqCst);
         for thread in self.threads.read().clone().iter() {
-            let thread_data = thread.data().downcast_ref::<ThreadData>().unwrap();
-            thread_data.on_exit();
+            thread.as_thread().unwrap().exit();
         }
     }
 
     pub fn kill(&self) {
         self.exit_code.store(-1, Ordering::SeqCst);
         for thread in self.threads.read().iter() {
-            let thread_data = thread.data().downcast_ref::<ThreadData>().unwrap();
-            thread_data.on_kill();
+            thread.as_thread().unwrap().on_kill();
         }
     }
-    
+
     pub fn exit_code(&self) -> Option<i32> {
         if self.threads.read().is_empty() {
             Some(self.exit_code.load(Ordering::SeqCst))

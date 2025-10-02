@@ -12,12 +12,12 @@ use ostd::{
     },
 };
 
-use crate::task::ThreadData;
+use crate::task::AsThread;
 
 fn post_schedule_handler() {
     let task = Task::current().unwrap();
-    if let Some(data) = task.data().downcast_ref::<ThreadData>() {
-        data.memory_info().vm_space().activate();
+    if let Some(thread) = task.as_thread() {
+        thread.pre_execute();
     }
 }
 

@@ -3,14 +3,14 @@ use ostd::{mm::Vaddr, task::Task, Pod};
 
 use crate::{
     filesystem::{open_file, AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path},
-    task::ThreadData,
+    task::{AsThread, UserThreadData},
 };
 
 use super::*;
 
 pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
     let access_mode = AccessMode::try_from(flags)?;
     let open_flags = OpenFlags::from(flags);
@@ -62,62 +62,68 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
 
 pub fn close(fd: FileDescriptor) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    data.fs_info().remove_file(fd).ok_or(SyscallError::NotFound)?;
+    data.fs_info()
+        .remove_file(fd)
+        .ok_or(SyscallError::NotFound)?;
     Ok(0)
 }
 
 pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    data.fs_info().with_file_mut(fd, |offset, access_mode, _open_flags, file| {
-        if !access_mode.is_readable() {
-            return Err(SyscallError::PermissionDenied);
-        };
+    data.fs_info()
+        .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+            if !access_mode.is_readable() {
+                return Err(SyscallError::PermissionDenied);
+            };
 
-        let mut buf = vec![0; len];
-        let len = file.read_at(*offset, &mut buf);
+            let mut buf = vec![0; len];
+            let len = file.read_at(*offset, &mut buf);
 
-        for (id, byte) in buf.iter().enumerate() {
-            data.memory_info().vm_space()
-                .writer(address + id as usize, 1)
-                .unwrap()
-                .write_val(byte)?;
-        }
+            for (id, byte) in buf.iter().enumerate() {
+                data.memory_info()
+                    .vm_space()
+                    .writer(address + id as usize, 1)
+                    .unwrap()
+                    .write_val(byte)?;
+            }
 
-        *offset += len as u64;
+            *offset += len as u64;
 
-        Ok(len as isize)
-    })
-    .ok_or(SyscallError::NotFound)?
+            Ok(len as isize)
+        })
+        .ok_or(SyscallError::NotFound)?
 }
 
 pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    data.fs_info().with_file_mut(fd, |offset, access_mode, _open_flags, file| {
-        if !access_mode.is_writable() {
-            return Err(SyscallError::PermissionDenied);
-        }
+    data.fs_info()
+        .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+            if !access_mode.is_writable() {
+                return Err(SyscallError::PermissionDenied);
+            }
 
-        let buffer = (0..len)
-            .map(|id| {
-                data.memory_info().vm_space()
-                    .reader(address + id as usize, 1)
-                    .unwrap()
-                    .read_val::<u8>()
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+            let buffer = (0..len)
+                .map(|id| {
+                    data.memory_info()
+                        .vm_space()
+                        .reader(address + id as usize, 1)
+                        .unwrap()
+                        .read_val::<u8>()
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
-        let len = file.write_at(*offset, &buffer);
-        *offset += len as u64;
+            let len = file.write_at(*offset, &buffer);
+            *offset += len as u64;
 
-        Ok(len as isize)
-    })
-    .ok_or(SyscallError::NotFound)?
+            Ok(len as isize)
+        })
+        .ok_or(SyscallError::NotFound)?
 }
 
 #[derive(Default, Clone, Copy)]
@@ -132,48 +138,49 @@ unsafe impl Pod for IoVec {}
 
 pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    data.fs_info().with_file_mut(fd, |offset, access_mode, _open_flags, file| {
-        if !access_mode.is_writable() {
-            return Err(SyscallError::PermissionDenied);
-        }
-
-        let mut total_len = 0;
-
-        for i in 0..count {
-            let vec = data
-                .memory_info()
-                .vm_space()
-                .reader(iov_address + (i * 2 * 8), size_of::<IoVec>())
-                .unwrap()
-                .read_val::<IoVec>()?;
-
-            let IoVec { base, len } = vec;
-
-            if len > 0xffffff {
-                return Ok(0);
+    data.fs_info()
+        .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+            if !access_mode.is_writable() {
+                return Err(SyscallError::PermissionDenied);
             }
 
-            let buffer = (0..len)
-                .map(|id| {
-                    data.memory_info()
-                        .vm_space()
-                        .reader(base + id as usize, 1)
-                        .unwrap()
-                        .read_val::<u8>()
-                })
-                .collect::<Result<Vec<_>, _>>()?;
+            let mut total_len = 0;
 
-            let len = file.write_at(*offset, &buffer);
+            for i in 0..count {
+                let vec = data
+                    .memory_info()
+                    .vm_space()
+                    .reader(iov_address + (i * 2 * 8), size_of::<IoVec>())
+                    .unwrap()
+                    .read_val::<IoVec>()?;
 
-            *offset += len as u64;
-            total_len += len;
-        }
+                let IoVec { base, len } = vec;
 
-        Ok(total_len as isize)
-    })
-    .ok_or(SyscallError::NotFound)?
+                if len > 0xffffff {
+                    return Ok(0);
+                }
+
+                let buffer = (0..len)
+                    .map(|id| {
+                        data.memory_info()
+                            .vm_space()
+                            .reader(base + id as usize, 1)
+                            .unwrap()
+                            .read_val::<u8>()
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                let len = file.write_at(*offset, &buffer);
+
+                *offset += len as u64;
+                total_len += len;
+            }
+
+            Ok(total_len as isize)
+        })
+        .ok_or(SyscallError::NotFound)?
 }
 
 #[repr(i32)]
@@ -203,24 +210,25 @@ impl From<LseekWhence> for i32 {
 
 pub fn lseek(fd: FileDescriptor, offset: isize, whence: LseekWhence) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    data.fs_info().with_file_mut(fd, |offset_ref, _access_mode, _open_flags, file| {
-        let file_type = file.r#type();
+    data.fs_info()
+        .with_file_mut(fd, |offset_ref, _access_mode, _open_flags, file| {
+            let file_type = file.r#type();
 
-        if !file_type.seekable() {
-            return Err(SyscallError::PermissionDenied);
-        }
+            if !file_type.seekable() {
+                return Err(SyscallError::PermissionDenied);
+            }
 
-        match whence {
-            LseekWhence::Set => *offset_ref = offset as u64,
-            LseekWhence::Current => *offset_ref = (*offset_ref as i64 + offset as i64) as u64,
-            LseekWhence::End => *offset_ref = (file.len() as i64 + offset as i64) as u64,
-        }
+            match whence {
+                LseekWhence::Set => *offset_ref = offset as u64,
+                LseekWhence::Current => *offset_ref = (*offset_ref as i64 + offset as i64) as u64,
+                LseekWhence::End => *offset_ref = (file.len() as i64 + offset as i64) as u64,
+            }
 
-        Ok(*offset_ref as isize)
-    })
-    .unwrap_or(Err(SyscallError::NotFound))
+            Ok(*offset_ref as isize)
+        })
+        .unwrap_or(Err(SyscallError::NotFound))
 }
 
 pub enum FcntlCommand {
@@ -246,14 +254,15 @@ impl From<FcntlCommand> for i32 {
 
 pub fn fcntl(fd: FileDescriptor, cmd: FcntlCommand, _arg: u32) -> SyscallResult {
     let thread = Task::current().unwrap();
-    let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    data.fs_info().with_file_mut(fd, |_, _access_mode, open_flags, _file| match cmd {
-        FcntlCommand::GetFd => Ok(open_flags.bits() as isize),
-        FcntlCommand::SetFd => {
-            *open_flags |= OpenFlags::O_CLOEXEC;
-            Ok(0)
-        }
-    })
-    .unwrap_or(Err(SyscallError::NotFound))
+    data.fs_info()
+        .with_file_mut(fd, |_, _access_mode, open_flags, _file| match cmd {
+            FcntlCommand::GetFd => Ok(open_flags.bits() as isize),
+            FcntlCommand::SetFd => {
+                *open_flags |= OpenFlags::O_CLOEXEC;
+                Ok(0)
+            }
+        })
+        .unwrap_or(Err(SyscallError::NotFound))
 }
