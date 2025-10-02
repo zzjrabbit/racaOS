@@ -58,13 +58,14 @@ pub fn mmap(
 ) -> SyscallResult {
     let thread = Task::current().unwrap();
     let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let memory_info = data.memory_info();
 
     let protection_flags = protection.to_mmu_flags();
 
     let address = if address == 0 {
-        data.allocate(len)
+        memory_info.allocate(len)
     } else {
-        data.allocate_at(address, len)
+        memory_info.allocate_at(address, len)
     }?
     .start_address();
     log::trace!(
@@ -74,10 +75,10 @@ pub fn mmap(
         flags
     );
 
-    data.unused_region.write().push((
+    memory_info.with_unused_regions_mut(|regions| regions.push((
         MemoryRegion::new(address, len),
         PageProperty::new_user(protection_flags, CachePolicy::Writeback),
-    ));
+    )));
 
     Ok(address as isize)
 }
@@ -85,6 +86,7 @@ pub fn mmap(
 pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> SyscallResult {
     let thread = Task::current().unwrap();
     let data = thread.data().downcast_ref::<ThreadData>().unwrap();
+    let memory_info = data.memory_info();
 
     let protection_flags = protection.to_mmu_flags();
     let mut found = false;
@@ -94,26 +96,29 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
         address,
         protection_flags
     );
-
-    for (region, flags) in data.unused_region.write().iter_mut() {
-        if region.contains(address) {
-            flags.flags |= protection_flags;
-            found = true;
+    
+    memory_info.with_unused_regions_mut(|regions| {
+        for (region, flags) in regions.iter_mut() {
+            if region.contains(address) {
+                flags.flags |= protection_flags;
+                found = true;
+            }
         }
-    }
+    });
 
     if !found {
         let disable_preempt_guard = disable_preempt();
 
         let len = align_up_by_page_size(len);
+        
+        let vm_space = memory_info.vm_space();
 
-        data.vm_space
+        vm_space
             .cursor_mut(&disable_preempt_guard, &(address..address + len))?
             .protect_next(len, |flags, _| *flags |= protection_flags)
             .unwrap();
 
-        let mut cursor = data
-            .vm_space
+        let mut cursor = vm_space
             .cursor_mut(&disable_preempt_guard, &(address..address + len))?;
         cursor
             .flusher()
@@ -133,7 +138,7 @@ pub fn munmap(address: Vaddr, len: usize) -> SyscallResult {
 
     let disable_preempt_guard = disable_preempt();
 
-    data.vm_space
+    data.memory_info().vm_space()
         .cursor_mut(&disable_preempt_guard, &(address..address + len))?
         .unmap(len);
 

@@ -16,8 +16,10 @@ pub fn set_tid_address(address: Vaddr) -> SyscallResult {
     Ok(data.tid() as isize)
 }
 
-pub fn exit(_exit_code: i32) -> SyscallResult {
+pub fn exit(exit_code: i32) -> SyscallResult {
     let process = Process::current();
     ostd::early_println!("process exits");
-    process.exit();
+    process.exit(exit_code);
+    
+    Ok(0)
 }

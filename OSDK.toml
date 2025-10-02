@@ -19,6 +19,5 @@ args = """\
     -drive if=pflash,format=raw,unit=0,readonly=on,file=assets/code.fd \
     -drive if=pflash,format=raw,unit=1,file=assets/vars.fd \
     -drive id=disk,file=target/apk/rootfs.img,if=none \
-    -device ahci,id=ahci \
-    -device ide-hd,drive=disk,bus=ahci.0 \
+    -device nvme,serial=deadbeef,drive=disk \
 """

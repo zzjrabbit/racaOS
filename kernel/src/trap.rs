@@ -31,7 +31,8 @@ pub fn user_page_fault_handler(cpu_exception: &CpuException) -> Result<(), ()> {
     {
         let disable_preempt_guard = disable_preempt();
         let (_, item) = data
-            .vm_space
+            .memory_info()
+            .vm_space()
             .cursor_mut(&disable_preempt_guard, &(*addr..*addr + 1))
             .unwrap()
             .query()
@@ -46,9 +47,11 @@ pub fn user_page_fault_handler(cpu_exception: &CpuException) -> Result<(), ()> {
         frame.read_bytes(0, &mut buffer).unwrap();
 
         new_physical_memory.write_bytes(0, &buffer).unwrap();
+        
+        let memory_info = data.memory_info();
+        let vm_space = memory_info.vm_space();
 
-        let mut cursor = data
-            .vm_space
+        let mut cursor = vm_space
             .cursor_mut(&disable_preempt_guard, &(*addr..*addr + PAGE_SIZE))
             .unwrap();
         cursor.unmap(PAGE_SIZE);
@@ -61,33 +64,42 @@ pub fn user_page_fault_handler(cpu_exception: &CpuException) -> Result<(), ()> {
     } else {
         {
             let disable_preempt_guard = disable_preempt();
+            
+            let memory_info = data.memory_info();
 
-            let mut unused = data.unused_region.write();
-            let mut id = None;
-            for (index, (region, flags)) in unused.iter().enumerate() {
-                if region.contains(*addr) {
-                    let page_count = align_up_by_page_size(
-                        region.len() + region.start_address()
-                            - align_down_by_page_size(region.start_address()),
-                    ) / PAGE_SIZE;
-
-                    for page_id in 0..page_count {
-                        let address = region.start_address() + page_id * PAGE_SIZE;
-
-                        let frame = FrameAllocOptions::new().alloc_frame().unwrap();
-
-                        data.vm_space
-                            .cursor_mut(&disable_preempt_guard, &(address..address + PAGE_SIZE))
-                            .unwrap()
-                            .map(frame.into(), *flags);
+            let result = memory_info.with_unused_regions_mut(|unused| {
+                let mut id = None;
+                for (index, (region, flags)) in unused.iter().enumerate() {
+                    if region.contains(*addr) {
+                        let page_count = align_up_by_page_size(
+                            region.len() + region.start_address()
+                                - align_down_by_page_size(region.start_address()),
+                        ) / PAGE_SIZE;
+    
+                        for page_id in 0..page_count {
+                            let address = region.start_address() + page_id * PAGE_SIZE;
+    
+                            let frame = FrameAllocOptions::new().alloc_frame().unwrap();
+    
+                            memory_info.vm_space()
+                                .cursor_mut(&disable_preempt_guard, &(address..address + PAGE_SIZE))
+                                .unwrap()
+                                .map(frame.into(), *flags);
+                        }
+    
+                        id = Some(index);
                     }
-
-                    id = Some(index);
                 }
-            }
-
-            if let Some(id) = id {
-                unused.remove(id);
+    
+                if let Some(id) = id {
+                    unused.remove(id);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            })?;
+            
+            if result {
                 return Ok(());
             }
         }

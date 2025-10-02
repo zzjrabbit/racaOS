@@ -20,3 +20,4 @@ terminal = { path = "../comps/terminal" }
 logger = { version = "0.1.0", path = "../comps/logger" }
 block = { version = "0.1.0", path = "../comps/block" }
 ahci = { version = "0.1.0", path = "../comps/ahci" }
+nvme = { version = "0.1.0", path = "../comps/nvme" }

@@ -17,7 +17,7 @@ use crate::task::ThreadData;
 fn post_schedule_handler() {
     let task = Task::current().unwrap();
     if let Some(data) = task.data().downcast_ref::<ThreadData>() {
-        data.vm_space.activate();
+        data.memory_info().vm_space().activate();
     }
 }
 
@@ -47,7 +47,7 @@ impl<T> FifoScheduler<T> {
 }
 
 impl<T: CommonSchedInfo + Send + Sync> Scheduler<T> for FifoScheduler<T> {
-    fn enqueue(&self, runnable: Arc<T>, flags: EnqueueFlags) -> Option<CpuId> {
+    fn enqueue(&self, runnable: Arc<T>, _flags: EnqueueFlags) -> Option<CpuId> {
         let mut queue = self.queue.lock();
 
         for task in queue.iter() {
