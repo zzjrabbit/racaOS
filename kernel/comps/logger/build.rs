@@ -11,7 +11,7 @@ fn main() {
         .iter()
         .map(|p| p.name.clone())
         .collect();
-    
+
     println!(
         "cargo:rustc-env=WORKSPACE_MEMBERS={}",
         workspace_members.join(",")

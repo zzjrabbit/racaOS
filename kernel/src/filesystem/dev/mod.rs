@@ -43,7 +43,4 @@ pub fn init() {
     null_device.mount(null);
     zero_device.mount(zero);
     terminal_device.mount(terminal);
-
-    log::info!("Root fs: {:?}", root_fs.get_children().keys());
-    log::info!("Dev fs: {:?}", dev_fs.get_children().keys());
 }

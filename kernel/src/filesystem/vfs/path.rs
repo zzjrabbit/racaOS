@@ -78,7 +78,11 @@ impl Path {
         }
     }
 
-    pub fn join(&self, mut second: Path) -> Path {
+    pub fn join<P>(&self, second: P) -> Path
+    where
+        Path: From<P>,
+    {
+        let mut second = Path::from(second);
         let mut first = self.clone();
 
         first.delete_end_spliters();
@@ -98,9 +102,9 @@ impl Path {
     }
 }
 
-impl From<Path> for String {
-    fn from(value: Path) -> Self {
-        value.inner
+impl Path {
+    pub fn as_string(&self) -> String {
+        self.inner.clone()
     }
 }
 
@@ -139,5 +143,14 @@ impl DerefMut for Path {
 impl Display for Path {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.inner)
+    }
+}
+
+impl<S> From<S> for Path
+where
+    String: From<S>,
+{
+    fn from(value: S) -> Self {
+        Path::new(value)
     }
 }

@@ -1,13 +1,16 @@
 mod ext4;
 
 use alloc::sync::Arc;
-pub use ext4::*;
 use lwext4_rust::{
     bindings::{EINVAL, SEEK_CUR, SEEK_END, SEEK_SET},
     KernelDevOp,
 };
 
-use crate::filesystem::File;
+use crate::filesystem::{probe::register_probe, File};
+
+pub fn init() {
+    register_probe(ext4::parse_ext4_fs);
+}
 
 struct Lwext4Disk {
     inner: Arc<File>,

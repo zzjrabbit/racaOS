@@ -9,10 +9,15 @@ pub struct InodeData {
 
 #[allow(dead_code)]
 pub trait InodeOperation: Sync + Send + 'static {
+    fn file_type(&self) -> FileType {
+        FileType::File
+    }
+
     fn read_at(&self, _offset: u64, _buf: &mut [u8]) -> usize {
         log::warn!("Attempt to read unreadable inodes.");
         0
     }
+
     fn write_at(&self, _offset: u64, _buf: &[u8]) -> usize {
         log::warn!("Attempt to write to unwritable inodes.");
         0
@@ -24,6 +29,11 @@ pub trait InodeOperation: Sync + Send + 'static {
 
     fn create(&self, _name: String, _file_type: FileType) -> Option<Arc<dyn InodeOperation>> {
         log::warn!("Attempt to create sub inode for file inodes.");
+        None
+    }
+
+    fn lookup(&self, _name: String) -> Option<Arc<dyn InodeOperation>> {
+        log::warn!("Attempt to lookup sub inode for file inodes.");
         None
     }
 
@@ -49,6 +59,10 @@ impl InodeData {
         }
     }
 
+    pub fn file_type(&self) -> FileType {
+        self.inner.file_type()
+    }
+
     pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
         self.inner.read_at(offset, buf)
     }
@@ -64,6 +78,12 @@ impl InodeData {
     pub fn create(&self, name: String, file_type: FileType) -> Option<Arc<Self>> {
         Some(Arc::new(Self {
             inner: self.inner.create(name, file_type)?,
+        }))
+    }
+
+    pub fn lookup(&self, name: String) -> Option<Arc<Self>> {
+        Some(Arc::new(Self {
+            inner: self.inner.lookup(name)?,
         }))
     }
 

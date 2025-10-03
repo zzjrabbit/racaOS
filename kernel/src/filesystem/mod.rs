@@ -5,6 +5,7 @@ use thiserror::Error;
 
 mod dev;
 mod ext;
+mod probe;
 mod ramfs;
 mod vfs;
 
@@ -24,7 +25,7 @@ pub fn open_file(path: &Path) -> Option<Arc<File>> {
     let mut current = ROOT_FS.clone();
 
     for part in parts {
-        current = current.get_child(&part)?;
+        current = current.lookup(&part)?;
     }
 
     Some(current)

@@ -1,4 +1,8 @@
-use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc};
+use alloc::{
+    collections::btree_map::BTreeMap,
+    string::{String, ToString},
+    sync::Arc,
+};
 use ostd::{mm::Vaddr, Error as OstdError};
 use spin::RwLock;
 
@@ -100,19 +104,30 @@ impl File {
         }
     }
 
-    pub fn get_child(&self, name: &str) -> Option<Arc<Self>> {
+    pub fn lookup(self: &Arc<Self>, name: &str) -> Option<Arc<Self>> {
         if let Some(mount) = self.mount.read().as_ref() {
-            mount.get_child(name)
+            mount.lookup(name)
+        } else if let Some(child) = self.inner.read().children.get(name) {
+            Some(child.clone())
         } else {
-            self.inner.read().children.get(name).cloned()
-        }
-    }
+            let data = self.data.lookup(name.to_string())?;
 
-    pub fn get_children(&self) -> BTreeMap<String, Arc<Self>> {
-        if let Some(mount) = self.mount.read().as_ref() {
-            mount.get_children()
-        } else {
-            self.inner.read().children.clone()
+            let mut children = BTreeMap::new();
+            children.insert("..".to_string(), self.clone());
+
+            let file = Arc::new(File {
+                file_type: self.data.file_type(),
+                inner: RwLock::new(FileInner {
+                    path: self.path().join(name),
+                    children,
+                }),
+                data,
+                mount: RwLock::new(None),
+            });
+
+            file.add_child(file.clone());
+
+            Some(file)
         }
     }
 
@@ -164,7 +179,7 @@ impl File {
         }
     }
 
-    pub fn remove(&self, name: String) -> Option<()> {
+    pub fn remove(self: &Arc<Self>, name: String) -> Option<()> {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.remove(name)
         } else {
@@ -172,7 +187,7 @@ impl File {
                 return None;
             }
 
-            if let Some(child) = self.get_child(&name) {
+            if let Some(child) = self.lookup(&name) {
                 self.remove_child(child);
             }
 

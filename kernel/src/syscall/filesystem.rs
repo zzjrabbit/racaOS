@@ -31,9 +31,9 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
         path.push(byte);
     }
 
-    let path = Path::new(Path::new(
+    let path = Path::new(
         core::str::from_utf8(&path).map_err(|_| SyscallError::InvalidArguments)?,
-    ));
+    );
 
     if let Some(file) = open_file(&path) {
         let fd = data.fs_info().add_file(file, access_mode, open_flags);
