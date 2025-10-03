@@ -23,7 +23,8 @@
             qemu_full
             grub2_efi
             xorriso
-            alpine-make-vm-image
+            cmake
+            musl
           ];
 
           RUSTC_VERSION = overrides.toolchain.channel;
@@ -34,11 +35,14 @@
           shellHook = ''
             export PATH=$PATH:''${CARGO_HOME:-~/.cargo}/bin
             export PATH=$PATH:''${RUSTUP_HOME:-~/.rustup}/toolchains/$RUSTC_VERSION-x86_64-unknown-linux-gnu/bin/
+            rm ./bin -rf
+            mkdir ./bin
+            ln -s ${pkgs.musl.dev}/bin/musl-gcc ./bin/x86_64-linux-musl-cc
+            export PATH=$PATH:$PWD/bin
             exec zsh
           '';
           
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (buildInputs ++ nativeBuildInputs);
-
           
           # Add glibc, clang, glib, and other headers to bindgen search path
           BINDGEN_EXTRA_CLANG_ARGS =

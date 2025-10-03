@@ -88,7 +88,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         218 => set_tid_address(arg1),
         231 => exit(arg1 as i32),
         _ => {
-            log::warn!("Unimplemented syscall{}", syscall_id);
+            log::warn!(target: "kernel", "Unimplemented syscall{}", syscall_id);
             Ok(0)
         } //_ => Err(SyscallError::SyscallNotSupported),
     };
@@ -101,6 +101,7 @@ pub fn syscall_handler(context: &mut UserContext) {
     };
 
     log::info!(
+        target: "kernel",
         "syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x}) = {}",
         syscall_id,
         arg1,

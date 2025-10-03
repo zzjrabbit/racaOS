@@ -22,11 +22,16 @@ impl Logger {
 }
 
 impl log::Log for Logger {
-    fn enabled(&self, _metadata: &Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        let members = env!("WORKSPACE_MEMBERS");
+        members.split(',').any(|member| member == metadata.target())
     }
 
     fn log(&self, record: &Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
         let timestamp = ostd::timer::Jiffies::elapsed().as_duration();
 
         let secs = timestamp.as_secs();

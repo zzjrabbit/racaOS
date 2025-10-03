@@ -7,3 +7,6 @@ edition = "2024"
 ostd = { workspace = true }
 component = { workspace = true }
 log = { workspace = true }
+
+[build-dependencies]
+cargo_metadata = "0.23.0"

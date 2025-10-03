@@ -4,6 +4,7 @@ use spin::Lazy;
 use thiserror::Error;
 
 mod dev;
+mod ext;
 mod ramfs;
 mod vfs;
 
@@ -38,6 +39,8 @@ pub fn init() {
 pub enum FileSystemError {
     #[error("Inode not found")]
     InodeNotFound,
+    #[error("Invalid arguments.")]
+    InvalidArguments,
 }
 
 #[allow(non_camel_case_types)]

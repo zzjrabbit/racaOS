@@ -68,7 +68,7 @@ pub fn kernel_main() {
 }
 
 fn first_kernel_thread() {
-    println!("Running on CPU #{}!", CpuId::current_racy().as_usize());
+    log::info!("Running on CPU #{}!", CpuId::current_racy().as_usize());
     component::init_all(InitStage::Kthread, components()).unwrap();
 
     let input = open_file(&Path::new("/"))
@@ -86,7 +86,7 @@ fn first_kernel_thread() {
     )
     .unwrap();
 
-    println!("init process spawned!");
+    log::info!("init process spawned!");
 
     while hello.exit_code().is_none() {
         halt_cpu();
