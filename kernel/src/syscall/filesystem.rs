@@ -86,7 +86,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             for (id, byte) in buf.iter().enumerate() {
                 data.memory_info()
                     .vm_space()
-                    .writer(address + id as usize, 1)
+                    .writer(address + id, 1)
                     .unwrap()
                     .write_val(byte)?;
             }
@@ -112,7 +112,7 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
                 .map(|id| {
                     data.memory_info()
                         .vm_space()
-                        .reader(address + id as usize, 1)
+                        .reader(address + id, 1)
                         .unwrap()
                         .read_val::<u8>()
                 })
@@ -166,7 +166,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
                     .map(|id| {
                         data.memory_info()
                             .vm_space()
-                            .reader(base + id as usize, 1)
+                            .reader(base + id, 1)
                             .unwrap()
                             .read_val::<u8>()
                     })
@@ -264,5 +264,17 @@ pub fn fcntl(fd: FileDescriptor, cmd: FcntlCommand, _arg: u32) -> SyscallResult 
                 Ok(0)
             }
         })
+        .unwrap_or(Err(SyscallError::NotFound))
+}
+
+pub fn ioctl(fd: FileDescriptor, cmd: u32, arg: Vaddr) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+    data.fs_info()
+        .with_file_mut(fd, |_, _access_mode, _open_flags, file| {
+            file.ioctl(cmd, arg).map(|res| res as isize)
+        })
+        .map(|val| val.map_err(|error| error.into()))
         .unwrap_or(Err(SyscallError::NotFound))
 }

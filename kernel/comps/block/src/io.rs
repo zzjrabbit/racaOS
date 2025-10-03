@@ -13,10 +13,12 @@ pub struct BlockIo {
     inner: BlockIoInner,
 }
 
+type CompleteFn = Box<dyn Fn(&BlockIo)>;
+
 struct BlockIoInner {
     operation: BlockOperation,
     dma_streams: Vec<DmaStream>,
-    on_complete: Option<Box<dyn Fn(&BlockIo)>>,
+    on_complete: Option<CompleteFn>,
 }
 
 impl BlockIo {
@@ -41,7 +43,7 @@ impl BlockIo {
         }
     }
 
-    pub fn on_complete(&mut self, callback: Box<dyn Fn(&Self)>) {
+    pub fn on_complete(&mut self, callback: CompleteFn) {
         self.inner.on_complete = Some(callback);
     }
 

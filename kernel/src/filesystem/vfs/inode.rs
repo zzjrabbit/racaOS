@@ -1,4 +1,5 @@
 use alloc::{string::String, sync::Arc};
+use ostd::{mm::Vaddr, Error as OstdError};
 
 use crate::filesystem::FileType;
 
@@ -29,6 +30,11 @@ pub trait InodeOperation: Sync + Send + 'static {
     fn remove(&self, _name: String) -> Option<()> {
         log::warn!("Attempt to remove sub inode for file inodes.");
         None
+    }
+
+    fn ioctl(&self, _cmd: u32, _arg: Vaddr) -> Result<usize, OstdError> {
+        log::warn!("This inode does not support ioctl.");
+        Err(OstdError::AccessDenied)
     }
 }
 
@@ -63,5 +69,9 @@ impl InodeData {
 
     pub fn remove(&self, name: String) -> Option<()> {
         self.inner.remove(name)
+    }
+
+    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize, OstdError> {
+        self.inner.ioctl(cmd, arg)
     }
 }

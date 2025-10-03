@@ -47,7 +47,7 @@ impl DrawTarget for Display {
         let (r, g, b) = color;
 
         let base = (x + y * self.width) * 4;
-        self.buffer.write_val(base + 0, &b).unwrap();
+        self.buffer.write_val(base, &b).unwrap();
         self.buffer.write_val(base + 1, &g).unwrap();
         self.buffer.write_val(base + 2, &r).unwrap();
         self.buffer.write_val(base + 3, &0xFFu8).unwrap();
@@ -88,7 +88,7 @@ fn terminal_thread() {
 static TERMINAL_THREAD: Lazy<Arc<Task>> = Lazy::new(|| {
     let thread = Arc::new(TaskOptions::new(terminal_thread).build().unwrap());
     thread.run();
-    thread.into()
+    thread
 });
 
 pub struct Display {

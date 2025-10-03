@@ -19,7 +19,7 @@ pub trait VmReadWrite {
 
     fn write_val<T: Pod>(&self, address: usize, value: &T) -> Result<(), OstdError> {
         let buffer = value.as_bytes();
-        self.write(address, &buffer)?;
+        self.write(address, buffer)?;
         Ok(())
     }
 }
@@ -34,7 +34,7 @@ impl VmReadWrite for VmSpace {
             let current_address = address + read;
             let page_offset = current_address % PAGE_SIZE;
             let remaining = buffer.len() - read;
-            let chunk_size = (PAGE_SIZE - page_offset).min(remaining) as usize;
+            let chunk_size = (PAGE_SIZE - page_offset).min(remaining);
 
             let page_address = align_down_by_page_size(current_address);
             let (_, Some(VmQueriedItem::MappedRam { frame, prop: _ })) = self
@@ -60,7 +60,7 @@ impl VmReadWrite for VmSpace {
             let current_address = address + written;
             let page_offset = current_address % PAGE_SIZE;
             let remaining = buffer.len() - written;
-            let chunk_size = (PAGE_SIZE - page_offset).min(remaining) as usize;
+            let chunk_size = (PAGE_SIZE - page_offset).min(remaining);
 
             let page_address = align_down_by_page_size(current_address);
             let (_, Some(VmQueriedItem::MappedRam { frame, prop: _ })) = self

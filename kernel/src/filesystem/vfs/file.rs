@@ -1,4 +1,5 @@
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc};
+use ostd::{mm::Vaddr, Error as OstdError};
 use spin::RwLock;
 
 use crate::filesystem::{InodeData, InodeOperation, Path};
@@ -206,6 +207,14 @@ impl File {
             mount.len()
         } else {
             self.data.len()
+        }
+    }
+
+    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize, OstdError> {
+        if let Some(mount) = self.mount.read().as_ref() {
+            mount.ioctl(cmd, arg)
+        } else {
+            self.data.ioctl(cmd, arg)
         }
     }
 }

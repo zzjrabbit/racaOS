@@ -6,7 +6,9 @@ use block::{
 };
 use driver::DmaList;
 use ostd::mm::HasPaddr;
-use ostd::mm::{DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, HasPaddrRange, Paddr, USegment, VmIo};
+use ostd::mm::{
+    DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, HasPaddrRange, Paddr, USegment, VmIo,
+};
 
 use super::cmd::{CommandHeader, CommandTable, FisRegH2D};
 use super::hba::{HbaMemory, HbaPort};
@@ -36,10 +38,7 @@ impl BlockDevice for Ahci {
         self.execute_command(
             cmd,
             block_offset * (BLOCK_SIZE / SECTOR_SIZE) as u64,
-            io.dma_stream()
-                .iter()
-                .map(|stream| stream)
-                .collect::<Vec<_>>(),
+            io.dma_stream().iter().collect::<Vec<_>>(),
         );
 
         io.complete();
@@ -73,7 +72,7 @@ impl Ahci {
             .map(|port| unsafe { port.init_ahci() })
             .collect())
     }
-    
+
     pub fn new_from(inner: USegment) -> ostd::Result<Vec<Self>> {
         let hba_memory = HbaMemory::from_inner_offset(inner.paddr(), 0, Arc::new(inner))?;
 
@@ -94,12 +93,7 @@ impl Ahci {
 
     fn free_slot(&self) -> Option<usize> {
         let slots = self.port.sata_active.read() | self.port.command_issue.read();
-        for i in 0..32 {
-            if slots & 1 << i == 0 {
-                return Some(i);
-            }
-        }
-        None
+        (0..32).find(|&i| slots & (1 << i) == 0)
     }
 
     pub fn identity(&self) -> IdentifyData {

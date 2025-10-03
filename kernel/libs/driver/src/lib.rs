@@ -8,7 +8,7 @@ use alloc::sync::Arc;
 use ostd::{
     Pod,
     io::IoMem,
-    mm::{DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, PAGE_SIZE, Paddr, VmIo},
+    mm::{DmaCoherent, FrameAllocOptions, HasDaddr, PAGE_SIZE, Paddr, VmIo},
 };
 
 trait MmioInner {
@@ -65,18 +65,18 @@ impl<T: Pod> Mmio<T> {
 }
 
 pub struct DmaList<T: Pod> {
-    data: DmaStream,
+    data: DmaCoherent,
     _marker: PhantomData<T>,
 }
 
 impl<T: Pod> DmaList<T> {
     pub fn new(length: usize) -> Self {
         let size = length * size_of::<T>();
-        let page_count = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+        let page_count = size.div_ceil(PAGE_SIZE);
 
         let segment = FrameAllocOptions::new().alloc_segment(page_count).unwrap();
 
-        let data = DmaStream::map(segment.into(), DmaDirection::Bidirectional, false).unwrap();
+        let data = DmaCoherent::map(segment.into(), false).unwrap();
 
         Self {
             data,
@@ -88,14 +88,12 @@ impl<T: Pod> DmaList<T> {
 impl<T: Pod> DmaList<T> {
     pub fn read(&self, index: usize) -> T {
         let offset = index * size_of::<T>();
-        self.data.sync(offset..offset + size_of::<T>()).unwrap();
         self.data.read_val(offset).unwrap()
     }
 
     pub fn write(&self, index: usize, value: &T) {
         let offset = index * size_of::<T>();
         self.data.write_val(offset, value).unwrap();
-        self.data.sync(offset..offset + size_of::<T>()).unwrap();
     }
 
     pub fn with_value<F, R>(&self, index: usize, f: F) -> R

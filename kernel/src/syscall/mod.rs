@@ -74,6 +74,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         ),
         10 => mprotect(arg1, arg2, MMapProtection::from_bits_truncate(arg3 as i32)),
         11 => munmap(arg1, arg2),
+        16 => ioctl(arg1 as FileDescriptor, arg2 as u32, arg3 as Vaddr),
         20 => writev(arg1 as FileDescriptor, arg2 as Vaddr, arg3),
         60 => exit(arg1 as i32),
         63 => uname(arg1 as Vaddr),

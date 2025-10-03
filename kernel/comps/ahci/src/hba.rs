@@ -32,8 +32,8 @@ impl<I: VmIo + 'static> HbaMemory<I> {
         Ok(Self {
             base: address,
             inner: None,
-            capability: Mmio::new(address + 0 * 4)?,
-            global_host_control: Mmio::new(address + 1 * 4)?,
+            capability: Mmio::new(address)?,
+            global_host_control: Mmio::new(address + 4)?,
             interrupt_status: Mmio::new(address + 2 * 4)?,
             port_implemented: Mmio::new(address + 3 * 4)?,
             version: Mmio::new(address + 4 * 4)?,
@@ -46,16 +46,12 @@ impl<I: VmIo + 'static> HbaMemory<I> {
         })
     }
 
-    pub fn from_inner_offset(
-        address: Paddr,
-        offset: usize,
-        inner: Arc<I>,
-    ) -> ostd::Result<Self> {
+    pub fn from_inner_offset(address: Paddr, offset: usize, inner: Arc<I>) -> ostd::Result<Self> {
         Ok(Self {
             base: address + offset,
             inner: Some(inner.clone()),
-            capability: Mmio::new_from(inner.clone(), offset + 0 * 4),
-            global_host_control: Mmio::new_from(inner.clone(), offset + 1 * 4),
+            capability: Mmio::new_from(inner.clone(), offset),
+            global_host_control: Mmio::new_from(inner.clone(), offset + 4),
             interrupt_status: Mmio::new_from(inner.clone(), offset + 2 * 4),
             port_implemented: Mmio::new_from(inner.clone(), offset + 3 * 4),
             version: Mmio::new_from(inner.clone(), offset + 4 * 4),
@@ -120,7 +116,7 @@ pub struct HbaPort {
 impl HbaPort {
     pub fn from_address(address: Paddr) -> ostd::Result<Self> {
         Ok(Self {
-            command_list_base_address: Mmio::new(address + 0x00)?,
+            command_list_base_address: Mmio::new(address)?,
             fis_base_address: Mmio::new(address + 0x08)?,
             interrupt_status: Mmio::new(address + 0x10)?,
             interrupt_enable: Mmio::new(address + 0x14)?,
@@ -137,13 +133,13 @@ impl HbaPort {
             fis_based_switch_control: Mmio::new(address + 0x40)?,
         })
     }
-    
+
     pub fn from_inner_offset<I: VmIo + 'static>(
         offset: usize,
         inner: Arc<I>,
     ) -> ostd::Result<Self> {
         Ok(Self {
-            command_list_base_address: Mmio::new_from(inner.clone(), offset + 0x00),
+            command_list_base_address: Mmio::new_from(inner.clone(), offset),
             fis_base_address: Mmio::new_from(inner.clone(), offset + 0x08),
             interrupt_status: Mmio::new_from(inner.clone(), offset + 0x10),
             interrupt_enable: Mmio::new_from(inner.clone(), offset + 0x14),

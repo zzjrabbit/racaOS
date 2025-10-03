@@ -7,7 +7,6 @@ use alloc::{sync::Arc, vec::Vec};
 use block::register_device;
 use component::{ComponentInitError, init_component};
 use ostd::{
-    io::IoMem,
     mm::{FrameAllocOptions, HasPaddr, USegment},
     sync::Mutex,
 };

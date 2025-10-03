@@ -51,7 +51,7 @@ impl<T: CommonSchedInfo + Send + Sync> Scheduler<T> for FifoScheduler<T> {
         let mut queue = self.queue.lock();
 
         for task in queue.iter() {
-            if Arc::ptr_eq(&task, &runnable) {
+            if Arc::ptr_eq(task, &runnable) {
                 return None;
             }
         }
@@ -108,7 +108,11 @@ impl<T: CommonSchedInfo> LocalRunQueue<T> for FifoRunQueue<T> {
 
         let next_task = loop {
             let next_task = queue.pop_front()?;
-            if let Ok(_) = next_task.cpu().set_if_is_none(CpuId::current_racy()) {
+            if next_task
+                .cpu()
+                .set_if_is_none(CpuId::current_racy())
+                .is_ok()
+            {
                 break next_task;
             }
             queue.push_back(next_task);
