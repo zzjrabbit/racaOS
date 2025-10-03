@@ -10,6 +10,7 @@ mod device;
 mod resolver;
 
 pub use device::*;
+pub use pci_types::*;
 
 use resolver::PciResolver;
 use spin::Lazy;

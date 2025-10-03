@@ -37,10 +37,13 @@ dependencies = [
 name = "ahci"
 version = "0.1.0"
 dependencies = [
+ "bit_field",
  "block",
  "component",
+ "driver",
  "log",
  "ostd",
+ "pci",
 ]
 
 [[package]]
@@ -250,6 +253,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a41953f86f8a05768a6cda24def994fd2f424b04ec5c719cf89989779f199071"
 dependencies = [
  "powerfmt",
+]
+
+[[package]]
+name = "driver"
+version = "0.1.0"
+dependencies = [
+ "ostd",
 ]
 
 [[package]]
@@ -1031,6 +1041,7 @@ name = "terminal"
 version = "0.1.0"
 dependencies = [
  "component",
+ "log",
  "os-terminal",
  "ostd",
  "spin 0.10.0",

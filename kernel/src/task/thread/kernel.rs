@@ -28,8 +28,8 @@ pub fn create_kernel_thread(entry: fn()) -> Arc<Task> {
             .build()
             .unwrap()
     });
-    
+
     thread.run();
-    
+
     thread
 }

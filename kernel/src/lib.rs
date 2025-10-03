@@ -8,7 +8,11 @@ use core::panic::PanicInfo;
 
 use component::InitStage;
 use ostd::{
-    arch::qemu::{QemuExitCode, exit_qemu}, boot::smp::register_ap_entry, cpu::CpuId, prelude::*, task::{halt_cpu, scheduler::enable_preemption_on_cpu}
+    arch::qemu::{exit_qemu, QemuExitCode},
+    boot::smp::register_ap_entry,
+    cpu::CpuId,
+    prelude::*,
+    task::{halt_cpu, scheduler::enable_preemption_on_cpu},
 };
 
 use crate::{
@@ -87,13 +91,13 @@ fn first_kernel_thread() {
     while hello.exit_code().is_none() {
         halt_cpu();
     }
-    
+
     log::error!("Init process exited.");
-    
+
     loop {
         halt_cpu();
     }
-    
+
     /*exit_qemu(QemuExitCode::Failed);*/
 }
 

@@ -8,12 +8,7 @@
 
 extern crate alloc;
 
-use alloc::{
-    collections::BTreeMap,
-    fmt::Debug,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{fmt::Debug, string::String, vec::Vec};
 
 pub use comp_macro::*;
 use log::{debug, error, info};
@@ -97,27 +92,17 @@ pub fn init_all(
     stage: InitStage,
     components: Vec<&ComponentRegistry>,
 ) -> Result<(), ComponentSystemInitError> {
-    let components_info = parse_input(components);
-    match_and_call(stage, components_info)?;
+    match_and_call(stage, components)?;
     Ok(())
-}
-
-fn parse_input(components: Vec<&ComponentRegistry>) -> BTreeMap<String, &ComponentRegistry> {
-    debug!("All component:{components:?}");
-    let mut out = BTreeMap::new();
-    for component in components {
-        out.insert(component.path.to_string(), component);
-    }
-    out
 }
 
 /// Match the ComponentInfo with ComponentRegistry. The key is the relative path of one component
 fn match_and_call(
     stage: InitStage,
-    components: BTreeMap<String, &ComponentRegistry>,
+    components: Vec<&ComponentRegistry>,
 ) -> Result<(), ComponentSystemInitError> {
     let mut components_to_init = Vec::new();
-    for component in components.values() {
+    for component in components {
         if component.stage != stage {
             continue;
         }

@@ -16,7 +16,7 @@ pub struct BlockIo {
 struct BlockIoInner {
     operation: BlockOperation,
     dma_streams: Vec<DmaStream>,
-    on_complete: Option<Box<dyn Fn()>>,
+    on_complete: Option<Box<dyn Fn(&BlockIo)>>,
 }
 
 impl BlockIo {
@@ -41,7 +41,7 @@ impl BlockIo {
         }
     }
 
-    pub fn on_complete(&mut self, callback: Box<dyn Fn()>) {
+    pub fn on_complete(&mut self, callback: Box<dyn Fn(&Self)>) {
         self.inner.on_complete = Some(callback);
     }
 
@@ -73,7 +73,7 @@ impl BlockIo {
 impl BlockIo {
     pub fn complete(&self) {
         if let Some(callback) = self.inner.on_complete.as_ref() {
-            callback();
+            callback(self);
         }
     }
 

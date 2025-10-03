@@ -2,7 +2,7 @@ project_type = "kernel"
 
 [boot]
 method = "grub-rescue-iso"
-kcmd_args = ["ostd.log_level=DEBUG\ninsmod efi_gop"]
+kcmd_args = ["ostd.log_level=INFO\ninsmod efi_gop"]
 
 [grub]
 boot_protocol = "multiboot2"
@@ -19,6 +19,7 @@ args = """\
     -drive if=pflash,format=raw,unit=0,readonly=on,file=assets/code.fd \
     -drive if=pflash,format=raw,unit=1,file=assets/vars.fd \
     -drive id=disk,file=target/apk/rootfs.img,if=none \
-    -device nvme,serial=deadbeef,drive=disk \
+    -device ahci,id=ahci0 \
+    -device ide-hd,drive=disk,bus=ahci0.0 \
      -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
 """

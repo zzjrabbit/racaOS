@@ -6,7 +6,7 @@ use pci_types::{capability::PciCapability, device_type::DeviceType, *};
 
 use alloc::vec::Vec;
 
-struct PciAccess;
+pub(crate) struct PciAccess;
 
 impl ConfigRegionAccess for PciAccess {
     unsafe fn read(&self, address: PciAddress, offset: u16) -> u32 {
@@ -69,31 +69,11 @@ impl PciResolver {
             return;
         }
 
-        let endpoint_bars = |header: &EndpointHeader| {
-            let mut bars = [None; 6];
-            let mut skip_next = false;
-
-            for (index, bar_slot) in bars.iter_mut().enumerate() {
-                if skip_next {
-                    skip_next = false;
-                    continue;
-                }
-                let bar = header.bar(index as u8, &self.access);
-                if let Some(Bar::Memory64 { .. }) = bar {
-                    skip_next = true;
-                }
-                *bar_slot = bar;
-            }
-
-            bars
-        };
-
         match header.header_type(&self.access) {
             HeaderType::Endpoint => {
                 let mut endpoint_header = EndpointHeader::from_header(header, &self.access)
                     .expect("Invalid endpoint header");
 
-                let bars = endpoint_bars(&endpoint_header);
                 let device_type = DeviceType::from((class, sub_class));
 
                 endpoint_header.capabilities(&self.access).for_each(
@@ -122,7 +102,6 @@ impl PciResolver {
                     interface,
                     device_type,
                     revision,
-                    bars,
                 };
 
                 self.devices.push(device);

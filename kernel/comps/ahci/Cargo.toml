@@ -8,3 +8,6 @@ ostd = { workspace = true }
 component = { workspace = true }
 log = { workspace = true }
 block = { version = "0.1.0", path = "../block" }
+bit_field = "0.10.3"
+driver = { version = "0.1.0", path = "../../libs/driver" }
+pci = { version = "0.1.0", path = "../pci" }

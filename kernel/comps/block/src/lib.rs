@@ -11,7 +11,7 @@ mod manager;
 
 extern crate alloc;
 
-pub use device::BlockDevice;
+pub use device::{BlockDevice, BlockDeviceError, BlockMetadata};
 pub use io::{BlockIo, BlockOperation};
 
 use crate::manager::DeviceManager;

@@ -15,9 +15,9 @@ time = { version = "0.3.44", default-features = false }
 ostd = { workspace = true }
 component = { workspace = true }
 log = { workspace = true }
-pci = { path = "../comps/pci" }
-terminal = { path = "../comps/terminal" }
-logger = { version = "0.1.0", path = "../comps/logger" }
-block = { version = "0.1.0", path = "../comps/block" }
-ahci = { version = "0.1.0", path = "../comps/ahci" }
-nvme = { version = "0.1.0", path = "../comps/nvme" }
+pci = { path = "comps/pci" }
+terminal = { path = "comps/terminal" }
+logger = { version = "0.1.0", path = "comps/logger" }
+block = { version = "0.1.0", path = "comps/block" }
+ahci = { version = "0.1.0", path = "comps/ahci" }
+nvme = { version = "0.1.0", path = "comps/nvme" }

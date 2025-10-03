@@ -104,6 +104,8 @@ impl Default for Display {
         let address = frame_buffer.address;
         let len = frame_buffer.width * frame_buffer.height * frame_buffer.bpp;
 
+        log::info!("Display MMIO address: {:x}..{:x}", address, address + len);
+
         Self {
             width: frame_buffer.width,
             height: frame_buffer.height,
