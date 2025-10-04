@@ -2,7 +2,7 @@ use alloc::{boxed::Box, format, sync::Arc, vec::Vec};
 use block::register_callback;
 use spin::RwLock;
 
-use crate::filesystem::{File, FileSystemError, FileType, Path, block::BlockInode, open_file};
+use crate::filesystem::{block::BlockInode, open_file, File, FileSystemError, FileType, Path};
 
 type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>, FileSystemError>;
 
@@ -15,10 +15,14 @@ pub(super) fn init() {
         let disk_file = dev_fs
             .create(format!("{}", device.metadata().device_type), FileType::File)
             .unwrap();
-        let disk = File::new(Path::from(""), BlockInode::new(device), FileType::BlockDevice);
-        
-        disk.mount(disk_file);
-        let _ = probe(disk);
+        let disk = File::new(
+            Path::from(""),
+            BlockInode::new(device),
+            FileType::BlockDevice,
+        );
+
+        disk.mount(disk_file.clone());
+        let _ = probe(disk_file);
     }));
 }
 

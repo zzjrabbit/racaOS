@@ -9,10 +9,13 @@ use crate::filesystem::{ext::Lwext4Disk, File, FileSystemError, FileType, InodeO
 
 pub fn parse_ext4_fs(dev: Arc<File>) -> Result<Arc<File>, FileSystemError> {
     let disk = Lwext4Disk::new(dev);
+    log::info!("parse");
     let ext4 =
         Ext4BlockWrapper::<Lwext4Disk>::new(disk).map_err(|_| FileSystemError::InvalidArguments)?;
 
+    log::info!("parse");
     let root = Arc::new(Ext4Root::new(ext4));
+    log::info!("parse");
 
     static ROOTS: RwLock<Vec<Arc<Ext4Root>>> = RwLock::new(Vec::new());
 

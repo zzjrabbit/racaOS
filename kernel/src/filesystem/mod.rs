@@ -34,9 +34,9 @@ pub fn open_file(path: &Path) -> Option<Arc<File>> {
 
 pub fn init() {
     dev::init();
-    
+
     ext::init();
-    
+
     probe::init();
 }
 

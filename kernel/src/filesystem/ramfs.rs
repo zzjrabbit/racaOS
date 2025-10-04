@@ -17,6 +17,8 @@ impl RamInode {
 
 impl InodeOperation for RamInode {
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
+        log::info!("read ram fs {} bytes at {}", buf.len(), offset);
+
         let offset = offset as usize;
 
         let len = buf.len().min(self.data.read().len() - offset);

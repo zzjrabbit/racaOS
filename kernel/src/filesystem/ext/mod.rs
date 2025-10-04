@@ -27,21 +27,27 @@ impl KernelDevOp for Lwext4Disk {
     type DevType = Lwext4Disk;
 
     fn read(dev: &mut Self::DevType, buf: &mut [u8]) -> Result<usize, i32> {
+        log::info!("lwext4 read");
         Ok(dev.inner.read_at(dev.offset, buf))
     }
 
     fn write(dev: &mut Self::DevType, buf: &[u8]) -> Result<usize, i32> {
-        Ok(dev.inner.write_at(dev.offset, buf))
+        log::info!("lwext4 write {:p}", buf.as_ptr());
+        let r = dev.inner.write_at(dev.offset, buf);
+        log::info!("written {}/{}", r, buf.len());
+        Ok(r)
     }
 
     fn flush(_dev: &mut Self::DevType) -> Result<usize, i32>
     where
         Self: Sized,
     {
+        log::info!("lwext4 flush");
         Ok(0)
     }
 
     fn seek(dev: &mut Self::DevType, off: i64, whence: i32) -> Result<i64, i32> {
+        log::info!("lwext4 seek");
         let new_offset = match whence as u32 {
             SEEK_CUR => dev.offset.checked_add_signed(off).ok_or(-(EINVAL as i32))?,
             SEEK_SET => off as u64,

@@ -23,8 +23,16 @@ impl Logger {
 
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
+        const EXTRA: &[&str] = &["lwext4_rust"];
+
         let members = env!("WORKSPACE_MEMBERS");
-        members.split(',').any(|member| member == metadata.target())
+        members
+            .split(',')
+            .any(|member| metadata.target().starts_with(member))
+            || EXTRA
+                .iter()
+                .any(|extra| metadata.target().starts_with(extra))
+            || metadata.target().is_empty()
     }
 
     fn log(&self, record: &Record) {

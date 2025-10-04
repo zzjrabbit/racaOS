@@ -23,9 +23,11 @@ impl InodeOperation for BlockInode {
     }
 
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
+        log::info!("read {} bytes at {}", buf.len(), offset);
+
         let len = buf.len();
         let bio = BlockIo::new(BlockOperation::Read, len.div_ceil(BLOCK_SIZE));
-        
+
         let Ok(waiter) = bio.commit(offset / BLOCK_SIZE as u64, self.device.clone()) else {
             return 0;
         };
@@ -34,12 +36,12 @@ impl InodeOperation for BlockInode {
 
         len
     }
-    
+
     fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
         let len = buf.len();
         let bio = BlockIo::new(BlockOperation::Write, len.div_ceil(BLOCK_SIZE));
         bio.write(offset as usize, buf);
-        
+
         let Ok(waiter) = bio.commit(offset / BLOCK_SIZE as u64, self.device.clone()) else {
             return 0;
         };

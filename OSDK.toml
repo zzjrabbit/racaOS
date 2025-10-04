@@ -3,6 +3,7 @@ project_type = "kernel"
 [boot]
 method = "grub-rescue-iso"
 kcmd_args = ["ostd.log_level=INFO\ninsmod efi_gop"]
+initramfs = "initrd.img"
 
 [grub]
 boot_protocol = "multiboot2"

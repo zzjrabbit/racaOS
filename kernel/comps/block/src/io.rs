@@ -2,8 +2,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo},
-    sync::WaitQueue,
+    mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo}, sync::WaitQueue,
 };
 
 use crate::{BLOCK_SIZE, BlockDevice, BlockDeviceError};
@@ -48,7 +47,7 @@ impl BlockIo {
 
     pub fn read(&self, offset: usize, buffer: &mut [u8]) {
         let mut read: usize = 0;
-        
+
         while read < buffer.len() {
             let current = offset + read;
             let block_offset = current % BLOCK_SIZE;
@@ -58,7 +57,9 @@ impl BlockIo {
             let block_id = current / BLOCK_SIZE;
             let block = &self.inner.dma_streams[block_id];
             block.sync(0..BLOCK_SIZE).unwrap();
-            block.read_bytes(block_offset, &mut buffer[read..read + chunk_size]).unwrap();
+            block
+                .read_bytes(block_offset, &mut buffer[read..read + chunk_size])
+                .unwrap();
 
             read += chunk_size;
         }
@@ -75,7 +76,9 @@ impl BlockIo {
 
             let block_id = current / BLOCK_SIZE;
             let block = &self.inner.dma_streams[block_id];
-            block.write_bytes(block_offset, &buffer[written..written + chunk_size]).unwrap();
+            block
+                .write_bytes(block_offset, &buffer[written..written + chunk_size])
+                .unwrap();
             block.sync(0..BLOCK_SIZE).unwrap();
 
             written += chunk_size;
@@ -128,7 +131,6 @@ impl BlockIoWaiter {
 
 impl BlockIoWaiter {
     pub fn wait(&self) {
-        self.wait_queue
-            .wait_until(|| self.bio.complete.load(Ordering::SeqCst).then_some(()));
+        self.wait_queue.wait_until(|| self.bio.complete.load(Ordering::SeqCst).then_some(()));
     }
 }

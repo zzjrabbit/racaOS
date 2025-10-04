@@ -1,6 +1,5 @@
 use core::{
     fmt::Display,
-    ops::Range,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -42,8 +41,10 @@ impl Display for BlockDeviceType {
 
 #[derive(Error, Debug)]
 pub enum BlockDeviceError {
-    #[error("Block number {0} out of {1:?}.")]
-    BlockNumberOutOfBounds(u64, Range<u64>),
+    #[error("Failed to read.")]
+    ReadError,
+    #[error("Failed to write.")]
+    WriteError,
 }
 
 pub trait BlockDevice: Sync + Send {

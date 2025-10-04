@@ -104,7 +104,5 @@ fn first_kernel_thread() {
 #[ostd::panic_handler]
 pub fn panic_handler(info: &PanicInfo) -> ! {
     println!("panic: {}", info);
-    loop {
-        halt_cpu();
-    }
+    loop {}
 }

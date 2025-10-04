@@ -22,3 +22,4 @@ block = { version = "0.1.0", path = "comps/block" }
 ahci = { version = "0.1.0", path = "comps/ahci" }
 nvme = { version = "0.1.0", path = "comps/nvme" }
 lwext4_rust = { git = "https://github.com/elliott10/lwext4_rust", version = "0.2.0" }
+ramdisk = { version = "0.1.0", path = "comps/ramdisk" }
