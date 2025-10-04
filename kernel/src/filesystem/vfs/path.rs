@@ -10,6 +10,7 @@ pub struct Path {
     inner: String,
 }
 
+#[allow(dead_code)]
 impl Path {
     pub fn new<S>(path: S) -> Path
     where
@@ -102,6 +103,7 @@ impl Path {
     }
 }
 
+#[allow(dead_code)]
 impl Path {
     pub fn as_string(&self) -> String {
         self.inner.clone()

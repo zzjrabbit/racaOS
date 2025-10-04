@@ -1,11 +1,26 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{boxed::Box, format, sync::Arc, vec::Vec};
+use block::register_callback;
 use spin::RwLock;
 
-use crate::filesystem::{File, FileSystemError};
+use crate::filesystem::{File, FileSystemError, FileType, Path, block::BlockInode, open_file};
 
 type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>, FileSystemError>;
 
 static FILE_SYSTEMS: RwLock<Vec<FileSystemProbe>> = RwLock::new(Vec::new());
+
+pub(super) fn init() {
+    register_callback(Box::new(|device| {
+        let dev_fs = open_file(&Path::from("/dev")).unwrap();
+
+        let disk_file = dev_fs
+            .create(format!("{}", device.metadata().device_type), FileType::File)
+            .unwrap();
+        let disk = File::new(Path::from(""), BlockInode::new(device), FileType::BlockDevice);
+        
+        disk.mount(disk_file);
+        let _ = probe(disk);
+    }));
+}
 
 pub(super) fn register_probe(probe: FileSystemProbe) {
     FILE_SYSTEMS.write().push(probe);

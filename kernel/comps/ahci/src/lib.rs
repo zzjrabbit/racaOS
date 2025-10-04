@@ -52,7 +52,7 @@ pub fn init() -> Result<(), ComponentInitError> {
                     "AHCI Device {:x}!",
                     ahci_device.identity().block_count * 512
                 );
-                register_device(ahci_device.identity().serial_number, Arc::new(ahci_device));
+                register_device(Arc::new(ahci_device));
             }
         }
     }

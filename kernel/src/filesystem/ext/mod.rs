@@ -55,3 +55,7 @@ impl KernelDevOp for Lwext4Disk {
         Ok(new_offset as i64)
     }
 }
+
+#[allow(unsafe_code)]
+#[no_mangle]
+unsafe extern "C" fn __stack_chk_fail() {}

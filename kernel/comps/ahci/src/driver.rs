@@ -2,7 +2,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bit_field::BitField;
 use block::{
-    BLOCK_SIZE, BlockDevice, BlockDeviceError, BlockIo, BlockMetadata, BlockOperation, SECTOR_SIZE,
+    BLOCK_SIZE, BlockDevice, BlockDeviceError, BlockDeviceType, BlockIo, BlockMetadata,
+    BlockOperation, SECTOR_SIZE,
 };
 use driver::DmaList;
 use ostd::mm::HasPaddr;
@@ -50,6 +51,7 @@ impl BlockDevice for Ahci {
         let identity = self.identity();
         BlockMetadata {
             total_sectors: identity.block_count,
+            device_type: BlockDeviceType::Sata,
         }
     }
 }

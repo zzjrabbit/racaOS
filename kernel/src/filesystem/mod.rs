@@ -3,6 +3,7 @@ use bitflags::bitflags;
 use spin::Lazy;
 use thiserror::Error;
 
+mod block;
 mod dev;
 mod ext;
 mod probe;
@@ -33,6 +34,10 @@ pub fn open_file(path: &Path) -> Option<Arc<File>> {
 
 pub fn init() {
     dev::init();
+    
+    ext::init();
+    
+    probe::init();
 }
 
 #[allow(dead_code)]

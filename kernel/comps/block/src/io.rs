@@ -1,7 +1,12 @@
-use alloc::{boxed::Box, vec::Vec};
-use ostd::mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo};
+use core::sync::atomic::{AtomicBool, Ordering};
 
-use crate::BLOCK_SIZE;
+use alloc::{sync::Arc, vec::Vec};
+use ostd::{
+    mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo},
+    sync::WaitQueue,
+};
+
+use crate::{BLOCK_SIZE, BlockDevice, BlockDeviceError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BlockOperation {
@@ -10,15 +15,13 @@ pub enum BlockOperation {
 }
 
 pub struct BlockIo {
-    inner: BlockIoInner,
+    inner: Arc<BlockIoInner>,
 }
-
-type CompleteFn = Box<dyn Fn(&BlockIo)>;
 
 struct BlockIoInner {
     operation: BlockOperation,
     dma_streams: Vec<DmaStream>,
-    on_complete: Option<CompleteFn>,
+    complete: AtomicBool,
 }
 
 impl BlockIo {
@@ -35,48 +38,69 @@ impl BlockIo {
             .collect::<Vec<_>>();
 
         Self {
-            inner: BlockIoInner {
+            inner: Arc::new(BlockIoInner {
                 operation,
                 dma_streams,
-                on_complete: None,
-            },
+                complete: AtomicBool::new(false),
+            }),
         }
     }
 
-    pub fn on_complete(&mut self, callback: CompleteFn) {
-        self.inner.on_complete = Some(callback);
-    }
+    pub fn read(&self, offset: usize, buffer: &mut [u8]) {
+        let mut read: usize = 0;
+        
+        while read < buffer.len() {
+            let current = offset + read;
+            let block_offset = current % BLOCK_SIZE;
+            let remaining = buffer.len() - read;
+            let chunk_size = (BLOCK_SIZE - block_offset).min(remaining) as usize;
 
-    pub fn read(&self, buf: &mut [u8]) {
-        for (id, stream) in self.inner.dma_streams.iter().enumerate() {
-            stream
-                .read_bytes(
-                    id * BLOCK_SIZE,
-                    &mut buf[id * BLOCK_SIZE..(id + 1) * BLOCK_SIZE],
-                )
-                .unwrap();
-            stream.sync(0..BLOCK_SIZE).unwrap();
+            let block_id = current / BLOCK_SIZE;
+            let block = &self.inner.dma_streams[block_id];
+            block.sync(0..BLOCK_SIZE).unwrap();
+            block.read_bytes(block_offset, &mut buffer[read..read + chunk_size]).unwrap();
+
+            read += chunk_size;
         }
     }
 
-    pub fn write(&self, buf: &[u8]) {
-        for (id, stream) in self.inner.dma_streams.iter().enumerate() {
-            stream
-                .write_bytes(
-                    id * BLOCK_SIZE,
-                    &buf[id * BLOCK_SIZE..(id + 1) * BLOCK_SIZE],
-                )
-                .unwrap();
-            stream.sync(0..BLOCK_SIZE).unwrap();
+    pub fn write(&self, offset: usize, buffer: &[u8]) {
+        let mut written: usize = 0;
+
+        while written < buffer.len() {
+            let current = offset + written;
+            let block_offset = current % BLOCK_SIZE;
+            let remaining = buffer.len() - written;
+            let chunk_size = (BLOCK_SIZE - block_offset).min(remaining) as usize;
+
+            let block_id = current / BLOCK_SIZE;
+            let block = &self.inner.dma_streams[block_id];
+            block.write_bytes(block_offset, &buffer[written..written + chunk_size]).unwrap();
+            block.sync(0..BLOCK_SIZE).unwrap();
+
+            written += chunk_size;
         }
+    }
+
+    pub fn commit(
+        &self,
+        block_offset: u64,
+        device: Arc<dyn BlockDevice>,
+    ) -> Result<BlockIoWaiter, BlockDeviceError> {
+        device
+            .commit_io(
+                block_offset,
+                Self {
+                    inner: self.inner.clone(),
+                },
+            )
+            .map(|_| BlockIoWaiter::new(self.inner.clone()))
     }
 }
 
 impl BlockIo {
     pub fn complete(&self) {
-        if let Some(callback) = self.inner.on_complete.as_ref() {
-            callback(self);
-        }
+        self.inner.complete.store(true, Ordering::SeqCst);
     }
 
     pub fn dma_stream(&self) -> &[DmaStream] {
@@ -85,5 +109,26 @@ impl BlockIo {
 
     pub fn operation(&self) -> BlockOperation {
         self.inner.operation
+    }
+}
+
+pub struct BlockIoWaiter {
+    bio: Arc<BlockIoInner>,
+    wait_queue: WaitQueue,
+}
+
+impl BlockIoWaiter {
+    fn new(bio: Arc<BlockIoInner>) -> Self {
+        Self {
+            bio,
+            wait_queue: WaitQueue::new(),
+        }
+    }
+}
+
+impl BlockIoWaiter {
+    pub fn wait(&self) {
+        self.wait_queue
+            .wait_until(|| self.bio.complete.load(Ordering::SeqCst).then_some(()));
     }
 }

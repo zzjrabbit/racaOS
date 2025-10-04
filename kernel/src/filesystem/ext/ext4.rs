@@ -21,6 +21,7 @@ pub fn parse_ext4_fs(dev: Arc<File>) -> Result<Arc<File>, FileSystemError> {
     Ok(root.root())
 }
 
+#[allow(dead_code)]
 pub struct Ext4Root {
     inner: RwLock<Ext4BlockWrapper<Lwext4Disk>>,
     file: Arc<File>,
