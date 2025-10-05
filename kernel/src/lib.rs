@@ -24,7 +24,6 @@ use crate::{
 extern crate alloc;
 
 mod comps;
-mod drivers;
 mod filesystem;
 mod mem;
 mod syscall;
@@ -51,8 +50,7 @@ pub fn kernel_main() {
     task::init();
     syscall::init();
     filesystem::init();
-    drivers::init();
-
+    
     register_ap_entry(ap_entry);
 
     enable_preemption_on_cpu();

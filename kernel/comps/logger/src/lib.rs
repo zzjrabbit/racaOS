@@ -1,6 +1,6 @@
 #![no_std]
 
-use alloc::{boxed::Box, format};
+use alloc::{boxed::Box, format, vec::Vec};
 use component::{ComponentInitError, init_component};
 use log::{Metadata, Record};
 use ostd::prelude::println;
@@ -24,10 +24,11 @@ impl Logger {
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         const EXTRA: &[&str] = &["lwext4_rust"];
-
+        
         let members = env!("WORKSPACE_MEMBERS");
-        members
-            .split(',')
+        let members = members.split(',').collect::<Vec<_>>();
+        
+        members.iter()
             .any(|member| metadata.target().starts_with(member))
             || EXTRA
                 .iter()

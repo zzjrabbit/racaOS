@@ -392,6 +392,7 @@ name = "driver"
 version = "0.1.0"
 dependencies = [
  "ostd",
+ "time",
 ]
 
 [[package]]
@@ -652,11 +653,11 @@ dependencies = [
  "log",
  "logger",
  "lwext4_rust",
+ "network",
  "nvme",
  "ostd",
  "pci",
  "ramdisk",
- "smoltcp",
  "spin 0.10.0",
  "terminal",
  "thiserror",
@@ -795,6 +796,22 @@ checksum = "6892f2795001adb0f6e4c124de90b68f9edc4bf52b8d81b14dac45cb361f1cca"
 dependencies = [
  "ptr_meta 0.3.1",
  "thiserror",
+]
+
+[[package]]
+name = "network"
+version = "0.1.0"
+dependencies = [
+ "bit_field",
+ "bitflags 2.9.4",
+ "block",
+ "component",
+ "driver",
+ "log",
+ "ostd",
+ "pci",
+ "smoltcp",
+ "spin 0.10.0",
 ]
 
 [[package]]

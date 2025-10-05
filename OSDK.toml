@@ -14,7 +14,7 @@ args = """\
     -machine q35 \
     -cpu host,+x2apic \
     --no-reboot \
-    -m 1G \
+    -m 4G \
     -smp cores=4 \
     -serial stdio \
     -drive if=pflash,format=raw,unit=0,readonly=on,file=assets/code.fd \
@@ -22,5 +22,6 @@ args = """\
     -drive id=disk,file=target/apk/rootfs.img,if=none \
     -device ahci,id=ahci0 \
     -device ide-hd,drive=disk,bus=ahci0.0 \
-     -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+    -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+    -nic user,model=e1000 \
 """

@@ -102,9 +102,10 @@ impl Default for Display {
         let frame_buffer = boot_info().framebuffer_arg.as_ref().unwrap();
 
         let address = frame_buffer.address;
-        let len = frame_buffer.width * frame_buffer.height * frame_buffer.bpp;
+        let len = frame_buffer.width * frame_buffer.height * frame_buffer.bpp / 8;
 
-        log::info!("Display MMIO address: {:x}..{:x}", address, address + len);
+        log::info!(target: "kernel", "{}x{}x{}", frame_buffer.width, frame_buffer.height, frame_buffer.bpp);
+        log::info!(target: "kernel", "Display MMIO address: {:x}..{:x}", address, address + len);
 
         Self {
             width: frame_buffer.width,

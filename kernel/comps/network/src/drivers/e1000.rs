@@ -1,48 +1,33 @@
 #![allow(unsafe_code)]
 
-use alloc::slice;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use driver::{DateTime, DmaList, Mmio};
+use ostd::Pod;
+use ostd::mm::{DmaCoherent, FrameAllocOptions, HasDaddr, PAGE_SIZE, VmIo, VmIoFill};
+use pci::get_pci_devices;
 use core::mem::size_of;
 use core::sync::atomic::{Ordering, fence};
-use smoltcp::iface::{Config, Interface, SocketSet};
+use smoltcp::iface::{Config, Interface, PollResult, SocketSet};
 use smoltcp::phy::{self, DeviceCapabilities};
 use smoltcp::socket::dhcpv4::{Event, Socket};
 use smoltcp::time::{Duration, Instant};
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpCidr};
-use spin::Mutex;
-use ostd::bus::pci::PCI_BUS;
-use ostd::arch::device::cmos::CMOS_DATA;
-use ostd::mm::{
-    MMUFlags, Mmio, PageSize, PhysicalMemory, PhysicalMemoryAllocOptions, VirtualMemorySpace,
-    convert_physical_to_virtual,
-};
+use ostd::sync::Mutex;
 
 use bit_field::*;
 use bitflags::*;
 use log::*;
 
 pub fn init() {
-    for device in PCI_DEVICES.lock().iter() {
+    let pci_devices = get_pci_devices();
+    for device in pci_devices.iter() {
         if device.vendor_id == 0x8086 && device.device_id == 0x100e {
-            log::info!("bars: {:x?}", device.bars);
-            let bar0 = device.bars[0];
-            let (header_pa, size) = bar0.unwrap().unwrap_mem();
-            let header_va = convert_physical_to_virtual(header_pa);
-
-            let page_size = PageSize::default();
-            let pm = PhysicalMemory::from_start_address(
-                page_size.align_down(header_pa),
-                page_size.align_up(size) / page_size as usize,
-                page_size,
-            );
-            let _ = VirtualMemorySpace::new_kernel()
-                .cursor(page_size.align_down(header_va), page_size)
-                .unwrap()
-                .map(&pm, MMUFlags::KERNEL_DATA);
-
+            let bar0 = device.bars()[0];
+            let (header, size) = bar0.unwrap().unwrap_mem();
+            
             let mac = EthernetAddress::from_bytes(&[0x54, 0x51, 0x9F, 0x71, 0xC0, 0]);
-            let driver = E1000::new(header_va, size, mac);
+            let driver = E1000::new(header, size, mac);
             log::info!("mac: {}", driver.mac);
 
             let mut driver = E1000Driver(Arc::new(Mutex::new(driver)));
@@ -63,7 +48,12 @@ pub fn init() {
 
             loop {
                 let timestamp = Instant::from_secs(DateTime::default().unix_timestamp());
-                iface.poll(timestamp, &mut driver, &mut sockets);
+                let poll = iface.poll(timestamp, &mut driver, &mut sockets);
+                
+                match poll {
+                    PollResult::None => continue,
+                    _ => {}
+                }
 
                 let event = sockets.get_mut::<Socket>(dhcp_handle).poll();
                 match event {
@@ -92,28 +82,12 @@ pub fn init() {
                         log::info!("DHCP lost config!");
                         iface.update_ip_addrs(|addrs| addrs.clear());
                         iface.routes_mut().remove_default_ipv4_route();
+                        break;
                     }
                 }
             }
         }
     }
-}
-
-fn alloc_dma(page_num: usize) -> (usize, usize) {
-    let pm = PhysicalMemoryAllocOptions::default()
-        .contiguous(true)
-        .count(page_num)
-        .allocate()
-        .unwrap();
-    let pa = pm.get_start_address_of_frame(0).unwrap();
-    let va = convert_physical_to_virtual(pa);
-    (va, pa)
-}
-
-fn dealloc_dma(pa: usize, page_count: usize) {
-    let page_size = PageSize::default();
-    let pm = PhysicalMemory::containing_address(pa, page_count, page_size);
-    pm.deallocate();
 }
 
 #[derive(Clone)]
@@ -126,10 +100,10 @@ pub struct E1000Driver(Arc<Mutex<E1000>>);
 pub struct E1000 {
     mac: EthernetAddress,
     registers: Vec<Mmio<u32>>,
-    send_queue: &'static mut [E1000SendDesc],
-    send_buffers: Vec<usize>,
-    recv_queue: &'static mut [E1000RecvDesc],
-    recv_buffers: Vec<usize>,
+    send_queue: DmaList<E1000SendDesc>,
+    send_buffers: Vec<DmaCoherent>,
+    recv_queue: DmaList<E1000RecvDesc>,
+    recv_buffers: Vec<DmaCoherent>,
     first_trans: bool,
 }
 
@@ -145,6 +119,8 @@ struct E1000SendDesc {
     special: u8,
 }
 
+unsafe impl Pod for E1000SendDesc {}
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 struct E1000RecvDesc {
@@ -155,6 +131,8 @@ struct E1000RecvDesc {
     error: u8,
     special: u8,
 }
+
+unsafe impl Pod for E1000RecvDesc {}
 
 bitflags! {
     #[derive(Debug)]
@@ -181,27 +159,16 @@ impl E1000 {
         assert_eq!(size_of::<E1000SendDesc>(), 16);
         assert_eq!(size_of::<E1000RecvDesc>(), 16);
 
-        let (send_queue_va, send_queue_pa) = alloc_dma(1);
-        let (recv_queue_va, recv_queue_pa) = alloc_dma(1);
-        let send_queue = unsafe {
-            slice::from_raw_parts_mut(
-                send_queue_va as *mut E1000SendDesc,
-                PageSize::default() as usize / size_of::<E1000SendDesc>(),
-            )
-        };
-        let recv_queue = unsafe {
-            slice::from_raw_parts_mut(
-                recv_queue_va as *mut E1000RecvDesc,
-                PageSize::default() as usize / size_of::<E1000RecvDesc>(),
-            )
-        };
+        let send_queue = DmaList::new(256);
+        let recv_queue = DmaList::new(256);
 
         let mut send_buffers = Vec::with_capacity(send_queue.len());
         let mut recv_buffers = Vec::with_capacity(recv_queue.len());
 
-        let e1000 = (0..size / 4).map(|n| Mmio::new(header + n * 4));
-        let mut e1000 = e1000.collect::<Vec<_>>();
-        debug!(
+        log::info!(target: "kernel", "e1000 config space: {:x} {:x}", header, size);
+        let e1000 = (0..size / 4).map(|n| Mmio::new(header + n * 4).unwrap());
+        let e1000 = e1000.collect::<Vec<_>>();
+        debug!(target: "kernel",
             "status before setup: {:#?}",
             E1000Status::from_bits_truncate(e1000[E1000_STATUS].read())
         );
@@ -211,26 +178,30 @@ impl E1000 {
         // 4.6.6 Transmit Initialization
 
         // Program the descriptor base address with the address of the region.
-        e1000[E1000_TDBAL].write(send_queue_pa as u32); // TDBAL
-        e1000[E1000_TDBAH].write((send_queue_pa >> 32) as u32); // TDBAH
+        e1000[E1000_TDBAL].write(&(send_queue.device_address() as u32)); // TDBAL
+        e1000[E1000_TDBAH].write(&((send_queue.device_address() >> 32) as u32)); // TDBAH
 
         // Set the length register to the size of the descriptor ring.
-        e1000[E1000_TDLEN].write(PageSize::default() as u32); // TDLEN
+        e1000[E1000_TDLEN].write(&(send_queue.size() as u32)); // TDLEN
 
         // If needed, program the head and tail registers.
-        e1000[E1000_TDH].write(0); // TDH
-        e1000[E1000_TDT].write(0); // TDT
+        e1000[E1000_TDH].write(&0); // TDH
+        e1000[E1000_TDT].write(&0); // TDT
 
         for i in 0..send_queue.len() {
-            let (buffer_page_va, buffer_page_pa) = alloc_dma(1);
-            send_queue[i].addr = buffer_page_pa as u64;
-            send_buffers.push(buffer_page_va);
+            let buffer_frame = FrameAllocOptions::new().alloc_segment(1).unwrap();
+            let buffer = DmaCoherent::map(buffer_frame.into(), false).unwrap();
+            buffer.fill_zeros(0, PAGE_SIZE).unwrap();
+            send_queue.with_value(i, |value: &mut E1000SendDesc| {
+                value.addr = buffer.daddr() as u64;
+            });
+            send_buffers.push(buffer);
         }
 
         // EN | PSP | CT=0x10 | COLD=0x40
-        e1000[E1000_TCTL].write((1 << 1) | (1 << 3) | (0x10 << 4) | (0x40 << 12)); // TCTL
+        e1000[E1000_TCTL].write(&((1 << 1) | (1 << 3) | (0x10 << 4) | (0x40 << 12))); // TCTL
         // IPGT=0xa | IPGR1=0x8 | IPGR2=0xc
-        e1000[E1000_TIPG].write(0xa | (0x8 << 10) | (0xc << 20)); // TIPG
+        e1000[E1000_TIPG].write(&(0xa | (0x8 << 10) | (0xc << 20))); // TIPG
 
         // 4.6.5 Receive Initialization
         let mut ral: u32 = 0;
@@ -242,38 +213,42 @@ impl E1000 {
             rah = rah | (mac.as_bytes()[i + 4] as u32) << (i * 8);
         }
 
-        e1000[E1000_RAL].write(ral); // RAL
+        e1000[E1000_RAL].write(&ral); // RAL
         // AV | AS=DA
-        e1000[E1000_RAH].write(rah | (1 << 31)); // RAH
+        e1000[E1000_RAH].write(&(rah | (1 << 31))); // RAH
 
         // MTA
         for i in E1000_MTA..E1000_RAL {
-            e1000[i].write(0);
+            e1000[i].write(&0);
         }
 
         // Program the descriptor base address with the address of the region.
-        e1000[E1000_RDBAL].write(recv_queue_pa as u32); // RDBAL
-        e1000[E1000_RDBAH].write((recv_queue_pa >> 32) as u32); // RDBAH
+        e1000[E1000_RDBAL].write(&(recv_queue.device_address() as u32)); // RDBAL
+        e1000[E1000_RDBAH].write(&((recv_queue.device_address() >> 32) as u32)); // RDBAH
 
         // Set the length register to the size of the descriptor ring.
-        e1000[E1000_RDLEN].write(PageSize::default() as u32); // RDLEN
+        e1000[E1000_RDLEN].write(&(recv_queue.size() as u32)); // RDLEN
 
         // If needed, program the head and tail registers. Note: the head and tail pointers are initialized (by hardware) to zero after a power-on or a software-initiated device reset.
-        e1000[E1000_RDH].write(0); // RDH
+        e1000[E1000_RDH].write(&0); // RDH
 
         // The tail pointer should be set to point one descriptor beyond the end.
-        e1000[E1000_RDT].write((recv_queue.len() - 1) as u32); // RDT
+        e1000[E1000_RDT].write(&((recv_queue.len() - 1) as u32)); // RDT
 
         // Receive buffers of appropriate size should be allocated and pointers to these buffers should be stored in the descriptor ring.
         for i in 0..recv_queue.len() {
-            let (buffer_page_va, buffer_page_pa) = alloc_dma(1);
-            recv_queue[i].addr = buffer_page_pa as u64;
-            recv_buffers.push(buffer_page_va);
+            let buffer_frame = FrameAllocOptions::new().alloc_segment(1).unwrap();
+            let buffer = DmaCoherent::map(buffer_frame.into(), false).unwrap();
+            buffer.fill_zeros(0, PAGE_SIZE).unwrap();
+            recv_queue.with_value(i, |value: &mut E1000RecvDesc| {
+                value.addr = buffer.daddr() as u64;
+            });
+            recv_buffers.push(buffer);
         }
 
         // EN | BAM | BSIZE=3 | BSEX | SECRC
         // BSIZE=3 | BSEX means buffer size = 4096
-        e1000[E1000_RCTL].write((1 << 1) | (1 << 15) | (3 << 16) | (1 << 25) | (1 << 26)); // RCTL
+        e1000[E1000_RCTL].write(&((1 << 1) | (1 << 15) | (3 << 16) | (1 << 25) | (1 << 26))); // RCTL
 
         debug!(
             "status after setup: {:#?}",
@@ -283,13 +258,13 @@ impl E1000 {
         // enable interrupt
         // clear interrupt
         let data = e1000[E1000_ICR].read();
-        e1000[E1000_ICR].write(data);
+        e1000[E1000_ICR].write(&data);
         // RXT0
-        e1000[E1000_IMS].write(1 << 7); // IMS
+        e1000[E1000_IMS].write(&(1 << 7)); // IMS
 
         // clear interrupt
         let data = e1000[E1000_ICR].read();
-        e1000[E1000_ICR].write(data);
+        e1000[E1000_ICR].write(&data);
 
         E1000 {
             mac,
@@ -306,7 +281,7 @@ impl E1000 {
         let icr = self.registers[E1000_ICR].read();
         if icr != 0 {
             // clear it
-            self.registers[E1000_ICR].write(icr);
+            self.registers[E1000_ICR].write(&icr);
             true
         } else {
             false
@@ -316,49 +291,45 @@ impl E1000 {
     pub fn receive(&mut self) -> Option<Vec<u8>> {
         let tdt = self.registers[E1000_TDT].read() as usize;
         let index = tdt % self.send_queue.len();
-        let send_desc = &mut self.send_queue[index];
-
-        let mut rdt = self.registers[E1000_RDT].read() as usize;
-        let index = (rdt + 1) % self.recv_queue.len();
-        let recv_desc = &mut self.recv_queue[index];
-
-        let transmit_avail = self.first_trans || send_desc.status.get_bit(0);
-        let receive_avail = recv_desc.status.get_bit(0);
-
-        if !(transmit_avail && receive_avail) {
-            return None;
-        }
-        let buffer = unsafe {
-            slice::from_raw_parts(
-                self.recv_buffers[index] as *const u8,
-                recv_desc.len as usize,
-            )
-        };
-
-        recv_desc.status.set_bit(0, false);
-
-        rdt = index;
-        self.registers[E1000_RDT].write(rdt as u32);
-
-        Some(buffer.to_vec())
+        
+        self.send_queue.with_value(index, |send_desc| {
+            let mut rdt = self.registers[E1000_RDT].read() as usize;
+            let index = (rdt + 1) % self.recv_queue.len();
+            self.recv_queue.with_value(index, |recv_desc| {
+                let transmit_avail = self.first_trans || send_desc.status.get_bit(0);
+                let receive_avail = recv_desc.status.get_bit(0);
+        
+                if !(transmit_avail && receive_avail) {
+                    return None;
+                }
+                
+                let mut buffer = alloc::vec![0; recv_desc.len as usize];
+                self.recv_buffers[index].read_bytes(0, &mut buffer).unwrap();
+        
+                recv_desc.status.set_bit(0, false);
+        
+                rdt = index;
+                self.registers[E1000_RDT].write(&(rdt as u32));
+        
+                Some(buffer)
+            })
+        })
     }
 
     pub fn can_send(&self) -> bool {
         let tdt = self.registers[E1000_TDT].read();
         let index = (tdt as usize) % self.send_queue.len();
-        let send_desc = &self.send_queue[index];
+        let send_desc = &self.send_queue.read(index);
         self.first_trans || send_desc.status.get_bit(0)
     }
 
     pub fn send(&mut self, buffer: &[u8]) {
         let mut tdt = self.registers[E1000_TDT].read();
         let index = (tdt as usize) % self.send_queue.len();
-        let send_desc = &mut self.send_queue[index];
+        let send_desc = &mut self.send_queue.read(index);
         assert!(self.first_trans || send_desc.status.get_bit(0));
 
-        let target =
-            unsafe { slice::from_raw_parts_mut(self.send_buffers[index] as *mut u8, buffer.len()) };
-        target.copy_from_slice(&buffer);
+        self.send_buffers[index].write_bytes(0, buffer).unwrap();
 
         send_desc.len = buffer.len() as u16 + 4;
         send_desc.cmd = (1 << 3) | (1 << 1) | (1 << 0); // RS | IFCS | EOP
@@ -366,25 +337,12 @@ impl E1000 {
         fence(Ordering::SeqCst);
 
         tdt = (tdt + 1) % self.send_queue.len() as u32;
-        self.registers[E1000_TDT].write(tdt);
+        self.registers[E1000_TDT].write(&tdt);
         fence(Ordering::SeqCst);
 
         // round
         if tdt == 0 {
             self.first_trans = false;
-        }
-    }
-}
-
-impl Drop for E1000 {
-    fn drop(&mut self) {
-        dealloc_dma(self.send_queue.as_ptr() as usize, 1);
-        dealloc_dma(self.recv_queue.as_ptr() as usize, 1);
-        for &send_buffer in self.send_buffers.iter() {
-            dealloc_dma(send_buffer, 1);
-        }
-        for &recv_buffer in self.recv_buffers.iter() {
-            dealloc_dma(recv_buffer, 1);
         }
     }
 }
@@ -433,7 +391,7 @@ impl phy::TxToken for E1000TxToken {
     where
         F: FnOnce(&mut [u8]) -> R,
     {
-        let mut buffer = [0u8; PageSize::Size4K as usize];
+        let mut buffer = [0u8; PAGE_SIZE];
         let result = f(&mut buffer[..len]);
 
         let mut driver = (self.0).0.lock();
