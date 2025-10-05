@@ -384,6 +384,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
+name = "fatfs"
+version = "0.4.0"
+source = "git+https://github.com/rafalh/rust-fatfs#4eccb50d011146fbed20e133d33b22f3c27292e7"
+dependencies = [
+ "bitflags 2.9.4",
+ "log",
+]
+
+[[package]]
 name = "fdt"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -580,6 +589,7 @@ dependencies = [
  "block",
  "component",
  "elf",
+ "fatfs",
  "good_memory_allocator",
  "log",
  "logger",

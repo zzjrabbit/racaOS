@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicUsize, Ordering};
+
 use alloc::{boxed::Box, format, sync::Arc, vec::Vec};
 use block::register_callback;
 use spin::RwLock;
@@ -9,6 +11,7 @@ type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>, FileSystemError>;
 static FILE_SYSTEMS: RwLock<Vec<FileSystemProbe>> = RwLock::new(Vec::new());
 
 pub(super) fn init() {
+    static PART_COUNT: AtomicUsize = AtomicUsize::new(0);
     register_callback(Box::new(|device| {
         let dev_fs = open_file(&Path::from("/dev")).unwrap();
 
@@ -22,7 +25,13 @@ pub(super) fn init() {
         );
 
         disk.mount(disk_file.clone());
-        let _ = probe(disk_file);
+
+        if let Ok(part) = probe(disk_file) {
+            let id = PART_COUNT.fetch_add(1, Ordering::SeqCst);
+            let root = open_file(&Path::from("/")).unwrap();
+            let part_dir = root.create(format!("part{}", id), FileType::File).unwrap();
+            part.mount(part_dir.clone());
+        }
     }));
 }
 

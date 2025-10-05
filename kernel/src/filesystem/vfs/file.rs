@@ -107,7 +107,10 @@ impl File {
     pub fn lookup(self: &Arc<Self>, name: &str) -> Option<Arc<Self>> {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.lookup(name)
-        } else if let Some(child) = self.inner.read().children.get(name) {
+        } else if let Some(child) = {
+            let inner = self.inner.read();
+            inner.children.get(name).cloned()
+        } {
             Some(child.clone())
         } else {
             let data = self.data.lookup(name.to_string())?;
@@ -116,7 +119,7 @@ impl File {
             children.insert("..".to_string(), self.clone());
 
             let file = Arc::new(File {
-                file_type: self.data.file_type(),
+                file_type: data.file_type(),
                 inner: RwLock::new(FileInner {
                     path: self.path().join(name),
                     children,
@@ -125,7 +128,12 @@ impl File {
                 mount: RwLock::new(None),
             });
 
-            file.add_child(file.clone());
+            file.inner.write().children.insert(".".into(), file.clone());
+
+            self.inner
+                .write()
+                .children
+                .insert(name.to_string(), file.clone());
 
             Some(file)
         }

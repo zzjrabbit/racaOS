@@ -78,15 +78,12 @@ fn first_kernel_thread() {
     input.write_at(0, b"   Hello World, File!\n");
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
-    let hello = Process::new(
-        include_bytes!("../../apps/hello.bin"),
-        tty.clone(),
-        tty.clone(),
-        tty.clone(),
-    )
-    .unwrap();
 
-    log::info!("init process spawned!");
+    let hello = open_file(&Path::from("/part0/hello.bin")).unwrap();
+    let mut buffer = alloc::vec![0u8; hello.len() as usize];
+    hello.read_at(0, &mut buffer);
+
+    let hello = Process::new(&buffer, tty.clone(), tty.clone(), tty.clone()).unwrap();
 
     while hello.exit_code().is_none() {
         halt_cpu();

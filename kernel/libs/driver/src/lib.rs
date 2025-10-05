@@ -8,7 +8,7 @@ use alloc::sync::Arc;
 use ostd::{
     Pod,
     io::IoMem,
-    mm::{DmaCoherent, FrameAllocOptions, HasDaddr, PAGE_SIZE, Paddr, VmIo},
+    mm::{DmaCoherent, FrameAllocOptions, HasDaddr, PAGE_SIZE, Paddr, VmIo, VmIoFill},
 };
 
 trait MmioInner {
@@ -77,6 +77,7 @@ impl<T: Pod> DmaList<T> {
         let segment = FrameAllocOptions::new().alloc_segment(page_count).unwrap();
 
         let data = DmaCoherent::map(segment.into(), false).unwrap();
+        data.fill_zeros(0, page_count * PAGE_SIZE).unwrap();
 
         Self {
             data,

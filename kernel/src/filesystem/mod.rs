@@ -6,6 +6,7 @@ use thiserror::Error;
 mod block;
 mod dev;
 mod ext;
+mod fat;
 mod probe;
 mod ramfs;
 mod vfs;
@@ -36,6 +37,7 @@ pub fn init() {
     dev::init();
 
     ext::init();
+    fat::init();
 
     probe::init();
 }

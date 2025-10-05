@@ -2,7 +2,8 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo}, sync::WaitQueue,
+    mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo},
+    sync::WaitQueue,
 };
 
 use crate::{BLOCK_SIZE, BlockDevice, BlockDeviceError};
@@ -131,6 +132,7 @@ impl BlockIoWaiter {
 
 impl BlockIoWaiter {
     pub fn wait(&self) {
-        self.wait_queue.wait_until(|| self.bio.complete.load(Ordering::SeqCst).then_some(()));
+        self.wait_queue
+            .wait_until(|| self.bio.complete.load(Ordering::SeqCst).then_some(()));
     }
 }

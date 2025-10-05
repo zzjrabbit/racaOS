@@ -2,7 +2,7 @@ project_type = "kernel"
 
 [boot]
 method = "grub-rescue-iso"
-kcmd_args = ["ostd.log_level=INFO\ninsmod efi_gop"]
+kcmd_args = ["ostd.log_level=TRACE\ninsmod efi_gop"]
 initramfs = "initrd.img"
 
 [grub]
