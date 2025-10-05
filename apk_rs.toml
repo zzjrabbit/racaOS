@@ -2,13 +2,8 @@
 path = "target/apk/rootfs.img"
 
 [package]
-list = [
-    "coreutils", 
-    "bash", 
-    "musl",
-    "alpine-base",
-    "alpine-conf",
-    "alpine-release",
-    "apk-tools",
-    "busybox",
-]
+list = []
+
+[[files]]
+source = "apps/hello.bin"
+dest = "hello.bin"
