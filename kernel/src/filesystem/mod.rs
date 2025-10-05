@@ -7,6 +7,7 @@ mod block;
 mod dev;
 mod ext;
 mod fat;
+mod part;
 mod probe;
 mod ramfs;
 mod vfs;
@@ -39,6 +40,7 @@ pub fn init() {
     ext::init();
     fat::init();
 
+    part::init();
     probe::init();
 }
 

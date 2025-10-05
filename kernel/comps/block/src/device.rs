@@ -3,6 +3,7 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+use alloc::{format, string::String};
 use thiserror::Error;
 
 use crate::BlockIo;
@@ -12,6 +13,15 @@ pub enum BlockDeviceType {
     RamDisk,
     Sata,
     Nvme(usize),
+}
+
+impl BlockDeviceType {
+    pub fn partition_name(&self, id: usize) -> String {
+        match self {
+            BlockDeviceType::Nvme(id) => format!("{}p{}", self, id),
+            _ => format!("{}{}", self, id),
+        }
+    }
 }
 
 impl Display for BlockDeviceType {
