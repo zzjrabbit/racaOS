@@ -1,14 +1,14 @@
 use alloc::{
-    boxed::Box, string::{String, ToString}, sync::Arc
+    boxed::Box,
+    string::{String, ToString},
+    sync::Arc,
 };
-use block::{BLOCK_SIZE, SECTOR_SIZE};
-use gpt_disk_io::{
-    gpt_disk_types::BlockSize,
-    *,
-};
+use block::SECTOR_SIZE;
+use gpt_disk_io::{gpt_disk_types::BlockSize, *};
 
 use crate::filesystem::{
-    File, FileSystemError, part::{Partition, PartitionParser, register_parser}
+    part::{register_parser, Partition, PartitionParser},
+    File, FileSystemError,
 };
 
 pub fn init() {
@@ -22,12 +22,17 @@ impl PartitionParser for GptParser {
         &self,
         dev: Arc<File>,
     ) -> Result<alloc::vec::Vec<super::Partition>, crate::filesystem::FileSystemError> {
-        let mut disk = Disk::new(FileWrapper(dev.clone())).map_err(|_| FileSystemError::InvalidArguments)?;
+        let mut disk =
+            Disk::new(FileWrapper(dev.clone())).map_err(|_| FileSystemError::InvalidArguments)?;
 
         let mut buffer = alloc::vec![0u8; 4096];
-        let header = disk.read_primary_gpt_header(&mut buffer).map_err(|_| FileSystemError::InvalidArguments)?;
+        let header = disk
+            .read_primary_gpt_header(&mut buffer)
+            .map_err(|_| FileSystemError::InvalidArguments)?;
 
-        let layout = header.get_partition_entry_array_layout().map_err(|_| FileSystemError::InvalidArguments)?;
+        let layout = header
+            .get_partition_entry_array_layout()
+            .map_err(|_| FileSystemError::InvalidArguments)?;
 
         let part_entries = disk
             .gpt_partition_entry_array_iter(layout, &mut buffer)

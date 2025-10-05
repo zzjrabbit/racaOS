@@ -53,7 +53,7 @@ impl BlockIo {
             let current = offset + read;
             let block_offset = current % BLOCK_SIZE;
             let remaining = buffer.len() - read;
-            let chunk_size = (BLOCK_SIZE - block_offset).min(remaining) as usize;
+            let chunk_size = (BLOCK_SIZE - block_offset).min(remaining);
 
             let block_id = current / BLOCK_SIZE;
             let block = &self.inner.dma_streams[block_id];
@@ -73,7 +73,7 @@ impl BlockIo {
             let current = offset + written;
             let block_offset = current % BLOCK_SIZE;
             let remaining = buffer.len() - written;
-            let chunk_size = (BLOCK_SIZE - block_offset).min(remaining) as usize;
+            let chunk_size = (BLOCK_SIZE - block_offset).min(remaining);
 
             let block_id = current / BLOCK_SIZE;
             let block = &self.inner.dma_streams[block_id];

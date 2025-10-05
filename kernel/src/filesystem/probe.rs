@@ -61,9 +61,8 @@ pub(super) fn register_probe(probe: FileSystemProbe) {
 
 pub(super) fn probe(device: Arc<File>) -> Result<Arc<File>, FileSystemError> {
     for probe in FILE_SYSTEMS.read().iter() {
-        match probe(device.clone()) {
-            Ok(file) => return Ok(file),
-            Err(_) => {}
+        if let Ok(file) = probe(device.clone()) {
+            return Ok(file);
         }
     }
     Err(FileSystemError::InvalidArguments)

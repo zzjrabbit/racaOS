@@ -8,7 +8,7 @@ use core::panic::PanicInfo;
 
 use component::InitStage;
 use ostd::{
-    //    arch::qemu::{exit_qemu, QemuExitCode},
+    arch::qemu::{exit_qemu, QemuExitCode},
     boot::smp::register_ap_entry,
     cpu::CpuId,
     prelude::*,
@@ -94,12 +94,13 @@ fn first_kernel_thread() {
     loop {
         halt_cpu();
     }
-
-    /*exit_qemu(QemuExitCode::Failed);*/
 }
 
 #[ostd::panic_handler]
 pub fn panic_handler(info: &PanicInfo) -> ! {
     println!("panic: {}", info);
-    loop {}
+    exit_qemu(QemuExitCode::Failed);
+    loop {
+        core::hint::spin_loop();
+    }
 }
