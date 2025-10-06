@@ -5,10 +5,10 @@ use core::{
     fmt::{self, Arguments, Write},
     sync::atomic::{AtomicBool, Ordering},
 };
-use spin::Lazy;
+use spin::{Lazy, Once};
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
-use os_terminal::{DrawTarget, Terminal, font::BitmapFont};
+use os_terminal::{DrawTarget, Terminal, font::TrueTypeFont};
 use ostd::{
     boot::boot_info,
     io::IoMem,
@@ -19,7 +19,7 @@ use ostd::{
 
 extern crate alloc;
 
-#[init_component(kthread)]
+#[init_component(process)]
 pub fn terminal_init() -> Result<(), ComponentInitError> {
     Lazy::force(&TERMINAL_THREAD);
 
@@ -74,12 +74,18 @@ fn logger(args: Arguments) {
     ostd::early_println!("{}", msg);
 }
 
+static FONT_DATA: Once<Vec<u8>> = Once::new();
+
+pub fn load_font_data(data: Vec<u8>) {
+    FONT_DATA.call_once(|| data);
+}
+
 fn terminal_thread() {
     let mut terminal = Terminal::new(Display::default());
     terminal.set_auto_flush(false);
     terminal.set_crnl_mapping(true);
     terminal.set_scroll_speed(5);
-    terminal.set_font_manager(Box::new(BitmapFont));
+    terminal.set_font_manager(Box::new(TrueTypeFont::new(12.0, FONT_DATA.get().unwrap())));
     terminal.set_color_scheme(6);
     terminal.set_logger(logger);
 

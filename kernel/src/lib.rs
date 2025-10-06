@@ -14,6 +14,7 @@ use ostd::{
     prelude::*,
     task::{halt_cpu, scheduler::enable_preemption_on_cpu},
 };
+use terminal::load_font_data;
 
 use crate::{
     comps::components,
@@ -68,12 +69,14 @@ pub fn kernel_main() {
 fn first_kernel_thread() {
     log::info!("Running on CPU #{}!", CpuId::current_racy().as_usize());
     component::init_all(InitStage::Kthread, components()).unwrap();
+    
+    let font_file = open_file(&Path::new("/part0/SourceCodePro.otf")).unwrap();
+    let mut font_data = alloc::vec![0; font_file.len() as usize];
+    font_file.read_at(0, &mut font_data);
 
-    let input = open_file(&Path::new("/"))
-        .unwrap()
-        .create("input.txt".into(), FileType::File)
-        .unwrap();
-    input.write_at(0, b"   Hello World, File!\n");
+    load_font_data(font_data);
+    
+    component::init_all(InitStage::Process, components()).unwrap();
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
 

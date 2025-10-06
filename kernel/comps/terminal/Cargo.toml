@@ -7,5 +7,5 @@ edition = "2024"
 ostd = { workspace = true }
 component = { workspace = true }
 spin = "0.10.0"
-os-terminal = { version = "0.6.11", features = ["truetype"] }
+os-terminal = { version = "0.6.11", default-features = false, features = ["truetype"] }
 log.workspace = true

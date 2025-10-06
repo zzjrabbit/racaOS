@@ -825,12 +825,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "noto-sans-mono-bitmap"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1064d564ae026ae123bf5d607318b42a5b31d70a3c48e6ea7ee44cce4cdb095e"
-
-[[package]]
 name = "num-conv"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -865,7 +859,6 @@ dependencies = [
  "ab_glyph",
  "base64ct",
  "bitflags 2.9.4",
- "noto-sans-mono-bitmap",
  "pc-keyboard",
  "unicode-width",
  "vte",
