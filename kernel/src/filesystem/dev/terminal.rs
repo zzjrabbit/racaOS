@@ -11,7 +11,6 @@ impl InodeOperation for TerminalInode {
 
     fn write_at(&self, _offset: u64, buf: &[u8]) -> usize {
         terminal_write(buf.to_vec());
-        ostd::early_print!("{}", core::str::from_utf8(buf).unwrap());
         buf.len()
     }
 

@@ -2,7 +2,7 @@
 
 use component::{ComponentInitError, init_component};
 use core::{
-    fmt::{self, Write},
+    fmt::{self, Arguments, Write},
     sync::atomic::{AtomicBool, Ordering},
 };
 use spin::Lazy;
@@ -59,7 +59,7 @@ impl DrawTarget for Display {
 }
 
 fn terminal_flush(terminal: &mut Terminal<Display>) {
-    while let Some(s) = TERMINAL_BUFFER.write().pop_back() {
+    while let Some(s) = TERMINAL_BUFFER.write().pop_front() {
         terminal.process(&s);
         NEED_FLUSH.store(true, Ordering::Relaxed);
     }
@@ -69,6 +69,11 @@ fn terminal_flush(terminal: &mut Terminal<Display>) {
     }
 }
 
+fn logger(args: Arguments) {
+    let msg = alloc::format!("{}", args);
+    ostd::early_println!("{}", msg);
+}
+
 fn terminal_thread() {
     let mut terminal = Terminal::new(Display::default());
     terminal.set_auto_flush(false);
@@ -76,6 +81,7 @@ fn terminal_thread() {
     terminal.set_scroll_speed(5);
     terminal.set_font_manager(Box::new(BitmapFont));
     terminal.set_color_scheme(6);
+    terminal.set_logger(logger);
 
     terminal.set_pty_writer(Box::new(|s: String| TerminalWriter.write_str(&s).unwrap()));
 
