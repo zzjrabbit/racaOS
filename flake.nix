@@ -24,7 +24,6 @@
             grub2_efi
             xorriso
             cmake
-            musl
           ];
 
           RUSTC_VERSION = overrides.toolchain.channel;

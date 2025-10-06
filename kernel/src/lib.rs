@@ -18,7 +18,7 @@ use terminal::load_font_data;
 
 use crate::{
     comps::components,
-    filesystem::{open_file, FileType, Path},
+    filesystem::{open_file, Path},
     task::{create_kernel_thread, Process},
 };
 
@@ -51,7 +51,7 @@ pub fn kernel_main() {
     task::init();
     syscall::init();
     filesystem::init();
-    
+
     register_ap_entry(ap_entry);
 
     enable_preemption_on_cpu();
@@ -69,13 +69,13 @@ pub fn kernel_main() {
 fn first_kernel_thread() {
     log::info!("Running on CPU #{}!", CpuId::current_racy().as_usize());
     component::init_all(InitStage::Kthread, components()).unwrap();
-    
+
     let font_file = open_file(&Path::new("/part0/SourceCodePro.otf")).unwrap();
     let mut font_data = alloc::vec![0; font_file.len() as usize];
     font_file.read_at(0, &mut font_data);
 
     load_font_data(font_data);
-    
+
     component::init_all(InitStage::Process, components()).unwrap();
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();

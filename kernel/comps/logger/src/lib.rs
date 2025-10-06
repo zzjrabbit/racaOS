@@ -24,11 +24,12 @@ impl Logger {
 impl log::Log for Logger {
     fn enabled(&self, metadata: &Metadata) -> bool {
         const EXTRA: &[&str] = &["lwext4_rust"];
-        
+
         let members = env!("WORKSPACE_MEMBERS");
         let members = members.split(',').collect::<Vec<_>>();
-        
-        members.iter()
+
+        members
+            .iter()
             .any(|member| metadata.target().starts_with(member))
             || EXTRA
                 .iter()

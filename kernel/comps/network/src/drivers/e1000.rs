@@ -2,18 +2,18 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::mem::size_of;
+use core::sync::atomic::{Ordering, fence};
 use driver::{DateTime, DmaList, Mmio};
 use ostd::Pod;
 use ostd::mm::{DmaCoherent, FrameAllocOptions, HasDaddr, PAGE_SIZE, VmIo, VmIoFill};
+use ostd::sync::Mutex;
 use pci::get_pci_devices;
-use core::mem::size_of;
-use core::sync::atomic::{Ordering, fence};
 use smoltcp::iface::{Config, Interface, PollResult, SocketSet};
 use smoltcp::phy::{self, DeviceCapabilities};
 use smoltcp::socket::dhcpv4::{Event, Socket};
 use smoltcp::time::{Duration, Instant};
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpCidr};
-use ostd::sync::Mutex;
 
 use bit_field::*;
 use bitflags::*;
@@ -25,7 +25,7 @@ pub fn init() {
         if device.vendor_id == 0x8086 && device.device_id == 0x100e {
             let bar0 = device.bars()[0];
             let (header, size) = bar0.unwrap().unwrap_mem();
-            
+
             let mac = EthernetAddress::from_bytes(&[0x54, 0x51, 0x9F, 0x71, 0xC0, 0]);
             let driver = E1000::new(header, size, mac);
             log::info!("mac: {}", driver.mac);
@@ -49,7 +49,7 @@ pub fn init() {
             loop {
                 let timestamp = Instant::from_secs(DateTime::default().unix_timestamp());
                 let poll = iface.poll(timestamp, &mut driver, &mut sockets);
-                
+
                 match poll {
                     PollResult::None => continue,
                     _ => {}
@@ -291,26 +291,26 @@ impl E1000 {
     pub fn receive(&mut self) -> Option<Vec<u8>> {
         let tdt = self.registers[E1000_TDT].read() as usize;
         let index = tdt % self.send_queue.len();
-        
+
         self.send_queue.with_value(index, |send_desc| {
             let mut rdt = self.registers[E1000_RDT].read() as usize;
             let index = (rdt + 1) % self.recv_queue.len();
             self.recv_queue.with_value(index, |recv_desc| {
                 let transmit_avail = self.first_trans || send_desc.status.get_bit(0);
                 let receive_avail = recv_desc.status.get_bit(0);
-        
+
                 if !(transmit_avail && receive_avail) {
                     return None;
                 }
-                
+
                 let mut buffer = alloc::vec![0; recv_desc.len as usize];
                 self.recv_buffers[index].read_bytes(0, &mut buffer).unwrap();
-        
+
                 recv_desc.status.set_bit(0, false);
-        
+
                 rdt = index;
                 self.registers[E1000_RDT].write(&(rdt as u32));
-        
+
                 Some(buffer)
             })
         })

@@ -162,21 +162,24 @@ impl InodeOperation for FatFile {
         let cluster_size = self.cluster_size;
         let file_len = self.len();
         let buf_len = (buffer.len() as u64).min(file_len - offset);
-        
+
         let mut file = self.file.write();
 
         while read < buf_len {
             let current = offset + read;
             let cluster_offset = current % cluster_size;
             let remaining = buf_len - read;
-            
+
             let chunk_size = (cluster_size - cluster_offset).min(remaining);
 
             if file.seek(SeekFrom::Start(current)).is_err() {
                 break;
             }
-            
-            if file.read_exact(&mut buffer[read as usize..read as usize + chunk_size as usize]).is_err() {
+
+            if file
+                .read_exact(&mut buffer[read as usize..read as usize + chunk_size as usize])
+                .is_err()
+            {
                 break;
             }
 
@@ -191,21 +194,24 @@ impl InodeOperation for FatFile {
         let cluster_size = self.cluster_size;
         let file_len = self.len();
         let buf_len = (buffer.len() as u64).min(file_len - offset);
-        
+
         let mut file = self.file.write();
 
         while written < buf_len {
             let current = offset + written;
             let cluster_offset = current % cluster_size;
             let remaining = buf_len - written;
-            
+
             let chunk_size = (cluster_size - cluster_offset).min(remaining);
 
             if file.seek(SeekFrom::Start(current)).is_err() {
                 break;
             }
-            
-            if file.write_all(&buffer[written as usize..written as usize + chunk_size as usize]).is_err() {
+
+            if file
+                .write_all(&buffer[written as usize..written as usize + chunk_size as usize])
+                .is_err()
+            {
                 break;
             }
 

@@ -120,7 +120,7 @@ impl<T: Pod> DmaList<T> {
     pub fn len(&self) -> usize {
         self.len
     }
-    
+
     pub fn size(&self) -> usize {
         self.data.size()
     }
