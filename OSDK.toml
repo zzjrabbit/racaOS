@@ -2,7 +2,7 @@ project_type = "kernel"
 
 [boot]
 method = "grub-rescue-iso"
-kcmd_args = ["ostd.log_level=TRACE\ninsmod efi_gop"]
+kcmd_args = ["ostd.log_level=OFF\ninsmod efi_gop"]
 initramfs = "target/apk/rootfs.img"
 
 [grub]

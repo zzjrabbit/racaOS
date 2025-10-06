@@ -157,170 +157,62 @@ impl InodeOperation for FatFile {
         self.entry.len()
     }
 
-    fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
-        if self.file.write().seek(SeekFrom::Start(offset)).is_err() {
-            0
-        } else {
-            let mut file = self.file.write();
-            let mut read = 0;
+    fn read_at(&self, offset: u64, buffer: &mut [u8]) -> usize {
+        let mut read: u64 = 0;
+        let cluster_size = self.cluster_size;
+        let file_len = self.len();
+        let buf_len = (buffer.len() as u64).min(file_len - offset);
+        
+        let mut file = self.file.write();
 
-            let (offset, buf) = if offset % self.cluster_size == 0 {
-                (offset, buf)
-            } else {
-                let cluster_id = offset / self.cluster_size;
-                let cluster_offset = offset % self.cluster_size;
-                let remaining = self.cluster_size - cluster_offset;
+        while read < buf_len {
+            let current = offset + read;
+            let cluster_offset = current % cluster_size;
+            let remaining = buf_len - read;
+            
+            let chunk_size = (cluster_size - cluster_offset).min(remaining);
 
-                if file
-                    .seek(SeekFrom::Start(
-                        cluster_id * self.cluster_size + cluster_offset,
-                    ))
-                    .is_err()
-                {
-                    return read;
-                }
-
-                if file.read(&mut buf[0..remaining as usize]).is_err() {
-                    return read;
-                }
-
-                read += remaining as usize;
-
-                (
-                    cluster_id * self.cluster_size,
-                    &mut buf[remaining as usize..],
-                )
-            };
-
-            let end_pos = offset + buf.len() as u64;
-            let buf = if end_pos % self.cluster_size == 0 {
-                buf
-            } else {
-                let cluster_id = end_pos / self.cluster_size;
-                let cluster_pos = cluster_id * self.cluster_size;
-
-                if file.seek(SeekFrom::Start(cluster_pos)).is_err() {
-                    return read;
-                }
-
-                if file
-                    .read(&mut buf[(cluster_pos - offset) as usize..])
-                    .is_err()
-                {
-                    return read;
-                }
-
-                read += (end_pos % self.cluster_size) as usize;
-
-                &mut buf[..(cluster_pos - offset) as usize]
-            };
-
-            let len = buf.len() as u64;
-            let cluster_count = len / self.cluster_size;
-            let cluster_id = offset / self.cluster_size;
-
-            for i in 0..cluster_count {
-                let buffer_pos = i * self.cluster_size;
-
-                let cluster_id = i + cluster_id;
-                let cluster_pos = cluster_id * self.cluster_size;
-
-                if file.seek(SeekFrom::Start(cluster_pos)).is_err() {
-                    return read;
-                }
-
-                if file
-                    .read(&mut buf[buffer_pos as usize..(buffer_pos + self.cluster_size) as usize])
-                    .is_err()
-                {
-                    return read;
-                }
-
-                read += self.cluster_size as usize;
+            if file.seek(SeekFrom::Start(current)).is_err() {
+                break;
+            }
+            
+            if file.read_exact(&mut buffer[read as usize..read as usize + chunk_size as usize]).is_err() {
+                break;
             }
 
-            read
+            read += chunk_size;
         }
+
+        read as usize
     }
 
-    fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
-        if self.file.write().seek(SeekFrom::Start(offset)).is_err() {
-            0
-        } else {
-            let mut file = self.file.write();
-            let mut written = 0;
+    fn write_at(&self, offset: u64, buffer: &[u8]) -> usize {
+        let mut written: u64 = 0;
+        let cluster_size = self.cluster_size;
+        let file_len = self.len();
+        let buf_len = (buffer.len() as u64).min(file_len - offset);
+        
+        let mut file = self.file.write();
 
-            let (offset, buf) = if offset % self.cluster_size == 0 {
-                (offset, buf)
-            } else {
-                let cluster_id = offset / self.cluster_size;
-                let cluster_offset = offset % self.cluster_size;
-                let remaining = self.cluster_size - cluster_offset;
+        while written < buf_len {
+            let current = offset + written;
+            let cluster_offset = current % cluster_size;
+            let remaining = buf_len - written;
+            
+            let chunk_size = (cluster_size - cluster_offset).min(remaining);
 
-                if file
-                    .seek(SeekFrom::Start(
-                        cluster_id * self.cluster_size + cluster_offset,
-                    ))
-                    .is_err()
-                {
-                    return written;
-                }
-
-                if file.write(&buf[0..remaining as usize]).is_err() {
-                    return written;
-                }
-
-                written += remaining as usize;
-
-                (cluster_id * self.cluster_size, &buf[remaining as usize..])
-            };
-
-            let end_pos = offset + buf.len() as u64;
-            let buf = if end_pos % self.cluster_size == 0 {
-                buf
-            } else {
-                let cluster_id = end_pos / self.cluster_size;
-                let cluster_pos = cluster_id * self.cluster_size;
-
-                if file.seek(SeekFrom::Start(cluster_pos)).is_err() {
-                    return written;
-                }
-
-                if file.write(&buf[(cluster_pos - offset) as usize..]).is_err() {
-                    return written;
-                }
-
-                written += (end_pos % self.cluster_size) as usize;
-
-                &buf[..(cluster_pos - offset) as usize]
-            };
-
-            let len = buf.len() as u64;
-            let cluster_count = len / self.cluster_size;
-            let cluster_id = offset / self.cluster_size;
-
-            for i in 0..cluster_count {
-                let buffer_pos = i * self.cluster_size;
-
-                let cluster_id = i + cluster_id;
-                let cluster_pos = cluster_id * self.cluster_size;
-
-                if file.seek(SeekFrom::Start(cluster_pos)).is_err() {
-                    return written;
-                }
-
-                if file
-                    .write(&buf[buffer_pos as usize..(buffer_pos + self.cluster_size) as usize])
-                    .is_err()
-                {
-                    return written;
-                }
-
-                written += self.cluster_size as usize;
+            if file.seek(SeekFrom::Start(current)).is_err() {
+                break;
+            }
+            
+            if file.write_all(&buffer[written as usize..written as usize + chunk_size as usize]).is_err() {
+                break;
             }
 
-            written
+            written += chunk_size;
         }
+
+        written as usize
     }
 }
 

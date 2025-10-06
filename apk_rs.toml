@@ -7,3 +7,7 @@ list = []
 [[files]]
 source = "apps/hello.bin"
 dest = "hello.bin"
+
+[[files]]
+source = "out.txt"
+dest = "input.txt"
