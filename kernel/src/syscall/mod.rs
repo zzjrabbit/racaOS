@@ -23,12 +23,16 @@ type SyscallResult = Result<isize, SyscallError>;
 #[repr(isize)]
 #[derive(Debug, Error)]
 pub enum SyscallError {
+    #[error("Null")]
+    Null = 0,
     #[error("Invalid Arguments.")]
     InvalidArguments = -2,
     #[error("Permission denied.")]
     PermissionDenied = -3,
     #[error("Not found.")]
     NotFound = -4,
+    #[error("Buffer too small.")]
+    BufferTooSmall = -5,
     #[error("Other.")]
     Other = i32::MIN as isize,
 }
@@ -83,6 +87,9 @@ pub fn syscall_handler(context: &mut UserContext) {
             FcntlCommand::from_i32(arg2 as i32).ok_or(SyscallError::InvalidArguments)?,
             arg3 as u32,
         ),
+        79 => getcwd(arg1 as Vaddr, arg2),
+        80 => chdir(arg1 as Vaddr),
+        81 => fchdir(arg1 as FileDescriptor),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2, context),
         186 => get_tid(),
         218 => set_tid_address(arg1),

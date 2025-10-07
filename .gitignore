@@ -1,5 +1,5 @@
 /target
 **/*.img
-/bin
+**/bin
 *.txt
 **/*.bin

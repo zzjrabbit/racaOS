@@ -20,7 +20,8 @@ pub type FileDescriptor = i32;
 
 static ROOT_FS: Lazy<Arc<File>> = Lazy::new(|| {
     let inode = RamInode::new();
-    File::new(Path::new("/"), inode, FileType::Directory)
+    let root = File::new(Path::new("/"), inode, FileType::Directory);
+    root
 });
 
 pub fn open_file(path: &Path) -> Option<Arc<File>> {

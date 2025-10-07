@@ -86,7 +86,6 @@ fn terminal_thread() {
     terminal.set_crnl_mapping(true);
     terminal.set_scroll_speed(5);
     terminal.set_font_manager(Box::new(TrueTypeFont::new(12.0, FONT_DATA.get().unwrap())));
-    terminal.set_color_scheme(6);
     terminal.set_logger(logger);
 
     terminal.set_pty_writer(Box::new(|s: String| TerminalWriter.write_str(&s).unwrap()));

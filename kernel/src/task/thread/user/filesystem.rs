@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicI32, Ordering};
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use spin::RwLock;
 
-use crate::filesystem::{AccessMode, File, FileDescriptor, OpenFlags};
+use crate::filesystem::{AccessMode, File, FileDescriptor, OpenFlags, Path};
 
 type FileDescription = (u64, AccessMode, OpenFlags, Arc<File>);
 type FileDescriptorTable = Arc<RwLock<BTreeMap<FileDescriptor, FileDescription>>>;
@@ -11,6 +11,7 @@ type FileDescriptorTable = Arc<RwLock<BTreeMap<FileDescriptor, FileDescription>>
 pub struct FileSystemInfo {
     fd_table: FileDescriptorTable,
     next_fd: Arc<AtomicI32>,
+    current_dir: RwLock<Path>,
 }
 
 impl FileSystemInfo {
@@ -23,6 +24,25 @@ impl FileSystemInfo {
         FileSystemInfo {
             fd_table: Arc::new(RwLock::new(fd_table)),
             next_fd: Arc::new(AtomicI32::new(3)),
+            current_dir: RwLock::new(Path::new("/")),
+        }
+    }
+}
+
+impl FileSystemInfo {
+    pub fn current_dir(&self) -> Path {
+        self.current_dir.read().clone()
+    }
+    
+    pub fn set_current_dir(&self, path: Path) {
+        *self.current_dir.write() = path;
+    }
+    
+    pub fn absolute_path(&self, path: Path) -> Path {
+        if path.is_absolute() {
+            path
+        } else {
+            self.current_dir.read().join(path)
         }
     }
 }

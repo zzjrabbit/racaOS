@@ -2,8 +2,7 @@ use alloc::vec::Vec;
 use ostd::{mm::Vaddr, task::Task, Pod};
 
 use crate::{
-    filesystem::{open_file, AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path},
-    task::{AsThread, UserThreadData},
+    filesystem::{AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path, open_file}, mem::VmReadWrite, task::{AsThread, UserThreadData}
 };
 
 use super::*;
@@ -32,6 +31,8 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
     }
 
     let path = Path::new(core::str::from_utf8(&path).map_err(|_| SyscallError::InvalidArguments)?);
+    let path = data.fs_info().absolute_path(path);
+    log::info!("Opening file: {}", path);
 
     if let Some(file) = open_file(&path) {
         let fd = data.fs_info().add_file(file, access_mode, open_flags);
@@ -275,4 +276,60 @@ pub fn ioctl(fd: FileDescriptor, cmd: u32, arg: Vaddr) -> SyscallResult {
         })
         .map(|val| val.map_err(|error| error.into()))
         .unwrap_or(Err(SyscallError::NotFound))
+}
+
+pub fn getcwd(buffer: Vaddr, len: usize) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+    let vm_space = data.memory_info().vm_space();
+    let cwd = data.fs_info().current_dir();
+    
+    if cwd.len() >= len {
+        Err(SyscallError::Null)
+    } else {
+        vm_space.write(buffer, cwd.as_bytes()).map_err(|_| SyscallError::Null)?;
+        Ok(buffer as isize)
+    }
+}
+
+pub fn chdir(file_name: Vaddr) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+    let vm_space = data.memory_info().vm_space();
+
+    let mut buffer = Vec::new();
+    buffer.push(vm_space.read_val(file_name)?);
+    
+    while *buffer.last().unwrap() != 0u8 {
+        buffer.push(vm_space.read_val(file_name + buffer.len() as Vaddr)?);
+    }
+    buffer.pop().unwrap();
+    
+    let path = core::str::from_utf8(&buffer).map_err(|_| SyscallError::InvalidArguments)?;
+    let path = Path::from(path);
+    let path = data.fs_info().absolute_path(path);
+    log::info!("Changing directory to {}", path);
+    
+    if open_file(&path).is_none() {
+        return Err(SyscallError::NotFound);
+    }
+    
+    data.fs_info().set_current_dir(path);
+    
+    Ok(0)
+}
+
+pub fn fchdir(fd: FileDescriptor) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+    let path = data.fs_info()
+        .with_file_mut(fd, |_, _access_mode, _open_flags, file| {
+            file.path()
+        })
+        .ok_or(SyscallError::NotFound)?;
+
+    data.fs_info().set_current_dir(path);
+
+    Ok(0)
 }

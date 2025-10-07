@@ -49,7 +49,7 @@ impl File {
     where
         T: InodeOperation,
     {
-        Arc::new(Self {
+        let file = Arc::new(Self {
             data: Arc::new(InodeData::new(inode_operation)),
             file_type,
             inner: RwLock::new(FileInner {
@@ -57,7 +57,11 @@ impl File {
                 children: BTreeMap::new(),
             }),
             mount: RwLock::new(None),
-        })
+        });
+        if file.file_type == FileType::Directory {
+            file.inner.write().children.insert(String::from("."), file.clone());
+        }
+        file
     }
 }
 

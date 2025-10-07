@@ -101,6 +101,10 @@ impl Path {
         path.push('/');
         path
     }
+    
+    pub fn is_absolute(&self) -> bool {
+        self.inner.starts_with('/')
+    }
 }
 
 #[allow(dead_code)]

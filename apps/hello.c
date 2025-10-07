@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <unistd.h>
 
 int main() {
-    FILE *file = fopen("/part0/input.txt", "r");
+    chdir("./part0");
+    FILE *file = fopen("./input.txt", "r");
     if (file == NULL) {
         perror("Error opening file");
         return 1;
