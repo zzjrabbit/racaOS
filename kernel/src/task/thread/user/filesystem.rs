@@ -33,11 +33,11 @@ impl FileSystemInfo {
     pub fn current_dir(&self) -> Path {
         self.current_dir.read().clone()
     }
-    
+
     pub fn set_current_dir(&self, path: Path) {
         *self.current_dir.write() = path;
     }
-    
+
     pub fn absolute_path(&self, path: Path) -> Path {
         if path.is_absolute() {
             path

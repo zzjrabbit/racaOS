@@ -59,7 +59,10 @@ impl File {
             mount: RwLock::new(None),
         });
         if file.file_type == FileType::Directory {
-            file.inner.write().children.insert(String::from("."), file.clone());
+            file.inner
+                .write()
+                .children
+                .insert(String::from("."), file.clone());
         }
         file
     }

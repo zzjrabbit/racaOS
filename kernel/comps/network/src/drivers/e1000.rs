@@ -50,9 +50,8 @@ pub fn init() {
                 let timestamp = Instant::from_secs(DateTime::default().unix_timestamp());
                 let poll = iface.poll(timestamp, &mut driver, &mut sockets);
 
-                match poll {
-                    PollResult::None => continue,
-                    _ => {}
+                if poll == PollResult::None {
+                    continue;
                 }
 
                 let event = sockets.get_mut::<Socket>(dhcp_handle).poll();
@@ -106,6 +105,9 @@ pub struct E1000 {
     recv_buffers: Vec<DmaCoherent>,
     first_trans: bool,
 }
+
+unsafe impl Send for E1000 {}
+unsafe impl Sync for E1000 {}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -207,10 +209,10 @@ impl E1000 {
         let mut ral: u32 = 0;
         let mut rah: u32 = 0;
         for i in 0..4 {
-            ral = ral | (mac.as_bytes()[i] as u32) << (i * 8);
+            ral |= (mac.as_bytes()[i] as u32) << (i * 8);
         }
         for i in 0..2 {
-            rah = rah | (mac.as_bytes()[i + 4] as u32) << (i * 8);
+            rah |= (mac.as_bytes()[i + 4] as u32) << (i * 8);
         }
 
         e1000[E1000_RAL].write(&ral); // RAL
@@ -218,8 +220,8 @@ impl E1000 {
         e1000[E1000_RAH].write(&(rah | (1 << 31))); // RAH
 
         // MTA
-        for i in E1000_MTA..E1000_RAL {
-            e1000[i].write(&0);
+        for mmio in e1000.iter().take(E1000_RAL).skip(E1000_MTA) {
+            mmio.write(&0);
         }
 
         // Program the descriptor base address with the address of the region.
