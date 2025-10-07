@@ -46,7 +46,7 @@ fn idle() {
 
 #[ostd::main]
 pub fn kernel_main() {
-    component::init_all(InitStage::Bootstrap, components()).unwrap();
+    component::init_all(&InitStage::Bootstrap, components());
     trap::init();
     task::init();
     syscall::init();
@@ -68,7 +68,7 @@ pub fn kernel_main() {
 
 fn first_kernel_thread() {
     log::info!("Running on CPU #{}!", CpuId::current_racy().as_usize());
-    component::init_all(InitStage::Kthread, components()).unwrap();
+    component::init_all(&InitStage::Kthread, components());
 
     let font_file = open_file(&Path::new("/part0/SourceCodePro.otf")).unwrap();
     let mut font_data = alloc::vec![0; font_file.len() as usize];
@@ -76,7 +76,7 @@ fn first_kernel_thread() {
 
     load_font_data(font_data);
 
-    component::init_all(InitStage::Process, components()).unwrap();
+    component::init_all(&InitStage::Process, components());
 
     let tty = open_file(&Path::new("/dev/tty")).unwrap();
 

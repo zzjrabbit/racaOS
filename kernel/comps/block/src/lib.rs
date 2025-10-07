@@ -32,7 +32,7 @@ pub fn register_callback(callback: Callback) {
 pub fn register_device(device: Arc<dyn BlockDevice>) {
     let device_type = device.metadata().device_type;
 
-    MANAGER.register_device(format!("{}", device_type), device.clone());
+    MANAGER.register_device(format!("{device_type}"), device.clone());
 
     let callbacks = REGISTER_CALL_BACKS.read();
     for callback in callbacks.iter() {

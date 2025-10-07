@@ -1,5 +1,5 @@
 use core::fmt::{self, Display};
-use pci_types::{device_type::DeviceType, *};
+use pci_types::{device_type::DeviceType, Bar, DeviceId, DeviceRevision, EndpointHeader, Interface, MAX_BARS, PciAddress, PciHeader, VendorId};
 
 use crate::resolver::PciAccess;
 
@@ -14,6 +14,9 @@ pub struct PciDevice {
 }
 
 impl PciDevice {
+    /// # Panics
+    /// If the device is invalid, the function will panic.
+    #[must_use]
     pub fn bars(&self) -> [Option<Bar>; MAX_BARS] {
         let mut bars = [None; 6];
         let mut skip_next = false;
@@ -27,6 +30,7 @@ impl PciDevice {
                 skip_next = false;
                 continue;
             }
+            #[allow(clippy::cast_possible_truncation)]
             let bar = header.bar(index as u8, &PciAccess);
             if let Some(Bar::Memory64 { .. }) = bar {
                 skip_next = true;
@@ -37,6 +41,10 @@ impl PciDevice {
         bars
     }
 
+    /// # Panics
+    /// If the device is invalid, the function will panic.
+    /// If the slot is invalid, the function will panic.
+    /// If the value is invalid, the function will panic.
     pub fn write_bar(&self, slot: u8, value: usize) {
         unsafe {
             let header = PciHeader::new(self.address);

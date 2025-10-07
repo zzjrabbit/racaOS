@@ -1,6 +1,6 @@
 use core::{
     fmt::Display,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU8, AtomicUsize, Ordering},
 };
 
 use alloc::{format, string::String};
@@ -16,10 +16,11 @@ pub enum BlockDeviceType {
 }
 
 impl BlockDeviceType {
+    #[must_use]
     pub fn partition_name(&self, id: usize) -> String {
         match self {
-            BlockDeviceType::Nvme(id) => format!("{}p{}", self, id),
-            _ => format!("{}{}", self, id),
+            BlockDeviceType::Nvme(id) => format!("{self}p{id}"),
+            _ => format!("{self}{id}"),
         }
     }
 }
@@ -28,7 +29,7 @@ impl Display for BlockDeviceType {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         static RAM_COUNT: AtomicUsize = AtomicUsize::new(0);
         static NVME_COUNT: AtomicUsize = AtomicUsize::new(0);
-        static SATA_COUNT: AtomicUsize = AtomicUsize::new(0);
+        static SATA_COUNT: AtomicU8 = AtomicU8::new(0);
 
         match self {
             BlockDeviceType::RamDisk => {
@@ -37,7 +38,7 @@ impl Display for BlockDeviceType {
             BlockDeviceType::Sata => write!(
                 f,
                 "sd{}",
-                (b'a' + SATA_COUNT.fetch_add(1, Ordering::Relaxed) as u8) as char
+                (b'a' + SATA_COUNT.fetch_add(1, Ordering::Relaxed)) as char
             ),
             BlockDeviceType::Nvme(id) => write!(
                 f,
@@ -58,6 +59,9 @@ pub enum BlockDeviceError {
 }
 
 pub trait BlockDevice: Sync + Send {
+    /// # Errors
+    /// - `BlockDeviceError::ReadError` if the device fails to read.
+    /// - `BlockDeviceError::WriteError` if the device fails to write.
     fn commit_io(&self, block_offset: u64, io: BlockIo) -> Result<(), BlockDeviceError>;
 
     fn metadata(&self) -> BlockMetadata;

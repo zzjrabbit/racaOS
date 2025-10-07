@@ -2,7 +2,7 @@ use crate::{
     PciDevice,
     arch::{read32, write32},
 };
-use pci_types::{capability::PciCapability, device_type::DeviceType, *};
+use pci_types::{capability::PciCapability, device_type::DeviceType, CommandRegister, ConfigRegionAccess, EndpointHeader, HeaderType, PciAddress, PciHeader, PciPciBridgeHeader};
 
 use alloc::vec::Vec;
 
@@ -10,11 +10,11 @@ pub(crate) struct PciAccess;
 
 impl ConfigRegionAccess for PciAccess {
     unsafe fn read(&self, address: PciAddress, offset: u16) -> u32 {
-        read32(&address, offset as u32).unwrap()
+        read32(address, u32::from(offset)).unwrap()
     }
 
     unsafe fn write(&self, address: PciAddress, offset: u16, value: u32) {
-        write32(&address, offset as u32, value).unwrap()
+        write32(address, u32::from(offset), value).unwrap();
     }
 }
 
@@ -100,8 +100,8 @@ impl PciResolver {
                     vendor_id,
                     device_id,
                     interface,
-                    device_type,
                     revision,
+                    device_type,
                 };
 
                 self.devices.push(device);

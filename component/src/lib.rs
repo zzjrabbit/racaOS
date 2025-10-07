@@ -61,6 +61,7 @@ impl ComponentRegistry {
     }
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl Debug for ComponentRegistry {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ComponentRegistry")
@@ -82,28 +83,29 @@ pub enum ComponentSystemInitError {
 /// according to the given stage, and invokes them in the correct order while honoring
 /// dependencies and priorities between crates.
 ///
-/// The collection of ComponentRegistry usually generate by `parse_metadata` macro.
+/// The collection of `ComponentRegistry` usually generate by `parse_metadata` macro.
 ///
 /// ```rust
 ///     component::init_all(component::InitStage::Bootstrap, component::parse_metadata!());
 /// ```
 ///
+/// # Errors
+/// It returns errors from the components.
 pub fn init_all(
-    stage: InitStage,
+    stage: &InitStage,
     components: Vec<&ComponentRegistry>,
-) -> Result<(), ComponentSystemInitError> {
-    match_and_call(stage, components)?;
-    Ok(())
+) {
+    match_and_call(stage, components)
 }
 
-/// Match the ComponentInfo with ComponentRegistry. The key is the relative path of one component
+/// Match the `ComponentInfo` with `ComponentRegistry`. The key is the relative path of one component
 fn match_and_call(
-    stage: InitStage,
+    stage: &InitStage,
     components: Vec<&ComponentRegistry>,
-) -> Result<(), ComponentSystemInitError> {
+) {
     let mut components_to_init = Vec::new();
     for component in components {
-        if component.stage != stage {
+        if component.stage != *stage {
             continue;
         }
 
@@ -114,15 +116,14 @@ fn match_and_call(
     info!("Components initializing in {stage:?} stage...");
 
     for component in components_to_init {
-        info!("Component initializing:{:?}", component);
+        info!("Component initializing:{component:?}");
         if let Err(res) = (component.function)() {
-            error!("Component initialize error:{:?}", res);
+            error!("Component initialize error:{res:?}");
         } else {
             info!("Component initialize complete");
         }
     }
     info!("All components initialization in {stage:?} stage completed");
-    Ok(())
 }
 
 #[doc(hidden)]

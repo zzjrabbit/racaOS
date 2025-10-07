@@ -2,7 +2,7 @@ use core::sync::atomic::{AtomicBool, Ordering};
 
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    mm::{DmaDirection, DmaStream, FrameAllocOptions, VmIo},
+    mm::{DmaDirection, DmaStream, FrameAllocOptions, PAGE_SIZE, VmIo, VmIoFill},
     sync::WaitQueue,
 };
 
@@ -25,15 +25,20 @@ struct BlockIoInner {
 }
 
 impl BlockIo {
+    /// # Panics
+    /// Panics if unable to allocate DMA streams.
+    #[must_use]
     pub fn new(operation: BlockOperation, block_num: usize) -> Self {
         let dma_streams = (0..block_num)
             .map(|_| {
-                DmaStream::map(
+                let stream = DmaStream::map(
                     FrameAllocOptions::new().alloc_segment(1).unwrap().into(),
                     DmaDirection::Bidirectional,
                     false,
                 )
-                .unwrap()
+                .unwrap();
+                stream.fill_zeros(0, PAGE_SIZE).unwrap();
+                stream
             })
             .collect::<Vec<_>>();
 
@@ -46,6 +51,8 @@ impl BlockIo {
         }
     }
 
+    /// # Panics
+    /// Panics if unable to read from the DMA streams.
     pub fn read(&self, offset: usize, buffer: &mut [u8]) {
         let mut read: usize = 0;
 
@@ -66,6 +73,8 @@ impl BlockIo {
         }
     }
 
+    /// # Panics
+    /// Panics if unable to write to the DMA streams.
     pub fn write(&self, offset: usize, buffer: &[u8]) {
         let mut written: usize = 0;
 
@@ -86,10 +95,15 @@ impl BlockIo {
         }
     }
 
+    /// # Panics
+    /// Panics if unable to commit the block I/O operation.
+    /// 
+    /// # Errors
+    /// Returns an error if the block device fails to commit the I/O operation.
     pub fn commit(
         &self,
         block_offset: u64,
-        device: Arc<dyn BlockDevice>,
+        device: &Arc<dyn BlockDevice>,
     ) -> Result<BlockIoWaiter, BlockDeviceError> {
         device
             .commit_io(
@@ -98,7 +112,7 @@ impl BlockIo {
                     inner: self.inner.clone(),
                 },
             )
-            .map(|_| BlockIoWaiter::new(self.inner.clone()))
+            .map(|()| BlockIoWaiter::new(self.inner.clone()))
     }
 }
 
@@ -107,10 +121,12 @@ impl BlockIo {
         self.inner.complete.store(true, Ordering::SeqCst);
     }
 
+    #[must_use]
     pub fn dma_stream(&self) -> &[DmaStream] {
         &self.inner.dma_streams
     }
 
+    #[must_use]
     pub fn operation(&self) -> BlockOperation {
         self.inner.operation
     }

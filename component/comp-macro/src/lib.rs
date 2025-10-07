@@ -37,6 +37,8 @@ use syn::parse_macro_input;
 /// ```
 /// The priority will calculate automatically
 ///
+/// # Panics
+/// If the function has unsupported arguments, it will panic.
 #[proc_macro_attribute]
 pub fn init_component(args: TokenStream, input: TokenStream) -> proc_macro::TokenStream {
     let stage = match args.to_string().as_str() {

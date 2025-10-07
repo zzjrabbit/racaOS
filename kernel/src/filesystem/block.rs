@@ -31,7 +31,7 @@ impl InodeOperation for BlockInode {
             (len + first_block_remaining).div_ceil(BLOCK_SIZE),
         );
 
-        let Ok(waiter) = bio.commit(offset / BLOCK_SIZE as u64, self.device.clone()) else {
+        let Ok(waiter) = bio.commit(offset / BLOCK_SIZE as u64, &self.device) else {
             return 0;
         };
         waiter.wait();
@@ -53,7 +53,7 @@ impl InodeOperation for BlockInode {
         let offset = offset % BLOCK_SIZE as u64;
         bio.write(offset as usize, buf);
 
-        let Ok(waiter) = bio.commit(offset / BLOCK_SIZE as u64, self.device.clone()) else {
+        let Ok(waiter) = bio.commit(offset / BLOCK_SIZE as u64, &self.device) else {
             return 0;
         };
         waiter.wait();

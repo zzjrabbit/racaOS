@@ -13,7 +13,7 @@ static PCI_DATA_PORT: Once<IoPort<u32, ReadWriteAccess>> = Once::new();
 
 const BIT32_ALIGN_MASK: u32 = 0xFFFC;
 
-pub(crate) fn write32(address: &PciAddress, offset: u32, value: u32) -> Result<(), Error> {
+pub(crate) fn write32(address: PciAddress, offset: u32, value: u32) -> Result<(), Error> {
     PCI_ADDRESS_PORT
         .get()
         .ok_or(Error::IoError)?
@@ -25,7 +25,7 @@ pub(crate) fn write32(address: &PciAddress, offset: u32, value: u32) -> Result<(
     Ok(())
 }
 
-pub(crate) fn read32(address: &PciAddress, offset: u32) -> Result<u32, Error> {
+pub(crate) fn read32(address: PciAddress, offset: u32) -> Result<u32, Error> {
     PCI_ADDRESS_PORT
         .get()
         .ok_or(Error::IoError)?
@@ -34,7 +34,8 @@ pub(crate) fn read32(address: &PciAddress, offset: u32) -> Result<u32, Error> {
 }
 
 /// Encodes the bus, device, and function into a port address for use with the PCI I/O port.
-fn encode_as_port(address: &PciAddress) -> u32 {
+#[allow(clippy::cast_lossless)]
+fn encode_as_port(address: PciAddress) -> u32 {
     // 1 << 31: Configuration enable
     (1 << 31)
         | ((address.bus() as u32) << 16)

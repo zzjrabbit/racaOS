@@ -24,6 +24,7 @@ pub fn pci_init() -> Result<(), ComponentInitError> {
     Ok(())
 }
 
+#[must_use]
 pub fn get_pci_devices() -> &'static [PciDevice] {
     &PCI_DEVICES
 }
