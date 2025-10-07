@@ -48,7 +48,7 @@ impl Process {
         let vm_space = Arc::new(VmSpace::new());
         let memory_info = Arc::new(MemoryInfo::new(vm_space));
 
-        let entry = memory_info.vm_space().load(binary)?;
+        let (entry, aux_vec) = memory_info.vm_space().load(binary)?;
 
         let mut user_stack = UserStack::new(memory_info.as_ref());
 
@@ -57,7 +57,7 @@ impl Process {
         let argv = user_stack.push_a_lot(b"hello\0");
         user_stack.push_zero_until_aligned(16);
 
-        user_stack.push_a_lot(&[0usize, 0]);
+        user_stack.push_a_lot(&aux_vec.as_slice());
 
         user_stack.push(envp);
         user_stack.push(argv);

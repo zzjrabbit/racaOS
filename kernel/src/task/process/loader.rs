@@ -12,14 +12,14 @@ use ostd::{
     Error as OstdError,
 };
 
-use crate::mem::{align_down_by_page_size, align_up_by_page_size, VmReadWrite};
+use crate::{mem::{VmReadWrite, align_down_by_page_size, align_up_by_page_size}, task::process::user_stack::{AuxKey, AuxVec}};
 
 pub trait BinaryLoader {
-    fn load(&self, data: &[u8]) -> Result<Vaddr, OstdError>;
+    fn load(&self, data: &[u8]) -> Result<(Vaddr, AuxVec), OstdError>;
 }
 
 impl BinaryLoader for VmSpace {
-    fn load(&self, data: &[u8]) -> Result<Vaddr, OstdError> {
+    fn load(&self, data: &[u8]) -> Result<(Vaddr, AuxVec), OstdError> {
         let guard = disable_preempt();
 
         let file =
@@ -70,7 +70,11 @@ impl BinaryLoader for VmSpace {
 
             self.write(address, data).unwrap();
         }
-
-        Ok(file.ehdr.e_entry as Vaddr)
+        
+        let mut aux_vec = AuxVec::new();
+        aux_vec.set(AuxKey::Phnum, file.ehdr.e_phnum as u64);
+        aux_vec.set(AuxKey::Entry, file.ehdr.e_entry);
+        
+        Ok((file.ehdr.e_entry as Vaddr, aux_vec))
     }
 }
