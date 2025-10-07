@@ -3,22 +3,22 @@ use core::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
     arch::cpu::context::UserContext,
-    mm::{CachePolicy, FrameAllocOptions, PageFlags, PageProperty, VmSpace, PAGE_SIZE},
-    task::{disable_preempt, Task},
+    mm::VmSpace,
+    task::Task,
     Error as OstdError,
 };
 use spin::RwLock;
 
 use crate::{
     filesystem::File,
-    mem::VmReadWrite,
-    task::{spawn_user_thread, AsThread, UserThreadData},
+    task::{AsThread, UserThreadData, process::user_stack::UserStack, spawn_user_thread},
 };
 use loader::BinaryLoader;
 pub use memory::{MemoryInfo, MemoryRegion};
 
 mod loader;
 mod memory;
+mod user_stack;
 
 static PROCESSES: RwLock<Vec<Arc<Process>>> = RwLock::new(Vec::new());
 
@@ -50,61 +50,20 @@ impl Process {
 
         let entry = memory_info.vm_space().load(binary)?;
 
-        let stack_region = memory_info.allocate(USER_STACK_SIZE)?;
-        const USER_STACK_SIZE: usize = 8 * 1024 * 1024;
+        let mut user_stack = UserStack::new(memory_info.as_ref());
 
-        let user_stack_end = stack_region.end_address();
+        let envp = user_stack.push(0u64);
 
-        let disable_preempt_guard = disable_preempt();
+        let argv = user_stack.push_a_lot(b"hello\0");
+        user_stack.push_zero_until_aligned(16);
 
-        let vm_space = memory_info.vm_space();
+        user_stack.push_a_lot(&[0usize, 0]);
 
-        let mut cursor = vm_space
-            .cursor_mut(
-                &disable_preempt_guard,
-                &(stack_region.start_address()..stack_region.end_address()),
-            )
-            .unwrap();
+        user_stack.push(envp);
+        user_stack.push(argv);
+        user_stack.push(1usize);
 
-        for _ in 0..USER_STACK_SIZE / PAGE_SIZE {
-            let frame = FrameAllocOptions::new().alloc_frame().unwrap();
-
-            let property = PageProperty::new_user(PageFlags::RW, CachePolicy::Writeback);
-            cursor.map(frame.into(), property);
-        }
-        drop(cursor);
-        drop(disable_preempt_guard);
-
-        let envp = user_stack_end - size_of::<usize>();
-        vm_space.write_val(envp, &0usize).unwrap();
-
-        let path = c"hello";
-        let argv = envp - path.count_bytes() - 1;
-        for (id, byte) in path.to_bytes_with_nul().iter().enumerate() {
-            vm_space.write_val(argv + id, byte).unwrap();
-        }
-
-        let aligned_argv = argv - 2;
-
-        let auxv_ptr = aligned_argv - 2 * size_of::<usize>();
-        vm_space.write_val(auxv_ptr, &0usize).unwrap();
-        vm_space
-            .write_val(auxv_ptr + size_of::<usize>(), &0usize)
-            .unwrap();
-
-        // write envp
-        let envp_ptr = auxv_ptr - size_of::<usize>();
-        vm_space.write_val(envp_ptr, &envp).unwrap();
-
-        // write argv
-        let argv_ptr = envp_ptr - size_of::<usize>();
-        vm_space.write_val(argv_ptr, &argv).unwrap();
-
-        // write argc
-        let argc_ptr = argv_ptr - size_of::<usize>();
-        vm_space.write_val(argc_ptr, &1usize).unwrap();
-
-        let user_stack_end = argc_ptr;
+        let user_stack_end = user_stack.stack_pointer();
 
         let mut user_context = UserContext::default();
         user_context.set_rip(entry);
