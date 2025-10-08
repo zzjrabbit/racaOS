@@ -131,7 +131,7 @@ pub struct UserThreadData {
     pub tid_address: RwLock<Option<Vaddr>>,
     tid: usize,
     memory_info: Arc<MemoryInfo>,
-    fs_info: FileSystemInfo,
+    fs_info: Arc<FileSystemInfo>,
 }
 
 impl UserThreadData {
@@ -149,7 +149,7 @@ impl UserThreadData {
             memory_info,
             tid_address: RwLock::new(None),
             tid: TID.fetch_add(1, Ordering::SeqCst),
-            fs_info: FileSystemInfo::new(stdin, stdout, stderr),
+            fs_info: Arc::new(FileSystemInfo::new(stdin, stdout, stderr)),
         }
     }
 }
@@ -165,7 +165,7 @@ impl UserThreadData {
         &self.memory_info
     }
 
-    pub fn fs_info(&self) -> &FileSystemInfo {
+    pub fn fs_info(&self) -> &Arc<FileSystemInfo> {
         &self.fs_info
     }
 }

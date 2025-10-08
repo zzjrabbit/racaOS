@@ -1,5 +1,8 @@
 use core::fmt::{self, Display};
-use pci_types::{device_type::DeviceType, Bar, DeviceId, DeviceRevision, EndpointHeader, Interface, MAX_BARS, PciAddress, PciHeader, VendorId};
+use pci_types::{
+    Bar, DeviceId, DeviceRevision, EndpointHeader, Interface, MAX_BARS, PciAddress, PciHeader,
+    VendorId, device_type::DeviceType,
+};
 
 use crate::resolver::PciAccess;
 

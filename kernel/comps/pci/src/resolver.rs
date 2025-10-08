@@ -2,7 +2,10 @@ use crate::{
     PciDevice,
     arch::{read32, write32},
 };
-use pci_types::{capability::PciCapability, device_type::DeviceType, CommandRegister, ConfigRegionAccess, EndpointHeader, HeaderType, PciAddress, PciHeader, PciPciBridgeHeader};
+use pci_types::{
+    CommandRegister, ConfigRegionAccess, EndpointHeader, HeaderType, PciAddress, PciHeader,
+    PciPciBridgeHeader, capability::PciCapability, device_type::DeviceType,
+};
 
 use alloc::vec::Vec;
 

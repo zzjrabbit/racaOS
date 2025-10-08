@@ -1,5 +1,9 @@
 use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
-use ostd::{Pod, mm::{CachePolicy, FrameAllocOptions, PAGE_SIZE, PageFlags, PageProperty, VmSpace}, task::disable_preempt};
+use ostd::{
+    mm::{CachePolicy, FrameAllocOptions, PageFlags, PageProperty, VmSpace, PAGE_SIZE},
+    task::disable_preempt,
+    Pod,
+};
 
 use crate::{mem::VmReadWrite, task::MemoryInfo};
 
@@ -29,7 +33,7 @@ impl UserStack {
             let property = PageProperty::new_user(PageFlags::RW, CachePolicy::Writeback);
             cursor.map(frame.into(), property);
         }
-        
+
         let stack_pointer = stack_region.end_address();
 
         Self {
@@ -46,19 +50,19 @@ impl UserStack {
         self.stack_pointer = value_ptr;
         value_ptr
     }
-    
+
     pub fn push_a_lot<T: Pod>(&mut self, values: &[T]) -> usize {
         for value in values.iter().rev() {
             self.push(*value);
         }
         self.stack_pointer
     }
-    
+
     pub fn push_zero_until_aligned(&mut self, alignment: usize) {
         let remainder = self.stack_pointer % alignment;
         self.push_a_lot(&alloc::vec![0u8; remainder]);
     }
-    
+
     pub fn stack_pointer(&self) -> usize {
         self.stack_pointer
     }
@@ -85,12 +89,12 @@ pub enum AuxKey {
     Platform = 15,
     HwCap = 16,
     ClockTick = 17,
-    
+
     Secure = 23,
     BasePlatform = 24,
     Random = 25,
     HwCap2 = 26,
-    
+
     ExecFileName = 31,
     SysInfo = 32,
     SysInfoEhdr = 33,
@@ -119,7 +123,7 @@ impl AuxVec {
     pub fn set(&mut self, key: AuxKey, value: u64) {
         self.table.insert(key, value);
     }
-    
+
     pub fn get(&self, key: AuxKey) -> Option<u64> {
         self.table.get(&key).copied()
     }

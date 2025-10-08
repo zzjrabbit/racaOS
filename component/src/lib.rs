@@ -91,18 +91,12 @@ pub enum ComponentSystemInitError {
 ///
 /// # Errors
 /// It returns errors from the components.
-pub fn init_all(
-    stage: &InitStage,
-    components: Vec<&ComponentRegistry>,
-) {
+pub fn init_all(stage: &InitStage, components: Vec<&ComponentRegistry>) {
     match_and_call(stage, components)
 }
 
 /// Match the `ComponentInfo` with `ComponentRegistry`. The key is the relative path of one component
-fn match_and_call(
-    stage: &InitStage,
-    components: Vec<&ComponentRegistry>,
-) {
+fn match_and_call(stage: &InitStage, components: Vec<&ComponentRegistry>) {
     let mut components_to_init = Vec::new();
     for component in components {
         if component.stage != *stage {

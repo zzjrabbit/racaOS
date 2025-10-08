@@ -97,7 +97,7 @@ impl BlockIo {
 
     /// # Panics
     /// Panics if unable to commit the block I/O operation.
-    /// 
+    ///
     /// # Errors
     /// Returns an error if the block device fails to commit the I/O operation.
     pub fn commit(

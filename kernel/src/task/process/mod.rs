@@ -1,17 +1,12 @@
 use core::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use alloc::{sync::Arc, vec::Vec};
-use ostd::{
-    arch::cpu::context::UserContext,
-    mm::VmSpace,
-    task::Task,
-    Error as OstdError,
-};
+use ostd::{arch::cpu::context::UserContext, mm::VmSpace, task::Task, Error as OstdError};
 use spin::RwLock;
 
 use crate::{
     filesystem::File,
-    task::{AsThread, UserThreadData, process::user_stack::UserStack, spawn_user_thread},
+    task::{process::user_stack::UserStack, spawn_user_thread, AsThread, UserThreadData},
 };
 use loader::BinaryLoader;
 pub use memory::{MemoryInfo, MemoryRegion};
