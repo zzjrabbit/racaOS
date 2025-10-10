@@ -6,11 +6,11 @@ use spin::RwLock;
 use crate::filesystem::{AccessMode, File, FileDescriptor, OpenFlags, Path};
 
 type FileDescription = (u64, AccessMode, OpenFlags, Arc<File>);
-type FileDescriptorTable = Arc<RwLock<BTreeMap<FileDescriptor, FileDescription>>>;
+type FileDescriptorTable = RwLock<BTreeMap<FileDescriptor, FileDescription>>;
 
 pub struct FileSystemInfo {
     fd_table: FileDescriptorTable,
-    next_fd: Arc<AtomicI32>,
+    next_fd: AtomicI32,
     current_dir: RwLock<Path>,
 }
 
@@ -22,9 +22,17 @@ impl FileSystemInfo {
         fd_table.insert(2, (0, AccessMode::O_WRONLY, OpenFlags::empty(), stderr));
 
         FileSystemInfo {
-            fd_table: Arc::new(RwLock::new(fd_table)),
-            next_fd: Arc::new(AtomicI32::new(3)),
+            fd_table: RwLock::new(fd_table),
+            next_fd: AtomicI32::new(3),
             current_dir: RwLock::new(Path::new("/")),
+        }
+    }
+
+    pub fn deep_clone(&self) -> Self {
+        FileSystemInfo {
+            fd_table: RwLock::new(self.fd_table.read().clone()),
+            next_fd: AtomicI32::new(self.next_fd.load(Ordering::SeqCst)),
+            current_dir: RwLock::new(self.current_dir.read().clone()),
         }
     }
 }

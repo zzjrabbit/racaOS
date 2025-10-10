@@ -7,7 +7,7 @@ use alloc::{
 };
 use ostd::{
     arch::cpu::context::{CpuException, UserContext},
-    mm::{Vaddr, VmSpace},
+    mm::Vaddr,
     sync::RwLock,
     task::{Task, TaskOptions},
     user::{ReturnReason, UserMode},
@@ -15,6 +15,7 @@ use ostd::{
 
 use crate::{
     filesystem::File,
+    mem::Vmar,
     syscall::syscall_handler,
     task::{thread::CallBacks, AsThread, MemoryInfo, Process, Thread},
     trap::user_page_fault_handler,
@@ -29,7 +30,7 @@ static THREADS: RwLock<Vec<Arc<Task>>> = RwLock::new(Vec::new());
 struct UserThreadCallbacks {
     process: Weak<Process>,
     tid: usize,
-    vm_space: Arc<VmSpace>,
+    vmar: Arc<Vmar>,
 }
 
 impl CallBacks for UserThreadCallbacks {
@@ -42,7 +43,7 @@ impl CallBacks for UserThreadCallbacks {
     }
 
     fn pre_execute(&self) {
-        self.vm_space.activate();
+        self.vmar.activate();
     }
 }
 
@@ -50,15 +51,18 @@ pub fn spawn_user_thread(
     process: &Arc<Process>,
     user_context: UserContext,
     memory_info: Arc<MemoryInfo>,
+    user_data: Option<UserThreadData>,
 ) -> Arc<Task> {
     let user_entry = || {
         let mut user_mode = {
             let current = Task::current().unwrap();
             let data = current.direct_downcast::<UserThreadData>().unwrap();
 
-            data.memory_info().vm_space().activate();
+            data.memory_info().vmar().activate();
             UserMode::new(user_context)
         };
+
+        user_mode.context().activate_tls_pointer();
 
         loop {
             {
@@ -82,7 +86,15 @@ pub fn spawn_user_thread(
 
                     match exception {
                         CpuException::PageFault(_) => user_page_fault_handler(&exception).unwrap(),
-                        _ => panic!("Unhandled exception: {:?}", exception),
+                        _ => {
+                            let process = Process::current();
+
+                            log::error!("Unhandled exception: {:?}", exception);
+                            log::error!("Context: {:#x?}", context);
+                            log::error!("Process: {}", process.id());
+
+                            process.exit(-1);
+                        }
                     }
                 }
                 _ => panic!("Thread error: {:x?}", return_reason),
@@ -93,16 +105,16 @@ pub fn spawn_user_thread(
     };
 
     let thread = Arc::new_cyclic(|weak_task| {
-        let thread_data = Box::new(UserThreadData::new(
+        let thread_data = Box::new(user_data.unwrap_or(UserThreadData::new(
             process.default_stdin(),
             process.default_stdout(),
             process.default_stderr(),
             process,
             memory_info,
-        ));
+        )));
 
         let tid = thread_data.tid();
-        let vm_space = thread_data.memory_info().vm_space();
+        let vmar = thread_data.memory_info().vmar();
 
         let thread = Thread::new(
             weak_task.clone(),
@@ -110,7 +122,7 @@ pub fn spawn_user_thread(
             Box::new(UserThreadCallbacks {
                 process: Arc::downgrade(process),
                 tid,
-                vm_space,
+                vmar,
             }),
         );
 
@@ -121,6 +133,7 @@ pub fn spawn_user_thread(
     });
 
     THREADS.write().push(thread.clone());
+    process.add_thread(thread.clone());
     thread.run();
 
     thread
@@ -134,6 +147,8 @@ pub struct UserThreadData {
     fs_info: Arc<FileSystemInfo>,
 }
 
+static TID: AtomicUsize = AtomicUsize::new(0);
+
 impl UserThreadData {
     pub fn new(
         stdin: Arc<File>,
@@ -142,14 +157,27 @@ impl UserThreadData {
         process: &Arc<Process>,
         memory_info: Arc<MemoryInfo>,
     ) -> Self {
-        static TID: AtomicUsize = AtomicUsize::new(0);
-
         Self {
             process: Arc::downgrade(process),
             memory_info,
             tid_address: RwLock::new(None),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info: Arc::new(FileSystemInfo::new(stdin, stdout, stderr)),
+        }
+    }
+
+    pub fn new_all(
+        process: &Arc<Process>,
+        memory_info: Arc<MemoryInfo>,
+        fs_info: Arc<FileSystemInfo>,
+        tid_address: Option<Vaddr>,
+    ) -> Self {
+        Self {
+            process: Arc::downgrade(process),
+            memory_info,
+            tid_address: RwLock::new(tid_address),
+            tid: TID.fetch_add(1, Ordering::SeqCst),
+            fs_info,
         }
     }
 }

@@ -1,33 +1,24 @@
 use ostd::{
-    mm::{vm_space::VmQueriedItem, VmIo, VmSpace, PAGE_SIZE},
-    task::disable_preempt,
+    mm::{VmIo, PAGE_SIZE},
     Error as OstdError, Pod,
 };
 
-use crate::mem::align_down_by_page_size;
+use crate::mem::{align_down_by_page_size, Vmar};
 
-#[allow(dead_code)]
-pub trait VmReadWrite {
-    fn read(&self, address: usize, buffer: &mut [u8]) -> Result<(), OstdError>;
-    fn write(&self, address: usize, buffer: &[u8]) -> Result<(), OstdError>;
-
-    fn read_val<T: Pod>(&self, address: usize) -> Result<T, OstdError> {
+impl Vmar {
+    pub fn read_val<T: Pod>(&self, address: usize) -> Result<T, OstdError> {
         let mut buffer = alloc::vec![0u8; core::mem::size_of::<T>()];
         self.read(address, &mut buffer)?;
         Ok(T::from_bytes(&buffer))
     }
 
-    fn write_val<T: Pod>(&self, address: usize, value: &T) -> Result<(), OstdError> {
+    pub fn write_val<T: Pod>(&self, address: usize, value: &T) -> Result<(), OstdError> {
         let buffer = value.as_bytes();
         self.write(address, buffer)?;
         Ok(())
     }
-}
 
-impl VmReadWrite for VmSpace {
-    fn read(&self, address: usize, buffer: &mut [u8]) -> Result<(), OstdError> {
-        let guard = disable_preempt();
-
+    pub fn read(&self, address: usize, buffer: &mut [u8]) -> Result<(), OstdError> {
         let mut read: usize = 0;
 
         while read < buffer.len() {
@@ -37,12 +28,16 @@ impl VmReadWrite for VmSpace {
             let chunk_size = (PAGE_SIZE - page_offset).min(remaining);
 
             let page_address = align_down_by_page_size(current_address);
-            let (_, Some(VmQueriedItem::MappedRam { frame, prop: _ })) = self
-                .cursor_mut(&guard, &(page_address..page_address + PAGE_SIZE))?
-                .query()?
-            else {
-                return Err(OstdError::InvalidArgs);
-            };
+            let frame = self
+                .inner
+                .read()
+                .vm_mappings
+                .iter()
+                .find(|mapping| mapping.contains(page_address))
+                .map(|mapping| {
+                    mapping.frames()[(page_address - mapping.start()) / PAGE_SIZE].clone()
+                })
+                .unwrap();
 
             frame.read_bytes(page_offset, &mut buffer[read..read + chunk_size])?;
             read += chunk_size;
@@ -51,9 +46,7 @@ impl VmReadWrite for VmSpace {
         Ok(())
     }
 
-    fn write(&self, address: usize, buffer: &[u8]) -> Result<(), OstdError> {
-        let guard = disable_preempt();
-
+    pub fn write(&self, address: usize, buffer: &[u8]) -> Result<(), OstdError> {
         let mut written: usize = 0;
 
         while written < buffer.len() {
@@ -63,12 +56,16 @@ impl VmReadWrite for VmSpace {
             let chunk_size = (PAGE_SIZE - page_offset).min(remaining);
 
             let page_address = align_down_by_page_size(current_address);
-            let (_, Some(VmQueriedItem::MappedRam { frame, prop: _ })) = self
-                .cursor_mut(&guard, &(page_address..page_address + PAGE_SIZE))?
-                .query()?
-            else {
-                return Err(OstdError::InvalidArgs);
-            };
+            let frame = self
+                .inner
+                .read()
+                .vm_mappings
+                .iter()
+                .find(|mapping| mapping.contains(page_address))
+                .map(|mapping| {
+                    mapping.frames()[(page_address - mapping.start()) / PAGE_SIZE].clone()
+                })
+                .unwrap();
 
             frame.write_bytes(page_offset, &buffer[written..written + chunk_size])?;
             written += chunk_size;

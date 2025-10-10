@@ -45,11 +45,7 @@ pub fn uname(address: Vaddr) -> SyscallResult {
     utsname.machine.copy_from_slice(b"x86_64");
     utsname.nodename.copy_from_slice(b"root");
 
-    data.memory_info()
-        .vm_space()
-        .writer(address, size_of::<UtsName>())
-        .unwrap()
-        .write_val(&utsname)?;
+    data.memory_info().vmar().write_val(address, &utsname)?;
 
     Ok(0)
 }

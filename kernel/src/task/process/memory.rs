@@ -1,9 +1,11 @@
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    mm::{PageProperty, Vaddr, VmSpace},
+    mm::{PageProperty, Vaddr},
     sync::RwLock,
     Error as OstdError,
 };
+
+use crate::mem::Vmar;
 
 /// The base of kernel address space.
 pub const KERNEL_ASPACE_BASE: usize = 0xffff_ff80_0000_0000;
@@ -14,11 +16,11 @@ pub const USER_ASPACE_SIZE: usize = KERNEL_ASPACE_BASE - USER_ASPACE_BASE;
 
 #[derive(Debug)]
 pub struct MemoryInfo {
-    vm_space: Arc<VmSpace>,
+    vmar: Arc<Vmar>,
     inner: RwLock<MemoryInfoInner>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct MemoryInfoInner {
     free_memory_space: Vec<MemoryRegion>,
     allocated: Vec<MemoryRegion>,
@@ -26,9 +28,9 @@ struct MemoryInfoInner {
 }
 
 impl MemoryInfo {
-    pub fn new(vm_space: Arc<VmSpace>) -> Self {
+    pub fn new(vmar: Arc<Vmar>) -> Self {
         MemoryInfo {
-            vm_space,
+            vmar,
             inner: RwLock::new(MemoryInfoInner {
                 free_memory_space: alloc::vec![MemoryRegion::new(
                     USER_ASPACE_BASE,
@@ -39,12 +41,19 @@ impl MemoryInfo {
             }),
         }
     }
+
+    pub fn deep_clone(&self) -> Self {
+        MemoryInfo {
+            vmar: self.vmar.deep_clone().unwrap(),
+            inner: RwLock::new(self.inner.read().clone()),
+        }
+    }
 }
 
 #[allow(dead_code)]
 impl MemoryInfo {
-    pub fn vm_space(&self) -> Arc<VmSpace> {
-        self.vm_space.clone()
+    pub fn vmar(&self) -> Arc<Vmar> {
+        self.vmar.clone()
     }
 
     pub fn with_unused_regions<F, R>(&self, f: F) -> R

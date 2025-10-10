@@ -1,12 +1,12 @@
 use bitflags::bitflags;
 use ostd::{
-    mm::{tlb::TlbFlushOp, CachePolicy, PageFlags, PageProperty, Vaddr},
-    task::{disable_preempt, Task},
+    mm::{CachePolicy, PageFlags, PageProperty, Vaddr},
+    task::Task,
 };
 
 use crate::{
     mem::{align_down_by_page_size, align_up_by_page_size},
-    task::{AsThread, MemoryRegion, UserThreadData},
+    task::{AsThread, UserThreadData},
 };
 
 use super::*;
@@ -75,12 +75,11 @@ pub fn mmap(
         flags
     );
 
-    memory_info.with_unused_regions_mut(|regions| {
-        regions.push((
-            MemoryRegion::new(address, len),
-            PageProperty::new_user(protection_flags, CachePolicy::Writeback),
-        ))
-    });
+    memory_info.vmar().map(
+        address,
+        len,
+        PageProperty::new_user(protection_flags, CachePolicy::Writeback),
+    )?;
 
     Ok(address as isize)
 }
@@ -91,7 +90,6 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
     let memory_info = data.memory_info();
 
     let protection_flags = protection.to_mmu_flags();
-    let mut found = false;
 
     log::trace!(
         "mprotect address: {:x} prot: {:?}",
@@ -99,33 +97,7 @@ pub fn mprotect(address: Vaddr, len: usize, protection: MMapProtection) -> Sysca
         protection_flags
     );
 
-    memory_info.with_unused_regions_mut(|regions| {
-        for (region, flags) in regions.iter_mut() {
-            if region.contains(address) {
-                flags.flags |= protection_flags;
-                found = true;
-            }
-        }
-    });
-
-    if !found {
-        let disable_preempt_guard = disable_preempt();
-
-        let len = align_up_by_page_size(len);
-
-        let vm_space = memory_info.vm_space();
-
-        vm_space
-            .cursor_mut(&disable_preempt_guard, &(address..address + len))?
-            .protect_next(len, |flags, _| *flags |= protection_flags)
-            .unwrap();
-
-        let mut cursor = vm_space.cursor_mut(&disable_preempt_guard, &(address..address + len))?;
-        cursor
-            .flusher()
-            .issue_tlb_flush(TlbFlushOp::for_range(address..address + len));
-        cursor.flusher().dispatch_tlb_flush();
-    }
+    memory_info.vmar().protect(address, len, protection_flags)?;
 
     Ok(0)
 }
@@ -137,12 +109,7 @@ pub fn munmap(address: Vaddr, len: usize) -> SyscallResult {
     let aligned_address = align_down_by_page_size(address);
     let len = align_up_by_page_size(address + len - aligned_address);
 
-    let disable_preempt_guard = disable_preempt();
-
-    data.memory_info()
-        .vm_space()
-        .cursor_mut(&disable_preempt_guard, &(address..address + len))?
-        .unmap(len);
+    data.memory_info().vmar().unmap(address, len)?;
 
     Ok(0)
 }

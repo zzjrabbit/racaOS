@@ -1,4 +1,4 @@
-use crate::task::{AsThread, UserThreadData};
+use crate::task::{clone_child, AsThread, CloneArgs, UserThreadData};
 
 use super::*;
 use ostd::{mm::Vaddr, task::Task};
@@ -19,7 +19,14 @@ pub fn set_tid_address(address: Vaddr) -> SyscallResult {
 pub fn exit(exit_code: i32) -> SyscallResult {
     let process = Process::current();
     process.exit(exit_code);
-    log::warn!("Process exits.");
 
     Ok(0)
+}
+
+pub fn fork(context: &UserContext) -> SyscallResult {
+    let parent = Task::current().unwrap();
+
+    let (_, child_process) = clone_child(CloneArgs::default(), parent.cloned(), context)?;
+
+    Ok(child_process.id() as isize)
 }

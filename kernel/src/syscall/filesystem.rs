@@ -3,7 +3,6 @@ use ostd::{mm::Vaddr, task::Task, Pod};
 
 use crate::{
     filesystem::{open_file, AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path},
-    mem::VmReadWrite,
     task::{AsThread, UserThreadData},
 };
 
@@ -20,12 +19,7 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
 
     let mut path = Vec::new();
     loop {
-        let byte = data
-            .memory_info()
-            .vm_space()
-            .reader(address + path.len(), 1)
-            .unwrap()
-            .read_val()?;
+        let byte = data.memory_info().vmar().read_val(address + path.len())?;
         if byte == 0 {
             break;
         }
@@ -85,11 +79,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             let len = file.read_at(*offset, &mut buf);
 
             for (id, byte) in buf.iter().enumerate() {
-                data.memory_info()
-                    .vm_space()
-                    .writer(address + id, 1)
-                    .unwrap()
-                    .write_val(byte)?;
+                data.memory_info().vmar().write_val(address + id, byte)?;
             }
 
             *offset += len as u64;
@@ -110,13 +100,7 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             }
 
             let buffer = (0..len)
-                .map(|id| {
-                    data.memory_info()
-                        .vm_space()
-                        .reader(address + id, 1)
-                        .unwrap()
-                        .read_val::<u8>()
-                })
+                .map(|id| data.memory_info().vmar().read_val::<u8>(address + id))
                 .collect::<Result<Vec<_>, _>>()?;
 
             let len = file.write_at(*offset, &buffer);
@@ -152,10 +136,8 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
             for i in 0..count {
                 let vec = data
                     .memory_info()
-                    .vm_space()
-                    .reader(iov_address + (i * 2 * 8), size_of::<IoVec>())
-                    .unwrap()
-                    .read_val::<IoVec>()?;
+                    .vmar()
+                    .read_val::<IoVec>(iov_address + (i * 2 * 8))?;
 
                 let IoVec { base, len } = vec;
 
@@ -164,13 +146,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
                 }
 
                 let buffer = (0..len)
-                    .map(|id| {
-                        data.memory_info()
-                            .vm_space()
-                            .reader(base + id, 1)
-                            .unwrap()
-                            .read_val::<u8>()
-                    })
+                    .map(|id| data.memory_info().vmar().read_val::<u8>(base + id))
                     .collect::<Result<Vec<_>, _>>()?;
 
                 let len = file.write_at(*offset, &buffer);
@@ -283,14 +259,13 @@ pub fn ioctl(fd: FileDescriptor, cmd: u32, arg: Vaddr) -> SyscallResult {
 pub fn getcwd(buffer: Vaddr, len: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
     let data = thread.direct_downcast::<UserThreadData>().unwrap();
-    let vm_space = data.memory_info().vm_space();
+    let vmar = data.memory_info().vmar();
     let cwd = data.fs_info().current_dir();
 
     if cwd.len() >= len {
         Err(SyscallError::Null)
     } else {
-        vm_space
-            .write(buffer, cwd.as_bytes())
+        vmar.write(buffer, cwd.as_bytes())
             .map_err(|_| SyscallError::Null)?;
         Ok(buffer as isize)
     }
@@ -299,13 +274,13 @@ pub fn getcwd(buffer: Vaddr, len: usize) -> SyscallResult {
 pub fn chdir(file_name: Vaddr) -> SyscallResult {
     let thread = Task::current().unwrap();
     let data = thread.direct_downcast::<UserThreadData>().unwrap();
-    let vm_space = data.memory_info().vm_space();
+    let vmar = data.memory_info().vmar();
 
     let mut buffer = Vec::new();
-    buffer.push(vm_space.read_val(file_name)?);
+    buffer.push(vmar.read_val(file_name)?);
 
     while *buffer.last().unwrap() != 0u8 {
-        buffer.push(vm_space.read_val(file_name + buffer.len() as Vaddr)?);
+        buffer.push(vmar.read_val(file_name + buffer.len() as Vaddr)?);
     }
     buffer.pop().unwrap();
 

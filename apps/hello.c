@@ -1,30 +1,21 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
 int main() {
     chdir("./part0");
-    FILE *file = fopen("./input.txt", "r");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 1;
-    }
-    char buffer[22 * 1024] = {0};
-    int len = 22 * 1024;
-    for (int i = 0; i < len; i++) {
-        char ch = fgetc(file);
-        if (ch == EOF) {
-            len = i;
-            break;
-        }
-        buffer[i] = ch;
+    
+    if (fork() == 0) {
+        printf("Child process\n");
+        return 0;
     }
     
-    //printf("Length: %d \n", len);
-    
-    for (int i = 0; i < len; i++) {
-        printf("%c", buffer[i]);
+    for (int i = 0; i < 100000000; i++) {
+        asm volatile("nop");
     }
     
-    fclose(file);
+    printf("Parent process\n");
     return 0;
 }

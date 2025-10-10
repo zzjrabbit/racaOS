@@ -80,6 +80,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         11 => munmap(arg1, arg2),
         16 => ioctl(arg1 as FileDescriptor, arg2 as u32, arg3 as Vaddr),
         20 => writev(arg1 as FileDescriptor, arg2 as Vaddr, arg3),
+        57 => fork(context),
         60 => exit(arg1 as i32),
         63 => uname(arg1 as Vaddr),
         72 => fcntl(
@@ -95,7 +96,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         218 => set_tid_address(arg1),
         231 => exit(arg1 as i32),
         _ => {
-            log::warn!(target: "kernel", "Unimplemented syscall{}", syscall_id);
+            log::warn!("Unimplemented syscall{}", syscall_id);
             Ok(0)
         } //_ => Err(SyscallError::SyscallNotSupported),
     };
@@ -107,9 +108,11 @@ pub fn syscall_handler(context: &mut UserContext) {
         Err(error) => error as isize,
     };
 
+    let pid = Process::current().id();
+
     log::info!(
-        target: "kernel",
-        "syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x}) = {}",
+        "[{}]syscall{}({:x}, {:x}, {:x}, {:x}, {:x}, {:x}) = {}",
+        pid,
         syscall_id,
         arg1,
         arg2,

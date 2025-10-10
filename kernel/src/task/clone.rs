@@ -2,7 +2,9 @@
 
 use alloc::sync::Arc;
 use bitflags::bitflags;
-use ostd::{mm::Vaddr, task::Task, Error as OstdError};
+use ostd::{arch::cpu::context::UserContext, mm::Vaddr, task::Task, Error as OstdError};
+
+use crate::task::{spawn_user_thread, AsThread, Process, UserThreadData};
 
 bitflags! {
     #[derive(Default, Clone, Copy, Debug)]
@@ -54,6 +56,26 @@ pub struct CloneArgs {
     pub tls: u64,
 }
 
-pub fn clone_child(_clone_args: CloneArgs, _parent: Arc<Task>) -> Result<Arc<Task>, OstdError> {
-    unimplemented!()
+pub fn clone_child(
+    _clone_args: CloneArgs,
+    parent: Arc<Task>,
+    context: &UserContext,
+) -> Result<(Arc<Task>, Arc<Process>), OstdError> {
+    let parent_data = parent.direct_downcast::<UserThreadData>().unwrap();
+    let parent_process = parent_data.process.upgrade().unwrap();
+
+    let process = parent_process.fork();
+
+    let fs_info = Arc::new(parent_data.fs_info().deep_clone());
+    let memory_info = Arc::new(parent_data.memory_info().deep_clone());
+    let tid_address = parent_data.tid_address.read().clone();
+
+    let child_data = UserThreadData::new_all(&process, memory_info.clone(), fs_info, tid_address);
+
+    let mut child_context = context.clone();
+    child_context.set_rax(0);
+
+    let child_thread = spawn_user_thread(&process, child_context, memory_info, Some(child_data));
+
+    Ok((child_thread, process))
 }

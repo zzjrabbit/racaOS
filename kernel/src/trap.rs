@@ -1,24 +1,23 @@
 use ostd::{
     arch::{
-        cpu::context::{CpuException, PageFaultErrorCode, RawPageFaultInfo},
+        cpu::context::{CpuException, RawPageFaultInfo},
         trap::inject_user_page_fault_handler,
     },
-    cpu::CpuId,
-    mm::{vm_space::VmQueriedItem, FrameAllocOptions, PageFlags, PageProperty, VmIo, PAGE_SIZE},
-    task::{disable_preempt, Task},
+    task::Task,
 };
 
-use crate::{
-    mem::{align_down_by_page_size, align_up_by_page_size},
-    task::{AsThread, UserThreadData},
-};
+use crate::task::{AsThread, UserThreadData};
 
 pub fn init() {
     inject_user_page_fault_handler(user_page_fault_handler);
 }
 
 pub fn user_page_fault_handler(cpu_exception: &CpuException) -> Result<(), ()> {
-    let CpuException::PageFault(RawPageFaultInfo { error_code, addr }) = cpu_exception else {
+    let CpuException::PageFault(RawPageFaultInfo {
+        error_code: _,
+        addr,
+    }) = cpu_exception
+    else {
         unreachable!()
     };
 
@@ -26,86 +25,13 @@ pub fn user_page_fault_handler(cpu_exception: &CpuException) -> Result<(), ()> {
     let data = thread.direct_downcast::<UserThreadData>().unwrap();
     let process = data.process.upgrade().unwrap();
 
-    if process.is_child_process()
-        && error_code.contains(PageFaultErrorCode::PROTECTION | PageFaultErrorCode::WRITE)
+    if !data
+        .memory_info()
+        .vmar()
+        .handle_page_fault(*addr)
+        .map_err(|_| ())?
     {
-        let disable_preempt_guard = disable_preempt();
-        let (_, item) = data
-            .memory_info()
-            .vm_space()
-            .cursor_mut(&disable_preempt_guard, &(*addr..*addr + 1))
-            .unwrap()
-            .query()
-            .unwrap();
-        let VmQueriedItem::MappedRam { frame, prop } = item.unwrap() else {
-            unreachable!()
-        };
-
-        let new_physical_memory = FrameAllocOptions::default().alloc_frame().unwrap();
-
-        let mut buffer = [0u8; PAGE_SIZE];
-        frame.read_bytes(0, &mut buffer).unwrap();
-
-        new_physical_memory.write_bytes(0, &buffer).unwrap();
-
-        let memory_info = data.memory_info();
-        let vm_space = memory_info.vm_space();
-
-        let mut cursor = vm_space
-            .cursor_mut(&disable_preempt_guard, &(*addr..*addr + PAGE_SIZE))
-            .unwrap();
-        cursor.unmap(PAGE_SIZE);
-
-        cursor.jump(*addr).unwrap();
-        cursor.map(
-            new_physical_memory.into(),
-            PageProperty::new_user(prop.flags | PageFlags::W, prop.cache),
-        );
-    } else {
-        {
-            let disable_preempt_guard = disable_preempt();
-
-            let memory_info = data.memory_info();
-
-            let result = memory_info.with_unused_regions_mut(|unused| {
-                let mut id = None;
-                for (index, (region, flags)) in unused.iter().enumerate() {
-                    if region.contains(*addr) {
-                        let page_count = align_up_by_page_size(
-                            region.len() + region.start_address()
-                                - align_down_by_page_size(region.start_address()),
-                        ) / PAGE_SIZE;
-
-                        for page_id in 0..page_count {
-                            let address = region.start_address() + page_id * PAGE_SIZE;
-
-                            let frame = FrameAllocOptions::new().alloc_frame().unwrap();
-
-                            memory_info
-                                .vm_space()
-                                .cursor_mut(&disable_preempt_guard, &(address..address + PAGE_SIZE))
-                                .unwrap()
-                                .map(frame.into(), *flags);
-                        }
-
-                        id = Some(index);
-                    }
-                }
-
-                if let Some(id) = id {
-                    unused.remove(id);
-                    Ok(true)
-                } else {
-                    Ok(false)
-                }
-            })?;
-
-            if result {
-                return Ok(());
-            }
-        }
-
-        log::warn!("{:x?} on {:?}", cpu_exception, CpuId::current_racy(),);
+        log::error!("Unhandled page fault: {:x?}", cpu_exception);
         process.exit(-1);
     }
 
