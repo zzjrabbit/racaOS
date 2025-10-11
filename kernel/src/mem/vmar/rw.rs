@@ -20,7 +20,7 @@ impl Vmar {
 
         while read < buffer.len() {
             let current_address = address + read;
-            
+
             let (mapping_start, mapping_size, vmo) = self
                 .inner
                 .read()
@@ -29,7 +29,7 @@ impl Vmar {
                 .find(|mapping| mapping.contains(current_address))
                 .map(|mapping| (mapping.start(), mapping.size(), mapping.vmo().clone()))
                 .unwrap();
-            
+
             let remaining = buffer.len() - read;
             let chunk_size = mapping_size.min(remaining);
 
@@ -48,7 +48,7 @@ impl Vmar {
 
         while written < buffer.len() {
             let current_address = address + written;
-            
+
             let (mapping_start, mapping_size, vmo) = self
                 .inner
                 .read()
@@ -57,7 +57,7 @@ impl Vmar {
                 .find(|mapping| mapping.contains(current_address))
                 .map(|mapping| (mapping.start(), mapping.size(), mapping.vmo().clone()))
                 .unwrap();
-            
+
             let remaining = buffer.len() - written;
             let chunk_size = mapping_size.min(remaining);
 

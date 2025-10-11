@@ -1,11 +1,17 @@
 use ostd::{
-    Error, mm::{PAGE_SIZE, PageFlags, Vaddr}, task::disable_preempt
+    mm::{PageFlags, Vaddr, PAGE_SIZE},
+    task::disable_preempt,
+    Error,
 };
 
 use crate::mem::{align_down_by_page_size, Vmar};
 
 impl Vmar {
-    pub fn handle_page_fault(&self, vaddr: Vaddr, flags_required: PageFlags) -> Result<bool, Error> {
+    pub fn handle_page_fault(
+        &self,
+        vaddr: Vaddr,
+        flags_required: PageFlags,
+    ) -> Result<bool, Error> {
         let mut inner = self.inner.write();
         let mut handled = false;
         for mapping in inner.vm_mappings.iter_mut() {
@@ -14,7 +20,7 @@ impl Vmar {
                 if !flags.contains(flags_required) {
                     continue;
                 }
-                
+
                 handled = true;
 
                 let start = mapping.start();

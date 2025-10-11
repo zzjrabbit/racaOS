@@ -46,7 +46,7 @@ impl Vmar {
     pub fn map(&self, addr: Vaddr, size: usize, prop: PageProperty) -> Result<(), Error> {
         let aligned = align_down_by_page_size(addr);
         let size = align_up_by_page_size(size + addr - aligned);
-        
+
         let mut inner = self.inner.write();
 
         let vmo = Vmo::allocate_ram(size / PAGE_SIZE)?;
