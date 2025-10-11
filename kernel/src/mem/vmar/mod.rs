@@ -51,7 +51,7 @@ impl Vmar {
 
         let vmo = Vmo::allocate_ram(size / PAGE_SIZE)?;
 
-        let vm_mapping = VmMapping::new(vmo, aligned, size, prop);
+        let vm_mapping = VmMapping::new(vmo, aligned, size, prop, prop.flags);
 
         if inner
             .vm_mappings

@@ -98,6 +98,13 @@ impl Vmo {
             VmoInner::IoMem { iomem, offset } => Some((iomem.clone(), *offset)),
         }
     }
+
+    pub(super) fn commited(&self, id: usize) -> bool {
+        match self.inner.as_ref() {
+            VmoInner::Ram { frames } => frames.read()[id].is_some(),
+            VmoInner::IoMem { .. } => true,
+        }
+    }
 }
 
 impl Vmo {

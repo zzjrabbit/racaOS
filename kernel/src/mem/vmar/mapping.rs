@@ -11,15 +11,17 @@ pub struct VmMapping {
     start: Vaddr,
     size: usize,
     prop: PageProperty,
+    perm: PageFlags,
 }
 
 impl VmMapping {
-    pub fn new(vmo: Vmo, start: Vaddr, size: usize, prop: PageProperty) -> Self {
+    pub fn new(vmo: Vmo, start: Vaddr, size: usize, prop: PageProperty, perm: PageFlags) -> Self {
         VmMapping {
             vmo,
             start,
             size,
             prop,
+            perm,
         }
     }
 }
@@ -28,6 +30,10 @@ impl VmMapping {
 impl VmMapping {
     pub fn vmo(&self) -> &Vmo {
         &self.vmo
+    }
+
+    pub fn vmo_mut(&mut self) -> &mut Vmo {
+        &mut self.vmo
     }
 
     pub fn start(&self) -> Vaddr {
@@ -46,6 +52,10 @@ impl VmMapping {
         self.prop = prop;
     }
 
+    pub fn perm(&self) -> PageFlags {
+        self.perm
+    }
+
     pub fn overlaps(&self, other: &VmMapping) -> bool {
         self.start <= other.start + other.size && other.start < self.start + self.size
     }
@@ -61,12 +71,15 @@ impl VmMapping {
 
 impl VmMapping {
     pub fn clone(&self) -> Result<Self, Error> {
-        let frames = if self.prop().flags.contains(PageFlags::W) {
-            self.vmo.deep_clone()?
-        } else {
-            self.vmo.clone()
-        };
+        let mut prop = self.prop;
+        prop.flags.remove(PageFlags::W);
 
-        Ok(Self::new(frames, self.start, self.size, self.prop))
+        Ok(Self::new(
+            self.vmo.clone(),
+            self.start,
+            self.size,
+            prop,
+            self.perm,
+        ))
     }
 }
