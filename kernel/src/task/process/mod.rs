@@ -1,7 +1,10 @@
 use core::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
 
-use alloc::{sync::{Arc, Weak}, vec::Vec};
-use ostd::{arch::cpu::context::UserContext, task::Task, sync::RwLock, Error as OstdError};
+use alloc::{
+    sync::{Arc, Weak},
+    vec::Vec,
+};
+use ostd::{arch::cpu::context::UserContext, sync::RwLock, task::Task, Error as OstdError};
 
 use crate::{
     filesystem::File,
@@ -37,7 +40,7 @@ impl Process {
             default_files: self.default_files.clone(),
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
         });
-        
+
         PROCESSES.write().push(new_self.clone());
         self.children.write().push(new_self.clone());
         new_self
@@ -124,7 +127,7 @@ impl Process {
     pub fn parent(&self) -> Option<Arc<Self>> {
         self.parent.clone().and_then(|parent| parent.upgrade())
     }
-    
+
     pub fn children(&self) -> Vec<Arc<Self>> {
         self.children.read().clone()
     }
@@ -151,37 +154,43 @@ impl Process {
 impl Process {
     pub fn exit(&self, exit_code: i32) {
         log::info!("Process {} exited with code {}", self.id(), exit_code);
-        
+
         self.exit_code.store(exit_code, Ordering::SeqCst);
         let threads = self.threads.read().clone();
         for thread in threads.iter() {
             thread.as_thread().unwrap().exit();
         }
-        
+
         for child in self.children.read().clone() {
             child.kill();
         }
-        
+
         if let Some(parent) = self.parent() {
-            parent.children.write().retain(|child| child.id() != self.id());
+            parent
+                .children
+                .write()
+                .retain(|child| child.id() != self.id());
         }
     }
 
     pub fn kill(&self) {
         log::info!("Process {} killed", self.id());
-        
+
         self.exit_code.store(-1, Ordering::SeqCst);
         let threads = self.threads.read().clone();
         for thread in threads.iter() {
             thread.as_thread().unwrap().on_kill();
         }
-        
+
         for child in self.children.read().clone() {
             child.kill();
         }
-        
+
         if let Some(parent) = self.parent() {
-            parent.children.write().retain(|child| child.id() != self.id());
+            parent
+                .children
+                .write()
+                .retain(|child| child.id() != self.id());
         }
     }
 

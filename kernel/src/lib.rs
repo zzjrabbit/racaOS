@@ -3,6 +3,7 @@
 #![deny(unsafe_code)]
 #![feature(allocator_api)]
 #![feature(let_chains)]
+#![allow(unexpected_cfgs)]
 
 use core::panic::PanicInfo;
 

@@ -57,7 +57,7 @@ pub struct CloneArgs {
 }
 
 pub fn clone_child(
-    _clone_args: CloneArgs,
+    clone_args: CloneArgs,
     parent: Arc<Task>,
     context: &UserContext,
 ) -> Result<(Arc<Task>, Arc<Process>), OstdError> {
@@ -66,14 +66,25 @@ pub fn clone_child(
 
     let process = parent_process.fork();
 
-    let fs_info = Arc::new(parent_data.fs_info().deep_clone());
-    let memory_info = Arc::new(parent_data.memory_info().deep_clone());
+    let fs_info = if clone_args.flags.contains(CloneFlags::CLONE_FILES) {
+        parent_data.fs_info().clone()
+    } else {
+        Arc::new(parent_data.fs_info().deep_clone())
+    };
+    let memory_info = if clone_args.flags.contains(CloneFlags::CLONE_VM) {
+        parent_data.memory_info().clone()
+    } else {
+        Arc::new(parent_data.memory_info().deep_clone())
+    };
     let tid_address = parent_data.tid_address.read().clone();
 
     let child_data = UserThreadData::new_all(&process, memory_info.clone(), fs_info, tid_address);
 
     let mut child_context = context.clone();
     child_context.set_rax(0);
+    if clone_args.flags.contains(CloneFlags::CLONE_SETTLS) {
+        child_context.set_tls_pointer(clone_args.tls as usize);
+    }
 
     let child_thread = spawn_user_thread(&process, child_context, memory_info, Some(child_data));
 
