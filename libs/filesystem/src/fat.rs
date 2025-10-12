@@ -16,10 +16,7 @@ pub fn parse_fat(device: Arc<File>) -> Result<Arc<File>, FileSystemError> {
     let disk = FatDisk { device, offset: 0 };
 
     let root = Box::leak(Box::new(FatRoot::new(
-        FileSystem::new(disk, FsOptions::new()).map_err(|error| {
-            log::error!("Fat error: {:?}!", error);
-            FileSystemError::InodeNotFound
-        })?,
+        FileSystem::new(disk, FsOptions::new()).map_err(|_| FileSystemError::InodeNotFound)?,
     )));
 
     let root_lock = Arc::new(Mutex::new(()));

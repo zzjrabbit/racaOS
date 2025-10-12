@@ -3,7 +3,6 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-use block::SECTOR_SIZE;
 use gpt_disk_io::{gpt_disk_types::BlockSize, *};
 
 use crate::{
@@ -16,6 +15,8 @@ pub fn init() {
 }
 
 pub struct GptParser;
+
+const SECTOR_SIZE: usize = 512;
 
 impl PartitionParser for GptParser {
     fn parse(

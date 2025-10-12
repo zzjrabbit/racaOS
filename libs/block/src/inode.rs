@@ -1,7 +1,7 @@
+use crate::{BLOCK_SIZE, BlockDevice, BlockIo, BlockOperation, SECTOR_SIZE};
 use alloc::sync::Arc;
-use block::{BLOCK_SIZE, BlockDevice, BlockIo, BlockOperation, SECTOR_SIZE};
 
-use crate::InodeOperation;
+use filesystem::{FileType, InodeOperation};
 
 pub(super) struct BlockInode {
     device: Arc<dyn BlockDevice>,
@@ -14,8 +14,8 @@ impl BlockInode {
 }
 
 impl InodeOperation for BlockInode {
-    fn file_type(&self) -> super::FileType {
-        super::FileType::BlockDevice
+    fn file_type(&self) -> FileType {
+        FileType::BlockDevice
     }
 
     fn len(&self) -> u64 {

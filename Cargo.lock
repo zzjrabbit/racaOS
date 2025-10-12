@@ -134,6 +134,7 @@ name = "block"
 version = "0.1.0"
 dependencies = [
  "component",
+ "filesystem",
  "log",
  "ostd",
  "thiserror",
@@ -440,7 +441,6 @@ name = "filesystem"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.9.4",
- "block",
  "component",
  "fatfs",
  "gpt_disk_io",

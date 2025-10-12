@@ -8,7 +8,6 @@ use component::{ComponentInitError, init_component};
 use spin::Lazy;
 use thiserror::Error;
 
-mod block;
 mod dev;
 mod ext;
 mod fat;
@@ -18,6 +17,7 @@ mod ramfs;
 mod vfs;
 
 pub use dev::init_terminal;
+pub use probe::add_block_device;
 pub use vfs::*;
 
 use crate::ramfs::RamInode;
@@ -48,7 +48,6 @@ pub fn init() -> Result<(), ComponentInitError> {
     fat::init();
 
     part::init();
-    probe::init();
 
     Ok(())
 }
