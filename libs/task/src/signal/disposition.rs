@@ -24,17 +24,17 @@ impl SignalDisposition {
         let id = Self::signal_to_id(signal);
         self.map[id]
     }
-    
+
     pub fn set(&mut self, signal: Signal, action: SignalAction) {
         let id = Self::signal_to_id(signal);
         self.map[id] = action;
     }
-    
+
     pub fn set_default(&mut self, signal: Signal) {
         let id = Self::signal_to_id(signal);
         self.map[id] = SignalAction::default();
     }
-    
+
     pub fn inherit(&mut self) {
         for signal_action in &mut self.map {
             if let SignalAction::User { .. } = signal_action {
@@ -42,7 +42,7 @@ impl SignalDisposition {
             }
         }
     }
-    
+
     fn signal_to_id(signal: Signal) -> usize {
         u8::from(signal - Signal::MIN_STD_SIGNAL) as usize
     }

@@ -55,7 +55,7 @@ impl VmMapping {
     pub fn perm(&self) -> PageFlags {
         self.perm
     }
-    
+
     pub fn set_perm(&mut self, perm: PageFlags) {
         self.perm = perm;
     }

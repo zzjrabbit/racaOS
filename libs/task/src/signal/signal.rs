@@ -1,7 +1,22 @@
 use derive_more::{Add, AddAssign, Deref, DerefMut, Display, Sub, SubAssign};
 
 #[derive(
-    Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Deref, DerefMut, Add, AddAssign, Sub, SubAssign
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Display,
+    Deref,
+    DerefMut,
+    Add,
+    AddAssign,
+    Sub,
+    SubAssign,
 )]
 pub struct Signal(u8);
 
@@ -10,7 +25,7 @@ impl Signal {
     pub(crate) const STD_SIGNAL_NUM: usize = 31;
     pub(crate) const RT_SIGNAL_NUM: usize = 33;
     pub(crate) const SIGNAL_NUM: usize = 64;
-    
+
     pub(crate) const MIN_STD_SIGNAL: Self = Self(1);
     /// Inclusive
     pub(crate) const MAX_STD_SIGNAL: Self = Self(31);

@@ -55,13 +55,14 @@ impl Vmar {
 
         let mut new_mappings = Vec::new();
         let mut overlap = false;
-        
+
         for mapping in inner.vm_mappings.iter() {
             if mapping.overlaps(&vm_mapping) {
                 log::info!("Overlapping mapping found {:x} {:x}", aligned, size);
                 overlap = true;
                 let pre_len = mapping.start() as isize - aligned as isize;
-                let post_len = (aligned + size) as isize - (mapping.start() + mapping.size()) as isize;
+                let post_len =
+                    (aligned + size) as isize - (mapping.start() + mapping.size()) as isize;
                 if pre_len > 0 {
                     new_mappings.push(VmMapping::new(
                         Vmo::allocate_ram(pre_len as usize / PAGE_SIZE)?,
@@ -136,7 +137,7 @@ impl Vmar {
                     perm.insert(flags);
                     perm
                 });
-                
+
                 let aligned = align_down_by_page_size(addr);
                 let size = align_up_by_page_size(size + addr - aligned);
 

@@ -15,7 +15,9 @@ pub struct SignalSet {
 impl From<Signal> for SignalSet {
     fn from(signal: Signal) -> Self {
         let idx = signal - Signal::MIN_STD_SIGNAL;
-        Self { bits: 1_u64 << u8::from(idx) }
+        Self {
+            bits: 1_u64 << u8::from(idx),
+        }
     }
 }
 

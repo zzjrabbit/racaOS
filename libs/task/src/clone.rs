@@ -74,7 +74,7 @@ pub fn clone_child(
     let parent_data = parent.direct_downcast::<UserThreadData>().unwrap();
     let parent_process = parent_data.process.upgrade().unwrap();
 
-    let process = parent_process.fork(clone_args.child_signal,parent_process.signal_disposition());
+    let process = parent_process.fork(clone_args.child_signal, parent_process.signal_disposition());
 
     let fs_info = if clone_args.flags.contains(CloneFlags::CLONE_FILES) {
         parent_data.fs_info().clone()

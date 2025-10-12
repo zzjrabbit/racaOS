@@ -13,7 +13,7 @@ pub enum SignalAction {
         flags: SignalActionFlags,
         restorer: Vaddr,
         mask: SignalMask,
-    }
+    },
 }
 
 bitflags! {
@@ -34,10 +34,10 @@ bitflags! {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SignalDefaultAction {
     Terminate, // Default action is to terminate the process.
-    Ignore,  // Default action is to ignore the signal.
-    Core, // Default action is to terminate the process and dump core (see core(5)).
-    Stop, // Default action is to stop the process.
-    Continue, // Default action is to continue the process if it is currently stopped.
+    Ignore,    // Default action is to ignore the signal.
+    Core,      // Default action is to terminate the process and dump core (see core(5)).
+    Stop,      // Default action is to stop the process.
+    Continue,  // Default action is to continue the process if it is currently stopped.
 }
 
 impl SignalDefaultAction {

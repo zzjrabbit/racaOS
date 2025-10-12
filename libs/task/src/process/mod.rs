@@ -4,7 +4,12 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use ostd::{Error as OstdError, arch::cpu::context::UserContext, sync::{Mutex, RwLock}, task::Task};
+use ostd::{
+    Error as OstdError,
+    arch::cpu::context::UserContext,
+    sync::{Mutex, RwLock},
+    task::Task,
+};
 
 use crate::{Signal, SignalDisposition, process::loader::ElfLoader};
 
@@ -28,7 +33,7 @@ pub struct Process {
     exit_code: AtomicI32,
     default_files: [Arc<File>; 3],
     id: usize,
-    
+
     child_death_signal: Mutex<Signal>,
     signal_disposition: Arc<Mutex<SignalDisposition>>,
 }
@@ -36,7 +41,11 @@ pub struct Process {
 static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl Process {
-    pub fn fork(self: &Arc<Self>, child_death_signal: Signal, signal_disposition: Arc<Mutex<SignalDisposition>>) -> Arc<Self> {
+    pub fn fork(
+        self: &Arc<Self>,
+        child_death_signal: Signal,
+        signal_disposition: Arc<Mutex<SignalDisposition>>,
+    ) -> Arc<Self> {
         let new_self = Arc::new(Self {
             threads: RwLock::new(Vec::new()),
             parent: Some(Arc::downgrade(self)),
@@ -144,7 +153,7 @@ impl Process {
     pub fn id(&self) -> usize {
         self.id
     }
-    
+
     pub fn signal_disposition(&self) -> Arc<Mutex<SignalDisposition>> {
         self.signal_disposition.clone()
     }

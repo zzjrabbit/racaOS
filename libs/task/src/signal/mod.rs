@@ -1,9 +1,9 @@
-mod signal;
 mod action;
-mod mask;
 mod disposition;
+mod mask;
+mod signal;
 
-pub use signal::*;
 pub use action::*;
-pub use mask::*;
 pub use disposition::*;
+pub use mask::*;
+pub use signal::*;
