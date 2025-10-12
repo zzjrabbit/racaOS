@@ -58,7 +58,6 @@ impl Vmar {
 
         for mapping in inner.vm_mappings.iter() {
             if mapping.overlaps(&vm_mapping) {
-                log::info!("Overlapping mapping found {:x} {:x}", aligned, size);
                 overlap = true;
                 let pre_len = mapping.start() as isize - aligned as isize;
                 let post_len =
@@ -126,7 +125,6 @@ impl Vmar {
 
         for mapping in inner.vm_mappings.iter_mut() {
             if mapping.contains_range(addr, size) {
-                log::info!("mapping found");
                 mapping.set_prop({
                     let mut prop = mapping.prop();
                     prop.flags |= flags;
