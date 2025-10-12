@@ -1,6 +1,6 @@
 use ostd::{
-    mm::{PageFlags, PageProperty, Vaddr},
     Error,
+    mm::{PageFlags, PageProperty, Vaddr},
 };
 
 use crate::Vmo;

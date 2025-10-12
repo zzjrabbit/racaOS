@@ -1,4 +1,4 @@
-use crate::{clone_child, AsThread, CloneArgs, UserThreadData};
+use crate::{AsThread, CloneArgs, UserThreadData, clone_child};
 
 use super::*;
 use ostd::{mm::Vaddr, task::Task};

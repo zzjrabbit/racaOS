@@ -4,16 +4,16 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use ostd::{arch::cpu::context::UserContext, sync::RwLock, task::Task, Error as OstdError};
+use ostd::{Error as OstdError, arch::cpu::context::UserContext, sync::RwLock, task::Task};
 
 use crate::process::loader::ElfLoader;
 
-use {
-    filesystem::File,
-    ::memory::Vmar,
-    crate::{process::user_stack::UserStack, spawn_user_thread, AsThread, UserThreadData},
-};
 pub use memory::MemoryInfo;
+use {
+    crate::{AsThread, UserThreadData, process::user_stack::UserStack, spawn_user_thread},
+    ::memory::Vmar,
+    filesystem::File,
+};
 
 mod loader;
 mod memory;

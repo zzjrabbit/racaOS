@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, sync::Arc};
 use ostd::task::{Task, TaskOptions};
 
-use crate::{thread::CallBacks, Thread};
+use crate::{Thread, thread::CallBacks};
 
 struct KernelThreadData;
 

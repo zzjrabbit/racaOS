@@ -1,14 +1,14 @@
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    mm::{tlb::TlbFlushOp, PageFlags, PageProperty, Vaddr, VmSpace, PAGE_SIZE},
+    Error,
+    mm::{PAGE_SIZE, PageFlags, PageProperty, Vaddr, VmSpace, tlb::TlbFlushOp},
     sync::RwMutex,
     task::disable_preempt,
-    Error,
 };
 
 use mapping::VmMapping;
 
-use crate::{align_down_by_page_size, align_up_by_page_size, Vmo};
+use crate::{Vmo, align_down_by_page_size, align_up_by_page_size};
 
 mod mapping;
 mod pf;

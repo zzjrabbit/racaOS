@@ -16,7 +16,6 @@ use ostd::{
     task::{halt_cpu, scheduler::enable_preemption_on_cpu},
 };
 
-
 use {
     crate::comps::components,
     filesystem::{open_file, Path},

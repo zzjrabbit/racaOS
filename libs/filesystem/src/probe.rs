@@ -5,7 +5,7 @@ use block::register_callback;
 use spin::RwLock;
 
 use crate::{
-    block::BlockInode, open_file, part::parse_partitions, File, FileSystemError, FileType, Path,
+    File, FileSystemError, FileType, Path, block::BlockInode, open_file, part::parse_partitions,
 };
 
 type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>, FileSystemError>;

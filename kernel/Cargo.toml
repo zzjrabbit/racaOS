@@ -4,17 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bit_field = "0.10.3"
-bitflags = "2.9.4"
-
-good_memory_allocator = "0.1.7"
-spin = "0.10.0"
-
-time = { version = "0.3.44", default-features = false }
-ostd = { workspace = true }
-component = { workspace = true }
-log = { workspace = true }
-
+component.workspace = true
+ostd.workspace = true
+log.workspace = true
 block.workspace = true
 driver.workspace = true
 filesystem.workspace = true

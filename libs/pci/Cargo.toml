@@ -7,5 +7,5 @@ edition = "2024"
 ostd = { workspace = true }
 component = { workspace = true }
 log = { workspace = true }
-spin = "0.10.0"
+spin.workspace = true
 pci_types = "0.10.0"

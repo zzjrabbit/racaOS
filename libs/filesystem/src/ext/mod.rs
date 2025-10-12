@@ -6,11 +6,11 @@ mod ext4;
 
 use alloc::sync::Arc;
 use lwext4_rust::{
-    bindings::{EINVAL, SEEK_CUR, SEEK_END, SEEK_SET},
     KernelDevOp,
+    bindings::{EINVAL, SEEK_CUR, SEEK_END, SEEK_SET},
 };
 
-use crate::{probe::register_probe, File};
+use crate::{File, probe::register_probe};
 
 pub fn init() {
     //register_probe(ext4::parse_ext4_fs);

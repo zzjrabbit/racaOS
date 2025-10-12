@@ -14,11 +14,11 @@ use ostd::{
 };
 
 use {
+    crate::syscall::syscall_handler,
+    crate::trap::user_page_fault_handler,
+    crate::{AsThread, MemoryInfo, Process, Thread, thread::CallBacks},
     ::filesystem::File,
     memory::Vmar,
-    crate::syscall::syscall_handler,
-    crate::{thread::CallBacks, AsThread, MemoryInfo, Process, Thread},
-    crate::trap::user_page_fault_handler,
 };
 
 mod filesystem;

@@ -1,9 +1,9 @@
 use ostd::{
-    mm::{VmIo, PAGE_SIZE},
     Error, Pod,
+    mm::{PAGE_SIZE, VmIo},
 };
 
-use crate::{align_down_by_page_size, Vmo};
+use crate::{Vmo, align_down_by_page_size};
 
 impl Vmo {
     pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<(), Error> {

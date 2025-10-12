@@ -1,14 +1,13 @@
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, sync::Arc, vec::Vec};
 use ostd::{
-    cpu::{num_cpus, CpuId, PinCurrentCpu},
+    cpu::{CpuId, PinCurrentCpu, num_cpus},
     sync::SpinLock,
     task::{
-        disable_preempt, inject_post_schedule_handler,
+        Task, disable_preempt, inject_post_schedule_handler,
         scheduler::{
-            info::CommonSchedInfo, inject_scheduler, EnqueueFlags, LocalRunQueue, Scheduler,
-            UpdateFlags,
+            EnqueueFlags, LocalRunQueue, Scheduler, UpdateFlags, info::CommonSchedInfo,
+            inject_scheduler,
         },
-        Task,
     },
 };
 

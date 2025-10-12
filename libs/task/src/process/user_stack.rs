@@ -1,10 +1,10 @@
 use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
 use ostd::{
-    mm::{CachePolicy, PageFlags, PageProperty},
     Pod,
+    mm::{CachePolicy, PageFlags, PageProperty},
 };
 
-use {memory::Vmar, crate::MemoryInfo};
+use {crate::MemoryInfo, memory::Vmar};
 
 pub struct UserStack {
     vmar: Arc<Vmar>,

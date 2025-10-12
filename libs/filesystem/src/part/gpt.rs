@@ -7,8 +7,8 @@ use block::SECTOR_SIZE;
 use gpt_disk_io::{gpt_disk_types::BlockSize, *};
 
 use crate::{
-    part::{register_parser, Partition, PartitionParser},
     File, FileSystemError,
+    part::{Partition, PartitionParser, register_parser},
 };
 
 pub fn init() {

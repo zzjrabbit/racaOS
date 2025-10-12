@@ -2,10 +2,10 @@
 
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
-    io::IoMem,
-    mm::{FrameAllocOptions, HasSize, UFrame, Vaddr, VmIo, PAGE_SIZE},
-    sync::RwMutex,
     Error,
+    io::IoMem,
+    mm::{FrameAllocOptions, HasSize, PAGE_SIZE, UFrame, Vaddr, VmIo},
+    sync::RwMutex,
 };
 
 mod rw;

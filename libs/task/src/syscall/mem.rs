@@ -5,8 +5,8 @@ use ostd::{
 };
 
 use {
-    memory::{align_down_by_page_size, align_up_by_page_size},
     crate::{AsThread, UserThreadData},
+    memory::{align_down_by_page_size, align_up_by_page_size},
 };
 
 use super::*;

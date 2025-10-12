@@ -1,11 +1,11 @@
 use alloc::{string::String, sync::Arc, vec::Vec};
 use lwext4_rust::{
-    bindings::{O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, SEEK_SET},
     Ext4BlockWrapper, Ext4File, InodeTypes,
+    bindings::{O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, SEEK_SET},
 };
 use ostd::sync::RwLock;
 
-use crate::{ext::Lwext4Disk, File, FileSystemError, FileType, InodeOperation, Path};
+use crate::{File, FileSystemError, FileType, InodeOperation, Path, ext::Lwext4Disk};
 
 pub fn parse_ext4_fs(dev: Arc<File>) -> Result<Arc<File>, FileSystemError> {
     let disk = Lwext4Disk::new(dev);

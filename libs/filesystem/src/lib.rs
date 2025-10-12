@@ -17,8 +17,8 @@ mod probe;
 mod ramfs;
 mod vfs;
 
-pub use vfs::*;
 pub use dev::init_terminal;
+pub use vfs::*;
 
 use crate::ramfs::RamInode;
 
@@ -49,7 +49,7 @@ pub fn init() -> Result<(), ComponentInitError> {
 
     part::init();
     probe::init();
-    
+
     Ok(())
 }
 

@@ -1,8 +1,8 @@
 use alloc::{sync::Arc, vec::Vec};
 use ostd::{
+    Error as OstdError,
     mm::{PageProperty, Vaddr},
     sync::RwLock,
-    Error as OstdError,
 };
 
 use memory::Vmar;

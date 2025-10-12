@@ -1,5 +1,5 @@
 use alloc::{string::String, sync::Arc};
-use ostd::{mm::Vaddr, Error as OstdError};
+use ostd::{Error as OstdError, mm::Vaddr};
 
 use crate::FileType;
 

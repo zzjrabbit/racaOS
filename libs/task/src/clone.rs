@@ -2,9 +2,9 @@
 
 use alloc::sync::Arc;
 use bitflags::bitflags;
-use ostd::{arch::cpu::context::UserContext, mm::Vaddr, task::Task, Error as OstdError};
+use ostd::{Error as OstdError, arch::cpu::context::UserContext, mm::Vaddr, task::Task};
 
-use crate::{spawn_user_thread, AsThread, Process, UserThreadData};
+use crate::{AsThread, Process, UserThreadData, spawn_user_thread};
 
 bitflags! {
     #[derive(Default, Clone, Copy, Debug)]

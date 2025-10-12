@@ -1,9 +1,6 @@
-use ostd::{mm::Vaddr, task::Task, Pod};
+use ostd::{Pod, mm::Vaddr, task::Task};
 
-use crate::{
-    syscall::SyscallResult,
-    AsThread, UserThreadData,
-};
+use crate::{AsThread, UserThreadData, syscall::SyscallResult};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]

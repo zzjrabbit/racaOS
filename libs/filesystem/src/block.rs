@@ -1,5 +1,5 @@
 use alloc::sync::Arc;
-use block::{BlockDevice, BlockIo, BlockOperation, BLOCK_SIZE, SECTOR_SIZE};
+use block::{BLOCK_SIZE, BlockDevice, BlockIo, BlockOperation, SECTOR_SIZE};
 
 use crate::InodeOperation;
 

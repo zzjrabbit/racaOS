@@ -5,8 +5,8 @@ extern crate alloc;
 mod clone;
 mod process;
 mod scheduler;
-mod thread;
 mod syscall;
+mod thread;
 mod trap;
 
 pub use clone::*;

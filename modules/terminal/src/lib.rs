@@ -1,12 +1,12 @@
 #![no_std]
 
 use component::{ComponentInitError, init_component};
-use filesystem::{Path, init_terminal, open_file};
 use core::{
     fmt::{self, Arguments, Write},
     sync::atomic::{AtomicBool, Ordering},
 };
-use spin::{Lazy, Once};
+use filesystem::{Path, init_terminal, open_file};
+use spin::Lazy;
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
 use os_terminal::{DrawTarget, Terminal, font::TrueTypeFont};
@@ -83,7 +83,7 @@ fn terminal_thread() {
         font_file.read_at(0, &mut data);
         Box::leak(Box::new(data))
     };
-    
+
     let mut terminal = Terminal::new(Display::default());
     terminal.set_auto_flush(false);
     terminal.set_crnl_mapping(true);

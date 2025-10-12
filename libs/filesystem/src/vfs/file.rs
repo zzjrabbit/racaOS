@@ -3,7 +3,7 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-use ostd::{mm::Vaddr, Error as OstdError};
+use ostd::{Error as OstdError, mm::Vaddr};
 use spin::RwLock;
 
 use crate::{InodeData, InodeOperation, Path};
@@ -41,11 +41,7 @@ struct FileInner {
 }
 
 impl File {
-    pub(crate) fn new<T>(
-        path: Path,
-        inode_operation: T,
-        file_type: FileType,
-    ) -> Arc<Self>
+    pub(crate) fn new<T>(path: Path, inode_operation: T, file_type: FileType) -> Arc<Self>
     where
         T: InodeOperation,
     {

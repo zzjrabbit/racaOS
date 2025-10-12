@@ -1,16 +1,16 @@
 use elf::{
+    ElfBytes,
     abi::{PF_R, PF_W, PF_X, PT_LOAD},
     endian::LittleEndian,
-    ElfBytes,
 };
 use ostd::{
-    mm::{CachePolicy, PageFlags, PageProperty, Vaddr},
     Error as OstdError,
+    mm::{CachePolicy, PageFlags, PageProperty, Vaddr},
 };
 
 use {
-    memory::Vmar,
     crate::process::user_stack::{AuxKey, AuxVec},
+    memory::Vmar,
 };
 
 pub(crate) trait ElfLoader {

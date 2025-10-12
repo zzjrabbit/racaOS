@@ -1,9 +1,9 @@
 use alloc::vec::Vec;
-use ostd::{mm::Vaddr, task::Task, Pod};
+use ostd::{Pod, mm::Vaddr, task::Task};
 
 use {
-    ::filesystem::{open_file, AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path},
     crate::{AsThread, UserThreadData},
+    ::filesystem::{AccessMode, FileDescriptor, FileType, InodeMode, OpenFlags, Path, open_file},
 };
 
 use super::*;

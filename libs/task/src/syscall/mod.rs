@@ -1,8 +1,8 @@
 use alloc::vec;
-use ostd::{arch::cpu::context::UserContext, mm::Vaddr, Error as OstdError};
+use ostd::{Error as OstdError, arch::cpu::context::UserContext, mm::Vaddr};
 use thiserror::Error;
 
-use {::filesystem::FileDescriptor, crate::Process};
+use {crate::Process, ::filesystem::FileDescriptor};
 
 use arch::*;
 use filesystem::*;
@@ -29,8 +29,6 @@ pub enum SyscallError {
     PermissionDenied = -3,
     #[error("Not found.")]
     NotFound = -4,
-    #[error("Buffer too small.")]
-    BufferTooSmall = -5,
     #[error("Other.")]
     Other = i32::MIN as isize,
 }

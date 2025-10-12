@@ -1,10 +1,10 @@
 use ostd::{
-    mm::{PageFlags, Vaddr, PAGE_SIZE},
-    task::disable_preempt,
     Error,
+    mm::{PAGE_SIZE, PageFlags, Vaddr},
+    task::disable_preempt,
 };
 
-use crate::{align_down_by_page_size, Vmar};
+use crate::{Vmar, align_down_by_page_size};
 
 impl Vmar {
     pub fn handle_page_fault(&self, vaddr: Vaddr, perm_required: PageFlags) -> Result<bool, Error> {

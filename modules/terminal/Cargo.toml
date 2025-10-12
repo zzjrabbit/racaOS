@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 ostd = { workspace = true }
 component = { workspace = true }
-spin = "0.10.0"
+spin = { workspace = true }
 os-terminal = { version = "0.6.11", default-features = false, features = ["truetype"] }
 log.workspace = true
 filesystem = { workspace = true }
