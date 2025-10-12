@@ -53,15 +53,42 @@ impl Vmar {
 
         let vm_mapping = VmMapping::new(vmo, aligned, size, prop, prop.flags);
 
-        if inner
-            .vm_mappings
-            .iter()
-            .any(|mapping| mapping.overlaps(&vm_mapping))
-        {
-            return Err(Error::AccessDenied);
+        let mut new_mappings = Vec::new();
+        let mut overlap = false;
+        
+        for mapping in inner.vm_mappings.iter() {
+            if mapping.overlaps(&vm_mapping) {
+                log::info!("Overlapping mapping found {:x} {:x}", aligned, size);
+                overlap = true;
+                let pre_len = mapping.start() as isize - aligned as isize;
+                let post_len = (aligned + size) as isize - (mapping.start() + mapping.size()) as isize;
+                if pre_len > 0 {
+                    new_mappings.push(VmMapping::new(
+                        Vmo::allocate_ram(pre_len as usize / PAGE_SIZE)?,
+                        aligned,
+                        pre_len as usize,
+                        prop,
+                        prop.flags,
+                    ));
+                }
+                if post_len > 0 {
+                    new_mappings.push(VmMapping::new(
+                        Vmo::allocate_ram(post_len as usize / PAGE_SIZE)?,
+                        aligned + size - post_len as usize,
+                        post_len as usize,
+                        prop,
+                        prop.flags,
+                    ));
+                }
+                break;
+            }
         }
 
-        inner.vm_mappings.push(vm_mapping);
+        if !overlap {
+            inner.vm_mappings.push(vm_mapping);
+        } else {
+            inner.vm_mappings.extend(new_mappings);
+        }
 
         Ok(())
     }
@@ -98,6 +125,18 @@ impl Vmar {
 
         for mapping in inner.vm_mappings.iter_mut() {
             if mapping.contains_range(addr, size) {
+                log::info!("mapping found");
+                mapping.set_prop({
+                    let mut prop = mapping.prop();
+                    prop.flags |= flags;
+                    prop
+                });
+                mapping.set_perm({
+                    let mut perm = mapping.perm();
+                    perm.insert(flags);
+                    perm
+                });
+                
                 let aligned = align_down_by_page_size(addr);
                 let size = align_up_by_page_size(size + addr - aligned);
 

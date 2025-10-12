@@ -4,9 +4,9 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use ostd::{Error as OstdError, arch::cpu::context::UserContext, sync::RwLock, task::Task};
+use ostd::{Error as OstdError, arch::cpu::context::UserContext, sync::{Mutex, RwLock}, task::Task};
 
-use crate::process::loader::ElfLoader;
+use crate::{Signal, SignalDisposition, process::loader::ElfLoader};
 
 pub use memory::MemoryInfo;
 use {
@@ -28,12 +28,15 @@ pub struct Process {
     exit_code: AtomicI32,
     default_files: [Arc<File>; 3],
     id: usize,
+    
+    child_death_signal: Mutex<Signal>,
+    signal_disposition: Arc<Mutex<SignalDisposition>>,
 }
 
 static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl Process {
-    pub fn fork(self: &Arc<Self>) -> Arc<Self> {
+    pub fn fork(self: &Arc<Self>, child_death_signal: Signal, signal_disposition: Arc<Mutex<SignalDisposition>>) -> Arc<Self> {
         let new_self = Arc::new(Self {
             threads: RwLock::new(Vec::new()),
             parent: Some(Arc::downgrade(self)),
@@ -41,6 +44,8 @@ impl Process {
             exit_code: AtomicI32::new(0),
             default_files: self.default_files.clone(),
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
+            child_death_signal: Mutex::new(child_death_signal),
+            signal_disposition,
         });
 
         PROCESSES.write().push(new_self.clone());
@@ -63,6 +68,8 @@ impl Process {
             exit_code: AtomicI32::new(0),
             default_files: [stdin, stdout, stderr],
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
+            child_death_signal: Mutex::new(Signal::SIGCHLD),
+            signal_disposition: Arc::new(Mutex::new(SignalDisposition::default())),
         });
 
         PROCESSES.write().push(new_self.clone());
@@ -137,6 +144,10 @@ impl Process {
     pub fn id(&self) -> usize {
         self.id
     }
+    
+    pub fn signal_disposition(&self) -> Arc<Mutex<SignalDisposition>> {
+        self.signal_disposition.clone()
+    }
 }
 
 impl Process {
@@ -172,6 +183,7 @@ impl Process {
                 .children
                 .write()
                 .retain(|child| child.id() != self.id());
+            let child_death_signal = parent.child_death_signal.lock();
         }
     }
 

@@ -26,7 +26,7 @@ pub fn exit(exit_code: i32) -> SyscallResult {
 pub fn fork(context: &UserContext) -> SyscallResult {
     let parent = Task::current().unwrap();
 
-    let (_, child_process) = clone_child(CloneArgs::default(), parent.cloned(), context)?;
+    let (_, child_process) = clone_child(CloneArgs::for_fork(), parent.cloned(), context)?;
 
     Ok(child_process.id() as isize)
 }

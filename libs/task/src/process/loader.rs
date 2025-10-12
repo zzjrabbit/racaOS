@@ -45,7 +45,7 @@ impl ElfLoader for Vmar {
             }
             let _ = self.map(
                 address,
-                data.len(),
+                segment.p_memsz as usize,
                 PageProperty::new_user(page_flags, CachePolicy::Writeback),
             );
 

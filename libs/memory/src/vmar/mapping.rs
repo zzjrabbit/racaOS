@@ -55,6 +55,10 @@ impl VmMapping {
     pub fn perm(&self) -> PageFlags {
         self.perm
     }
+    
+    pub fn set_perm(&mut self, perm: PageFlags) {
+        self.perm = perm;
+    }
 
     pub fn overlaps(&self, other: &VmMapping) -> bool {
         self.start <= other.start + other.size && other.start < self.start + self.size

@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use bitflags::bitflags;
 use ostd::{Error as OstdError, arch::cpu::context::UserContext, mm::Vaddr, task::Task};
 
-use crate::{AsThread, Process, UserThreadData, spawn_user_thread};
+use crate::{AsThread, Process, Signal, UserThreadData, spawn_user_thread};
 
 bitflags! {
     #[derive(Default, Clone, Copy, Debug)]
@@ -54,6 +54,16 @@ pub struct CloneArgs {
     pub stack: Vaddr,
     pub stack_size: usize,
     pub tls: u64,
+    pub child_signal: Signal,
+}
+
+impl CloneArgs {
+    pub fn for_fork() -> Self {
+        Self {
+            child_signal: Signal::SIGCHLD,
+            ..Self::default()
+        }
+    }
 }
 
 pub fn clone_child(
@@ -64,7 +74,7 @@ pub fn clone_child(
     let parent_data = parent.direct_downcast::<UserThreadData>().unwrap();
     let parent_process = parent_data.process.upgrade().unwrap();
 
-    let process = parent_process.fork();
+    let process = parent_process.fork(clone_args.child_signal,parent_process.signal_disposition());
 
     let fs_info = if clone_args.flags.contains(CloneFlags::CLONE_FILES) {
         parent_data.fs_info().clone()

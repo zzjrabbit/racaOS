@@ -1,9 +1,8 @@
 [package]
-name = "memory"
+name = "errors"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-component.workspace = true
+thiserror = { version = "2.0.17", default-features = false }
 ostd.workspace = true
-log.workspace = true

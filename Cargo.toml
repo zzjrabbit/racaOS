@@ -9,6 +9,7 @@ logger = { version = "0.1.0", path = "libs/logger" }
 memory = { version = "0.1.0", path = "libs/memory" }
 task = { version = "0.1.0", path = "libs/task" }
 pci = { version = "0.1.0", path = "libs/pci" }
+errors = { version = "0.1.0", path = "libs/errors" }
 spin = "0.10.0"
 bit_field = "0.10.3"
 bitflags = "2.9.4"
