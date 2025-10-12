@@ -2,9 +2,16 @@
 ostd = "0.16.1"
 component = { path = "component" }
 log = "0.4.28"
+block = { version = "0.1.0", path = "libs/block" }
+driver = { version = "0.1.0", path = "libs/driver" }
+filesystem = { version = "0.1.0", path = "libs/filesystem" }
+logger = { version = "0.1.0", path = "libs/logger" }
+memory = { version = "0.1.0", path = "libs/memory" }
+task = { version = "0.1.0", path = "libs/task" }
+pci = { version = "0.1.0", path = "libs/pci" }
 
 [workspace]
 exclude = ["target/osdk/base", "target/osdk/test-base"]
-members = [".", "component", "component/comp-macro", "kernel/comps/*", "kernel/libs/*", "kernel"]
+members = [".", "component", "component/comp-macro", "kernel", "libs/*", "modules/*"]
 resolver = "3"
 default-members = ["kernel"]

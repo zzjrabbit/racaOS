@@ -15,10 +15,10 @@ use ostd::{
     prelude::*,
     task::{halt_cpu, scheduler::enable_preemption_on_cpu},
 };
-use terminal::load_font_data;
 
-use crate::{
-    comps::components,
+
+use {
+    crate::comps::components,
     filesystem::{open_file, Path},
     task::{create_kernel_thread, Process},
 };
@@ -26,11 +26,6 @@ use crate::{
 extern crate alloc;
 
 mod comps;
-mod filesystem;
-mod mem;
-mod syscall;
-mod task;
-mod trap;
 
 fn ap_entry() {
     create_kernel_thread(idle);
@@ -48,10 +43,6 @@ fn idle() {
 #[ostd::main]
 pub fn kernel_main() {
     component::init_all(&InitStage::Bootstrap, components());
-    trap::init();
-    task::init();
-    syscall::init();
-    filesystem::init();
 
     register_ap_entry(ap_entry);
 
@@ -70,12 +61,6 @@ pub fn kernel_main() {
 fn first_kernel_thread() {
     log::info!("Running on CPU #{}!", CpuId::current_racy().as_usize());
     component::init_all(&InitStage::Kthread, components());
-
-    let font_file = open_file(&Path::new("/part0/SourceCodePro.otf")).unwrap();
-    let mut font_data = alloc::vec![0; font_file.len() as usize];
-    font_file.read_at(0, &mut font_data);
-
-    load_font_data(font_data);
 
     component::init_all(&InitStage::Process, components());
 

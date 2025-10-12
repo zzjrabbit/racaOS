@@ -1,0 +1,14 @@
+[package]
+name = "task"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ostd.workspace = true
+log.workspace = true
+elf = { version = "0.8.0", default-features = false }
+thiserror = { version = "2.0.16", default-features = false }
+bitflags = "2.9.4"
+memory.workspace = true
+filesystem.workspace = true
+component.workspace = true

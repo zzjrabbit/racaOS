@@ -1,0 +1,16 @@
+[package]
+name = "filesystem"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitflags = "2.9.4"
+block.workspace = true
+ostd.workspace = true
+spin = "0.10.0"
+thiserror = { version = "2.0.17", default-features = false }
+fatfs = { git = "https://github.com/rafalh/rust-fatfs", version = "0.4.0", default-features = false, features = ["lfn", "alloc", "log_level_trace"] }
+log.workspace = true
+gpt_disk_io = { version = "0.16.2", features = ["alloc"] }
+lwext4_rust = { git = "https://github.com/elliott10/lwext4_rust", version = "0.2.0" }
+component.workspace = true

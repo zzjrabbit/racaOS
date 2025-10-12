@@ -1,0 +1,10 @@
+[package]
+name = "ramdisk"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ostd = { workspace = true }
+component = { workspace = true }
+log = { workspace = true }
+block = { workspace = true }

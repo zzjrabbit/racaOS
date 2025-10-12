@@ -1,0 +1,22 @@
+#![no_std]
+
+extern crate alloc;
+
+mod clone;
+mod process;
+mod scheduler;
+mod thread;
+mod syscall;
+mod trap;
+
+pub use clone::*;
+use component::{ComponentInitError, init_component};
+pub use process::*;
+pub use thread::*;
+
+#[init_component]
+pub fn init() -> Result<(), ComponentInitError> {
+    trap::init();
+    scheduler::init();
+    Ok(())
+}
