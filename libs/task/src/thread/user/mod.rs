@@ -54,16 +54,15 @@ pub fn spawn_user_thread(
     user_data: Option<UserThreadData>,
 ) -> Arc<Task> {
     let user_entry = || {
-        let mut user_mode = {
+        {
             let current = Task::current().unwrap();
             let data = current.direct_downcast::<UserThreadData>().unwrap();
-
             data.memory_info().vmar().activate();
-            UserMode::new(user_context)
-        };
+        }
 
+        let mut user_mode = UserMode::new(user_context);
         user_mode.context().activate_tls_pointer();
-
+        
         loop {
             {
                 let current = Task::current().unwrap();

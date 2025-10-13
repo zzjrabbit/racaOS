@@ -78,7 +78,7 @@ pub fn syscall_handler(context: &mut UserContext) {
 
     let result = match result {
         Ok(value) => value,
-        Err(error) => i32::from(error) as isize,
+        Err(error) => - i32::from(error) as isize,
     };
 
     let pid = Process::current().id();
