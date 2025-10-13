@@ -13,3 +13,4 @@ memory.workspace = true
 filesystem.workspace = true
 component.workspace = true
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
+errors.workspace = true

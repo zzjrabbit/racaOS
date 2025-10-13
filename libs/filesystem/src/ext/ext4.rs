@@ -1,16 +1,16 @@
 use alloc::{string::String, sync::Arc, vec::Vec};
+use errors::{Errno, Result};
 use lwext4_rust::{
     Ext4BlockWrapper, Ext4File, InodeTypes,
     bindings::{O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, SEEK_SET},
 };
 use ostd::sync::RwLock;
 
-use crate::{File, FileSystemError, FileType, InodeOperation, Path, ext::Lwext4Disk};
+use crate::{File, FileType, InodeOperation, Path, ext::Lwext4Disk};
 
-pub fn parse_ext4_fs(dev: Arc<File>) -> Result<Arc<File>, FileSystemError> {
+pub fn parse_ext4_fs(dev: Arc<File>) -> Result<Arc<File>> {
     let disk = Lwext4Disk::new(dev);
-    let ext4 =
-        Ext4BlockWrapper::<Lwext4Disk>::new(disk).map_err(|_| FileSystemError::InvalidArguments)?;
+    let ext4 = Ext4BlockWrapper::<Lwext4Disk>::new(disk).map_err(|_| Errno::EINVAL.no_message())?;
 
     let root = Arc::new(Ext4Root::new(ext4));
 

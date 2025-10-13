@@ -13,18 +13,30 @@ pub use errno::*;
 pub type Result<T> = core::result::Result<T, Error>;
 
 impl Errno {
-    pub fn with_message(&self, message: String) -> Error {
-        Error { errno: *self, message }
+    pub fn with_message<S: Into<String>>(&self, message: S) -> Error {
+        Error {
+            errno: *self,
+            message: message.into(),
+        }
     }
-    
+
     pub fn no_message(&self) -> Error {
-        Error { errno: *self, message: String::new() }
+        Error {
+            errno: *self,
+            message: String::new(),
+        }
     }
 }
 
 pub struct Error {
     errno: Errno,
     message: String,
+}
+
+impl From<Error> for i32 {
+    fn from(error: Error) -> Self {
+        error.errno as i32
+    }
 }
 
 impl Display for Error {

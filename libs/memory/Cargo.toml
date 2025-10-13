@@ -7,3 +7,4 @@ edition.workspace = true
 component.workspace = true
 ostd.workspace = true
 log.workspace = true
+errors.workspace = true

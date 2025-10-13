@@ -4,8 +4,8 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
+use errors::Result;
 use ostd::{
-    Error as OstdError,
     arch::cpu::context::UserContext,
     sync::{Mutex, RwLock},
     task::Task,
@@ -38,7 +38,7 @@ pub struct Process {
     signal_disposition: Arc<Mutex<SignalDisposition>>,
 }
 
-static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(0);
+static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(1);
 
 impl Process {
     pub fn fork(
@@ -69,7 +69,7 @@ impl Process {
         stdin: Arc<File>,
         stdout: Arc<File>,
         stderr: Arc<File>,
-    ) -> Result<Arc<Self>, OstdError> {
+    ) -> Result<Arc<Self>> {
         let new_self = Arc::new(Self {
             threads: RwLock::new(Vec::new()),
             parent: None,

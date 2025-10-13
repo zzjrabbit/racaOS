@@ -3,6 +3,7 @@ use elf::{
     abi::{PF_R, PF_W, PF_X, PT_LOAD},
     endian::LittleEndian,
 };
+use errors::Result;
 use ostd::{
     Error as OstdError,
     mm::{CachePolicy, PageFlags, PageProperty, Vaddr},
@@ -14,11 +15,11 @@ use {
 };
 
 pub(crate) trait ElfLoader {
-    fn load(&self, data: &[u8]) -> Result<(Vaddr, AuxVec), OstdError>;
+    fn load(&self, data: &[u8]) -> Result<(Vaddr, AuxVec)>;
 }
 
 impl ElfLoader for Vmar {
-    fn load(&self, data: &[u8]) -> Result<(Vaddr, AuxVec), OstdError> {
+    fn load(&self, data: &[u8]) -> Result<(Vaddr, AuxVec)> {
         let file =
             ElfBytes::<LittleEndian>::minimal_parse(data).map_err(|_| OstdError::InvalidArgs)?;
 

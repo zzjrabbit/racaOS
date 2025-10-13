@@ -12,7 +12,8 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
     let thread = Task::current().unwrap();
     let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
-    let access_mode = AccessMode::try_from(flags).map_err(|()| SyscallError::InvalidArguments)?;
+    let access_mode = AccessMode::try_from(flags)
+        .map_err(|()| Errno::EINVAL.with_message("Invalid access mode."))?;
     let open_flags = OpenFlags::from(flags);
 
     let _mode = InodeMode::from(mode);
@@ -26,7 +27,10 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
         path.push(byte);
     }
 
-    let path = Path::new(core::str::from_utf8(&path).map_err(|_| SyscallError::InvalidArguments)?);
+    let path = Path::new(
+        core::str::from_utf8(&path)
+            .map_err(|_| Errno::EINVAL.with_message("Unable to parse path with utf-8."))?,
+    );
     let path = data.fs_info().absolute_path(path);
     log::info!("Opening file: {}", path);
 
@@ -34,8 +38,8 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
         let fd = data.fs_info().add_file(file, access_mode, open_flags);
         Ok(fd as isize)
     } else if open_flags.contains(OpenFlags::O_CREAT) {
-        let parent = path.parent().ok_or(SyscallError::PermissionDenied)?;
-        let file = open_file(&parent).ok_or(SyscallError::NotFound)?;
+        let parent = path.parent().ok_or(Errno::EACCES.no_message())?;
+        let file = open_file(&parent).ok_or(Errno::ENOENT.no_message())?;
 
         let file = file
             .create(
@@ -46,12 +50,12 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
                     FileType::File
                 },
             )
-            .ok_or(SyscallError::InvalidArguments)?;
+            .ok_or(Errno::ENOENT.no_message())?;
 
         let fd = data.fs_info().add_file(file, access_mode, open_flags);
         Ok(fd as isize)
     } else {
-        Err(SyscallError::NotFound)
+        Err(Errno::ENOENT.no_message())
     }
 }
 
@@ -61,7 +65,7 @@ pub fn close(fd: FileDescriptor) -> SyscallResult {
 
     data.fs_info()
         .remove_file(fd)
-        .ok_or(SyscallError::NotFound)?;
+        .ok_or(Errno::EBADFD.no_message())?;
     Ok(0)
 }
 
@@ -72,7 +76,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
     data.fs_info()
         .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
             if !access_mode.is_readable() {
-                return Err(SyscallError::PermissionDenied);
+                return Err(Errno::EACCES.no_message());
             };
 
             let mut buf = vec![0; len];
@@ -86,7 +90,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
 
             Ok(len as isize)
         })
-        .ok_or(SyscallError::NotFound)?
+        .ok_or(Errno::EBADFD.no_message())?
 }
 
 pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
@@ -96,19 +100,19 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
     data.fs_info()
         .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
             if !access_mode.is_writable() {
-                return Err(SyscallError::PermissionDenied);
+                return Err(Errno::EACCES.no_message());
             }
 
             let buffer = (0..len)
                 .map(|id| data.memory_info().vmar().read_val::<u8>(address + id))
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<Result<Vec<_>>>()?;
 
             let len = file.write_at(*offset, &buffer);
             *offset += len as u64;
 
             Ok(len as isize)
         })
-        .ok_or(SyscallError::NotFound)?
+        .ok_or(Errno::EBADFD.no_message())?
 }
 
 #[derive(Default, Clone, Copy)]
@@ -128,7 +132,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
     data.fs_info()
         .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
             if !access_mode.is_writable() {
-                return Err(SyscallError::PermissionDenied);
+                return Err(Errno::EACCES.no_message());
             }
 
             let mut total_len = 0;
@@ -147,7 +151,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
 
                 let buffer = (0..len)
                     .map(|id| data.memory_info().vmar().read_val::<u8>(base + id))
-                    .collect::<Result<Vec<_>, _>>()?;
+                    .collect::<Result<Vec<_>>>()?;
 
                 let len = file.write_at(*offset, &buffer);
 
@@ -157,7 +161,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
 
             Ok(total_len as isize)
         })
-        .ok_or(SyscallError::NotFound)?
+        .ok_or(Errno::ENOENT.no_message())?
 }
 
 #[repr(i32)]
@@ -194,7 +198,7 @@ pub fn lseek(fd: FileDescriptor, offset: isize, whence: LseekWhence) -> SyscallR
             let file_type = file.r#type();
 
             if !file_type.seekable() {
-                return Err(SyscallError::PermissionDenied);
+                return Err(Errno::EACCES.no_message());
             }
 
             match whence {
@@ -205,7 +209,7 @@ pub fn lseek(fd: FileDescriptor, offset: isize, whence: LseekWhence) -> SyscallR
 
             Ok(*offset_ref as isize)
         })
-        .unwrap_or(Err(SyscallError::NotFound))
+        .unwrap_or(Err(Errno::EBADF.no_message()))
 }
 
 pub enum FcntlCommand {
@@ -241,7 +245,7 @@ pub fn fcntl(fd: FileDescriptor, cmd: FcntlCommand, _arg: u32) -> SyscallResult 
                 Ok(0)
             }
         })
-        .unwrap_or(Err(SyscallError::NotFound))
+        .unwrap_or(Err(Errno::EBADFD.no_message()))
 }
 
 pub fn ioctl(fd: FileDescriptor, cmd: u32, arg: Vaddr) -> SyscallResult {
@@ -253,7 +257,7 @@ pub fn ioctl(fd: FileDescriptor, cmd: u32, arg: Vaddr) -> SyscallResult {
             file.ioctl(cmd, arg).map(|res| res as isize)
         })
         .map(|val| val.map_err(|error| error.into()))
-        .unwrap_or(Err(SyscallError::NotFound))
+        .unwrap_or(Err(Errno::EBADFD.no_message()))
 }
 
 pub fn getcwd(buffer: Vaddr, len: usize) -> SyscallResult {
@@ -263,10 +267,10 @@ pub fn getcwd(buffer: Vaddr, len: usize) -> SyscallResult {
     let cwd = data.fs_info().current_dir();
 
     if cwd.len() >= len {
-        Err(SyscallError::Null)
+        Ok(0)
+    } else if let Err(_) = vmar.write(buffer, cwd.as_bytes()) {
+        Ok(0)
     } else {
-        vmar.write(buffer, cwd.as_bytes())
-            .map_err(|_| SyscallError::Null)?;
         Ok(buffer as isize)
     }
 }
@@ -284,13 +288,13 @@ pub fn chdir(file_name: Vaddr) -> SyscallResult {
     }
     buffer.pop().unwrap();
 
-    let path = core::str::from_utf8(&buffer).map_err(|_| SyscallError::InvalidArguments)?;
+    let path = core::str::from_utf8(&buffer).map_err(|_| Errno::EINVAL.no_message())?;
     let path = Path::from(path);
     let path = data.fs_info().absolute_path(path);
     log::info!("Changing directory to {}", path);
 
     if open_file(&path).is_none() {
-        return Err(SyscallError::NotFound);
+        return Err(Errno::ENOENT.no_message());
     }
 
     data.fs_info().set_current_dir(path);
@@ -305,7 +309,7 @@ pub fn fchdir(fd: FileDescriptor) -> SyscallResult {
     let path = data
         .fs_info()
         .with_file_mut(fd, |_, _access_mode, _open_flags, file| file.path())
-        .ok_or(SyscallError::NotFound)?;
+        .ok_or(Errno::EBADFD.no_message())?;
 
     data.fs_info().set_current_dir(path);
 

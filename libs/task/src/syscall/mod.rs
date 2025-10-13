@@ -1,6 +1,6 @@
 use alloc::vec;
-use ostd::{Error as OstdError, arch::cpu::context::UserContext, mm::Vaddr};
-use thiserror::Error;
+use errors::{Errno, Result};
+use ostd::{arch::cpu::context::UserContext, mm::Vaddr};
 
 use {crate::Process, ::filesystem::FileDescriptor};
 
@@ -16,32 +16,7 @@ mod kernel;
 mod mem;
 mod task;
 
-type SyscallResult = Result<isize, SyscallError>;
-
-#[repr(isize)]
-#[derive(Debug, Error)]
-pub enum SyscallError {
-    #[error("Null")]
-    Null = 0,
-    #[error("Invalid Arguments.")]
-    InvalidArguments = -2,
-    #[error("Permission denied.")]
-    PermissionDenied = -3,
-    #[error("Not found.")]
-    NotFound = -4,
-    #[error("Other.")]
-    Other = i32::MIN as isize,
-}
-
-impl From<OstdError> for SyscallError {
-    fn from(error: OstdError) -> Self {
-        match error {
-            OstdError::AccessDenied => SyscallError::PermissionDenied,
-            OstdError::InvalidArgs => SyscallError::InvalidArguments,
-            _ => SyscallError::Other,
-        }
-    }
-}
+type SyscallResult = Result<isize>;
 
 pub fn syscall_handler(context: &mut UserContext) {
     let syscall_id = context.rax();
@@ -62,7 +37,8 @@ pub fn syscall_handler(context: &mut UserContext) {
         8 => lseek(
             arg1 as FileDescriptor,
             arg2 as isize,
-            LseekWhence::from_i32(arg3 as i32).ok_or(SyscallError::InvalidArguments)?,
+            LseekWhence::from_i32(arg3 as i32)
+                .ok_or(Errno::EINVAL.with_message("Invalid whence."))?,
         ),
         9 => mmap(
             arg1,
@@ -81,7 +57,8 @@ pub fn syscall_handler(context: &mut UserContext) {
         63 => uname(arg1 as Vaddr),
         72 => fcntl(
             arg1 as FileDescriptor,
-            FcntlCommand::from_i32(arg2 as i32).ok_or(SyscallError::InvalidArguments)?,
+            FcntlCommand::from_i32(arg2 as i32)
+                .ok_or(Errno::EINVAL.with_message("Invalid command."))?,
             arg3 as u32,
         ),
         79 => getcwd(arg1 as Vaddr, arg2),
@@ -101,7 +78,7 @@ pub fn syscall_handler(context: &mut UserContext) {
 
     let result = match result {
         Ok(value) => value,
-        Err(error) => error as isize,
+        Err(error) => i32::from(error) as isize,
     };
 
     let pid = Process::current().id();

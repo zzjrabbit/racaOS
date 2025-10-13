@@ -1,7 +1,8 @@
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use errors::{Errno, Result};
 use ostd::sync::RwLock;
 
-use crate::{File, FileSystemError, InodeOperation};
+use crate::{File, InodeOperation};
 
 mod gpt;
 mod mbr;
@@ -16,17 +17,17 @@ pub fn register_parser(parser: Box<dyn PartitionParser>) {
     PARSERS.write().push(parser);
 }
 
-pub fn parse_partitions(dev: Arc<File>) -> Result<Vec<Partition>, FileSystemError> {
+pub fn parse_partitions(dev: Arc<File>) -> Result<Vec<Partition>> {
     for parser in PARSERS.read().iter() {
         if let Ok(partitions) = parser.parse(dev.clone()) {
             return Ok(partitions);
         }
     }
-    Err(FileSystemError::InvalidArguments)
+    Err(Errno::EINVAL.no_message())
 }
 
 pub trait PartitionParser: Sync + Send {
-    fn parse(&self, dev: Arc<File>) -> Result<Vec<Partition>, FileSystemError>;
+    fn parse(&self, dev: Arc<File>) -> Result<Vec<Partition>>;
 }
 
 #[derive(Clone)]

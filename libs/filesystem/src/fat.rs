@@ -1,22 +1,23 @@
 use alloc::{boxed::Box, string::String, sync::Arc};
+use errors::{Errno, Result};
 use fatfs::{
     DefaultTimeProvider, Dir, DirEntry, File as FileInner, FileSystem, FsOptions, IoBase,
     LossyOemCpConverter, Read, Seek, SeekFrom, Write,
 };
 use ostd::sync::{Mutex, RwLock};
 
-use crate::{File, FileSystemError, FileType, InodeOperation, Path, probe::register_probe};
+use crate::{File, FileType, InodeOperation, Path, probe::register_probe};
 
 pub fn init() {
     register_probe(parse_fat);
 }
 
 // TODO: Fix memory leak
-pub fn parse_fat(device: Arc<File>) -> Result<Arc<File>, FileSystemError> {
+pub fn parse_fat(device: Arc<File>) -> Result<Arc<File>> {
     let disk = FatDisk { device, offset: 0 };
 
     let root = Box::leak(Box::new(FatRoot::new(
-        FileSystem::new(disk, FsOptions::new()).map_err(|_| FileSystemError::InodeNotFound)?,
+        FileSystem::new(disk, FsOptions::new()).map_err(|_| Errno::EINVAL.no_message())?,
     )));
 
     let root_lock = Arc::new(Mutex::new(()));
@@ -260,7 +261,7 @@ impl IoBase for FatDisk {
 }
 
 impl Read for FatDisk {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
+    fn read(&mut self, buf: &mut [u8]) -> ::core::result::Result<usize, Self::Error> {
         let r = self.device.read_at(self.offset, buf);
         self.offset += r as u64;
         Ok(r)
@@ -268,19 +269,19 @@ impl Read for FatDisk {
 }
 
 impl Write for FatDisk {
-    fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
+    fn write(&mut self, buf: &[u8]) -> ::core::result::Result<usize, Self::Error> {
         let r = self.device.write_at(self.offset, buf);
         self.offset += r as u64;
         Ok(r)
     }
 
-    fn flush(&mut self) -> Result<(), Self::Error> {
+    fn flush(&mut self) -> ::core::result::Result<(), Self::Error> {
         Ok(())
     }
 }
 
 impl Seek for FatDisk {
-    fn seek(&mut self, pos: SeekFrom) -> Result<u64, Self::Error> {
+    fn seek(&mut self, pos: SeekFrom) -> ::core::result::Result<u64, Self::Error> {
         let new_offset = match pos {
             SeekFrom::Current(offset) => self.offset.checked_add_signed(offset).ok_or(())?,
             SeekFrom::Start(offset) => offset,

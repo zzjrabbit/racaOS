@@ -1,6 +1,6 @@
 use alloc::{sync::Arc, vec::Vec};
+use errors::{Errno, Result};
 use ostd::{
-    Error as OstdError,
     mm::{PageProperty, Vaddr},
     sync::RwLock,
 };
@@ -72,7 +72,7 @@ impl MemoryInfo {
 }
 
 impl MemoryInfo {
-    pub fn allocate(&self, len: usize) -> Result<MemoryRegion, OstdError> {
+    pub fn allocate(&self, len: usize) -> Result<MemoryRegion> {
         let mut inner = self.inner.write();
 
         let mut region = None;
@@ -90,17 +90,17 @@ impl MemoryInfo {
             inner.allocated.push(region);
         }
 
-        region.ok_or(OstdError::NoMemory)
+        region.ok_or(Errno::ENOMEM.with_message("Failed to allocate memory region."))
     }
 
-    pub fn allocate_at(&self, address: Vaddr, len: usize) -> Result<MemoryRegion, OstdError> {
+    pub fn allocate_at(&self, address: Vaddr, len: usize) -> Result<MemoryRegion> {
         let mut inner = self.inner.write();
 
         let required_region = MemoryRegion::new(address, len);
 
         for mapped in inner.allocated.iter() {
             if mapped.overlap(&required_region) {
-                return Err(OstdError::NoMemory);
+                return Err(Errno::ENOMEM.with_message("Required region overlaps."));
             }
         }
 

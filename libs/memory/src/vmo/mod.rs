@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use alloc::{sync::Arc, vec::Vec};
+use errors::{Errno, Result};
 use ostd::{
-    Error,
     io::IoMem,
     mm::{FrameAllocOptions, HasSize, PAGE_SIZE, UFrame, Vaddr, VmIo},
     sync::RwMutex,
@@ -27,7 +27,7 @@ enum VmoInner {
 }
 
 impl Vmo {
-    pub fn allocate_ram(count: usize) -> Result<Self, Error> {
+    pub fn allocate_ram(count: usize) -> Result<Self> {
         Ok(Self {
             inner: Arc::new(VmoInner::Ram {
                 frames: RwMutex::new(alloc::vec![None; count]),
@@ -35,7 +35,7 @@ impl Vmo {
         })
     }
 
-    pub fn acquire_iomem(address: Vaddr, length: usize) -> Result<Self, Error> {
+    pub fn acquire_iomem(address: Vaddr, length: usize) -> Result<Self> {
         Ok(Self {
             inner: Arc::new(VmoInner::IoMem {
                 iomem: IoMem::acquire(address..address + length)?,
@@ -44,7 +44,7 @@ impl Vmo {
         })
     }
 
-    pub fn deep_clone(&self) -> Result<Self, Error> {
+    pub fn deep_clone(&self) -> Result<Self> {
         match self.inner.as_ref() {
             VmoInner::Ram { frames } => {
                 let mut new_frames = alloc::vec![None; frames.read().len()];
@@ -66,13 +66,15 @@ impl Vmo {
                     }),
                 })
             }
-            VmoInner::IoMem { .. } => Err(Error::AccessDenied),
+            VmoInner::IoMem { .. } => {
+                Err(Errno::EACCES.with_message("Attempting to deep clone IoMem."))
+            }
         }
     }
 }
 
 impl Vmo {
-    pub(super) fn into_ram(&self, offset: usize) -> Result<Option<(usize, UFrame)>, Error> {
+    pub(super) fn into_ram(&self, offset: usize) -> Result<Option<(usize, UFrame)>> {
         match self.inner.as_ref() {
             VmoInner::Ram { frames } => {
                 let id = offset / PAGE_SIZE;

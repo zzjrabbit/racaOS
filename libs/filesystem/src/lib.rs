@@ -6,7 +6,6 @@ use alloc::sync::Arc;
 use bitflags::bitflags;
 use component::{ComponentInitError, init_component};
 use spin::Lazy;
-use thiserror::Error;
 
 mod dev;
 mod ext;
@@ -50,15 +49,6 @@ pub fn init() -> Result<(), ComponentInitError> {
     part::init();
 
     Ok(())
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Error)]
-pub enum FileSystemError {
-    #[error("Inode not found")]
-    InodeNotFound,
-    #[error("Invalid arguments.")]
-    InvalidArguments,
 }
 
 #[allow(non_camel_case_types)]

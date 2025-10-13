@@ -1,7 +1,5 @@
-use ostd::{
-    Error,
-    mm::{PageFlags, PageProperty, Vaddr},
-};
+use errors::Result;
+use ostd::mm::{PageFlags, PageProperty, Vaddr};
 
 use crate::Vmo;
 
@@ -74,7 +72,7 @@ impl VmMapping {
 }
 
 impl VmMapping {
-    pub fn clone(&self) -> Result<Self, Error> {
+    pub fn clone(&self) -> Result<Self> {
         let mut prop = self.prop;
         prop.flags.remove(PageFlags::W);
 

@@ -1,5 +1,5 @@
+use errors::Result;
 use ostd::{
-    Error,
     mm::{PAGE_SIZE, PageFlags, Vaddr},
     task::disable_preempt,
 };
@@ -7,7 +7,7 @@ use ostd::{
 use crate::{Vmar, align_down_by_page_size};
 
 impl Vmar {
-    pub fn handle_page_fault(&self, vaddr: Vaddr, perm_required: PageFlags) -> Result<bool, Error> {
+    pub fn handle_page_fault(&self, vaddr: Vaddr, perm_required: PageFlags) -> Result<bool> {
         let mut inner = self.inner.write();
         let mut handled = false;
         for mapping in inner.vm_mappings.iter_mut() {

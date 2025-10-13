@@ -1,21 +1,22 @@
-use ostd::{Error as OstdError, Pod};
+use errors::Result;
+use ostd::Pod;
 
 use crate::Vmar;
 
 impl Vmar {
-    pub fn read_val<T: Pod>(&self, address: usize) -> Result<T, OstdError> {
+    pub fn read_val<T: Pod>(&self, address: usize) -> Result<T> {
         let mut buffer = alloc::vec![0u8; core::mem::size_of::<T>()];
         self.read(address, &mut buffer)?;
         Ok(T::from_bytes(&buffer))
     }
 
-    pub fn write_val<T: Pod>(&self, address: usize, value: &T) -> Result<(), OstdError> {
+    pub fn write_val<T: Pod>(&self, address: usize, value: &T) -> Result<()> {
         let buffer = value.as_bytes();
         self.write(address, buffer)?;
         Ok(())
     }
 
-    pub fn read(&self, address: usize, buffer: &mut [u8]) -> Result<(), OstdError> {
+    pub fn read(&self, address: usize, buffer: &mut [u8]) -> Result<()> {
         let mut read: usize = 0;
 
         while read < buffer.len() {
@@ -43,7 +44,7 @@ impl Vmar {
         Ok(())
     }
 
-    pub fn write(&self, address: usize, buffer: &[u8]) -> Result<(), OstdError> {
+    pub fn write(&self, address: usize, buffer: &[u8]) -> Result<()> {
         let mut written: usize = 0;
 
         while written < buffer.len() {

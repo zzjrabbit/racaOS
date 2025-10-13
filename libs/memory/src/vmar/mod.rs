@@ -1,6 +1,6 @@
 use alloc::{sync::Arc, vec::Vec};
+use errors::Result;
 use ostd::{
-    Error,
     mm::{PAGE_SIZE, PageFlags, PageProperty, Vaddr, VmSpace, tlb::TlbFlushOp},
     sync::RwMutex,
     task::disable_preempt,
@@ -43,7 +43,7 @@ impl Vmar {
 }
 
 impl Vmar {
-    pub fn map(&self, addr: Vaddr, size: usize, prop: PageProperty) -> Result<(), Error> {
+    pub fn map(&self, addr: Vaddr, size: usize, prop: PageProperty) -> Result<()> {
         let aligned = align_down_by_page_size(addr);
         let size = align_up_by_page_size(size + addr - aligned);
 
@@ -93,7 +93,7 @@ impl Vmar {
         Ok(())
     }
 
-    pub fn unmap(&self, addr: Vaddr, size: usize) -> Result<(), Error> {
+    pub fn unmap(&self, addr: Vaddr, size: usize) -> Result<()> {
         let mut inner = self.inner.write();
 
         for mapping in inner.vm_mappings.iter_mut() {
@@ -120,7 +120,7 @@ impl Vmar {
         Ok(())
     }
 
-    pub fn protect(&self, addr: Vaddr, size: usize, flags: PageFlags) -> Result<(), Error> {
+    pub fn protect(&self, addr: Vaddr, size: usize, flags: PageFlags) -> Result<()> {
         let mut inner = self.inner.write();
 
         for mapping in inner.vm_mappings.iter_mut() {
@@ -162,7 +162,7 @@ impl Vmar {
 }
 
 impl Vmar {
-    pub fn deep_clone(&self) -> Result<Arc<Self>, Error> {
+    pub fn deep_clone(&self) -> Result<Arc<Self>> {
         let mut vm_mappings = Vec::new();
         for mapping in self.inner.read().vm_mappings.iter() {
             vm_mappings.push(mapping.clone()?);

@@ -1,13 +1,12 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use alloc::{format, string::String, sync::Arc, vec::Vec};
+use errors::{Errno, Result};
 use spin::RwLock;
 
-use crate::{
-    File, FileSystemError, FileType, InodeOperation, Path, open_file, part::parse_partitions,
-};
+use crate::{File, FileType, InodeOperation, Path, open_file, part::parse_partitions};
 
-type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>, FileSystemError>;
+type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>>;
 
 static FILE_SYSTEMS: RwLock<Vec<FileSystemProbe>> = RwLock::new(Vec::new());
 
@@ -52,11 +51,11 @@ pub(super) fn register_probe(probe: FileSystemProbe) {
     FILE_SYSTEMS.write().push(probe);
 }
 
-pub(super) fn probe(device: Arc<File>) -> Result<Arc<File>, FileSystemError> {
+pub(super) fn probe(device: Arc<File>) -> Result<Arc<File>> {
     for probe in FILE_SYSTEMS.read().iter() {
         if let Ok(file) = probe(device.clone()) {
             return Ok(file);
         }
     }
-    Err(FileSystemError::InvalidArguments)
+    Err(Errno::EINVAL.with_message("Invalid device for filesystem prober."))
 }

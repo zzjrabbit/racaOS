@@ -1,12 +1,13 @@
+use errors::Result;
 use ostd::{
-    Error, Pod,
+    Pod,
     mm::{PAGE_SIZE, VmIo},
 };
 
 use crate::{Vmo, align_down_by_page_size};
 
 impl Vmo {
-    pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<(), Error> {
+    pub fn read_bytes(&self, offset: usize, buffer: &mut [u8]) -> Result<()> {
         if self.is_iomem() {
             let (iomem, base_offset) = self.into_iomem().unwrap();
             iomem.read_bytes(offset - base_offset, buffer)?;
@@ -28,7 +29,7 @@ impl Vmo {
         Ok(())
     }
 
-    pub fn write_bytes(&self, offset: usize, buffer: &[u8]) -> Result<(), Error> {
+    pub fn write_bytes(&self, offset: usize, buffer: &[u8]) -> Result<()> {
         if self.is_iomem() {
             let (iomem, base_offset) = self.into_iomem().unwrap();
             iomem.write_bytes(offset - base_offset, buffer)?;
@@ -50,14 +51,14 @@ impl Vmo {
         Ok(())
     }
 
-    pub fn read_val<T: Pod>(&self, offset: usize) -> Result<T, Error> {
+    pub fn read_val<T: Pod>(&self, offset: usize) -> Result<T> {
         let mut value = T::new_uninit();
         let buffer = value.as_bytes_mut();
         self.read_bytes(offset, buffer)?;
         Ok(value)
     }
 
-    pub fn write_val<T: Pod>(&self, offset: usize, value: &T) -> Result<(), Error> {
+    pub fn write_val<T: Pod>(&self, offset: usize, value: &T) -> Result<()> {
         let buffer = value.as_bytes();
         self.write_bytes(offset, buffer)?;
         Ok(())

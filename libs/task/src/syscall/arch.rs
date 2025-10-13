@@ -1,3 +1,4 @@
+use errors::Error;
 use ostd::{mm::Vaddr, prelude::println};
 
 use super::*;
@@ -19,15 +20,15 @@ impl ArchPrctlOptions {
 }
 
 impl TryFrom<usize> for ArchPrctlOptions {
-    type Error = SyscallError;
+    type Error = Error;
 
-    fn try_from(value: usize) -> Result<Self, Self::Error> {
+    fn try_from(value: usize) -> Result<Self> {
         match value {
             Self::SET_FS => Ok(Self::SetFs),
             Self::GET_FS => Ok(Self::GetFs),
             Self::SET_GS => Ok(Self::SetGs),
             Self::GET_GS => Ok(Self::GetGs),
-            _ => Err(Self::Error::InvalidArguments),
+            _ => Err(Errno::EINVAL.no_message()),
         }
     }
 }
@@ -45,7 +46,7 @@ pub fn arch_prctl(
         ArchPrctlOptions::GetFs => return Ok(user_context.tls_pointer() as isize),
         _ => {
             println!("Users shouldn't access gs.");
-            return Err(SyscallError::PermissionDenied);
+            return Err(Errno::EACCES.no_message());
         }
     };
     Ok(0)

@@ -481,6 +481,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.9.4",
  "component",
+ "errors",
  "fatfs",
  "gpt_disk_io",
  "log",
@@ -812,6 +813,7 @@ name = "memory"
 version = "0.1.0"
 dependencies = [
  "component",
+ "errors",
  "log",
  "ostd",
 ]
@@ -1436,6 +1438,7 @@ dependencies = [
  "component",
  "derive_more",
  "elf",
+ "errors",
  "filesystem",
  "log",
  "memory",

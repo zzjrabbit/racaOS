@@ -10,6 +10,7 @@ impl From<ostd::Error> for Error {
             ostd::Error::NotEnoughResources => Errno::ENOSPC,
             ostd::Error::Overflow => Errno::EOVERFLOW,
             ostd::Error::PageFault => Errno::EFAULT,
-        }.no_message()
+        }
+        .no_message()
     }
 }
