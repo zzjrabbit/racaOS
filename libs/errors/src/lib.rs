@@ -1,39 +1,42 @@
 #![no_std]
 
-use thiserror::Error;
+extern crate alloc;
 
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("Invalid arguments.")]
-    InvalidArguments,
-    #[error("Access denied.")]
-    AccessDenied,
-    #[error("Not found.")]
-    NotFound,
-    #[error("Already exists.")]
-    AlreadyExists,
-    #[error("I/O Operation failed.")]
-    IoOperationFailed,
-    #[error("Not enough resources.")]
-    NotEnoughResources,
-    #[error("No memory available.")]
-    NoMemory,
-    #[error("Something overflowed.")]
-    Overflow,
-    #[error("Page fault.")]
-    PageFault,
-}
+mod errno;
+mod from;
 
-impl From<ostd::Error> for Error {
-    fn from(value: ostd::Error) -> Self {
-        match value {
-            ostd::Error::AccessDenied => Error::AccessDenied,
-            ostd::Error::IoError => Error::IoOperationFailed,
-            ostd::Error::NotEnoughResources => Error::NotEnoughResources,
-            ostd::Error::NoMemory => Error::NoMemory,
-            ostd::Error::Overflow => Error::Overflow,
-            ostd::Error::PageFault => Error::PageFault,
-            ostd::Error::InvalidArgs => Error::InvalidArguments,
-        }
+use core::fmt::{Debug, Display};
+
+use alloc::string::String;
+pub use errno::*;
+
+pub type Result<T> = core::result::Result<T, Error>;
+
+impl Errno {
+    pub fn with_message(&self, message: String) -> Error {
+        Error { errno: *self, message }
+    }
+    
+    pub fn no_message(&self) -> Error {
+        Error { errno: *self, message: String::new() }
     }
 }
+
+pub struct Error {
+    errno: Errno,
+    message: String,
+}
+
+impl Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}: {}", self.errno, self.message)
+    }
+}
+
+impl Debug for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}: {}", self.errno, self.message)
+    }
+}
+
+impl core::error::Error for Error {}

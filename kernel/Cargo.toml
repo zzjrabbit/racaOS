@@ -1,6 +1,6 @@
 [package]
 name = "kernel"
-version = "0.1.0"
+version.workspace = true
 edition = "2021"
 
 [dependencies]
@@ -14,8 +14,8 @@ logger.workspace = true
 memory.workspace = true
 pci.workspace = true
 task.workspace = true
-terminal = { version = "0.1.0", path = "../modules/terminal" }
-ahci = { version = "0.1.0", path = "../modules/ahci" }
-network = { version = "0.1.0", path = "../modules/network" }
-nvme = { version = "0.1.0", path = "../modules/nvme" }
-ramdisk = { version = "0.1.0", path = "../modules/ramdisk" }
+terminal = { path = "../modules/terminal" }
+ahci = { path = "../modules/ahci" }
+network = { path = "../modules/network" }
+nvme = { path = "../modules/nvme" }
+ramdisk = { path = "../modules/ramdisk" }

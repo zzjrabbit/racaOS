@@ -2,14 +2,14 @@
 ostd = "0.16.1"
 component = { path = "component" }
 log = "0.4.28"
-block = { version = "0.1.0", path = "libs/block" }
-driver = { version = "0.1.0", path = "libs/driver" }
-filesystem = { version = "0.1.0", path = "libs/filesystem" }
-logger = { version = "0.1.0", path = "libs/logger" }
-memory = { version = "0.1.0", path = "libs/memory" }
-task = { version = "0.1.0", path = "libs/task" }
-pci = { version = "0.1.0", path = "libs/pci" }
-errors = { version = "0.1.0", path = "libs/errors" }
+block = { path = "libs/block" }
+driver = { path = "libs/driver" }
+filesystem = { path = "libs/filesystem" }
+logger = { path = "libs/logger" }
+memory = { path = "libs/memory" }
+task = { path = "libs/task" }
+pci = { path = "libs/pci" }
+errors = { path = "libs/errors" }
 spin = "0.10.0"
 bit_field = "0.10.3"
 bitflags = "2.9.4"
@@ -19,3 +19,7 @@ exclude = ["target/osdk/base", "target/osdk/test-base"]
 members = [".", "component", "component/comp-macro", "kernel", "libs/*", "modules/*"]
 resolver = "3"
 default-members = ["kernel"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
