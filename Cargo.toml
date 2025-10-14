@@ -11,6 +11,7 @@ task = { path = "libs/task" }
 pci = { path = "libs/pci" }
 errors = { path = "libs/errors" }
 events = { path = "libs/events" }
+credentials = { path = "libs/credentials" }
 spin = "0.10.0"
 bit_field = "0.10.3"
 bitflags = "2.9.4"
