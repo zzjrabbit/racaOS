@@ -7,11 +7,11 @@ use alloc::{
 use errors::Result;
 use ostd::{
     arch::cpu::context::UserContext,
-    sync::{Mutex, RwLock},
+    sync::{Mutex, RwLock, WaitQueue},
     task::Task,
 };
 
-use crate::{Signal, SignalDisposition, process::loader::ElfLoader};
+use crate::{Signal, SignalDisposition, SignalKind, process::loader::ElfLoader};
 
 pub use memory::MemoryInfo;
 use {
@@ -36,6 +36,7 @@ pub struct Process {
 
     child_death_signal: Mutex<Signal>,
     signal_disposition: Arc<Mutex<SignalDisposition>>,
+    wait_queue: WaitQueue,
 }
 
 static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(1);
@@ -54,6 +55,7 @@ impl Process {
             default_files: self.default_files.clone(),
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
             child_death_signal: Mutex::new(child_death_signal),
+            wait_queue: WaitQueue::new(),
             signal_disposition,
         });
 
@@ -79,6 +81,7 @@ impl Process {
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
             child_death_signal: Mutex::new(Signal::SIGCHLD),
             signal_disposition: Arc::new(Mutex::new(SignalDisposition::default())),
+            wait_queue: WaitQueue::new(),
         });
 
         PROCESSES.write().push(new_self.clone());
@@ -193,7 +196,11 @@ impl Process {
                 .write()
                 .retain(|child| child.id() != self.id());
             let child_death_signal = parent.child_death_signal.lock();
+            
+            parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
         }
+        
+        self.wait_queue.wake_all();
     }
 
     pub fn kill(&self) {
@@ -214,7 +221,12 @@ impl Process {
                 .children
                 .write()
                 .retain(|child| child.id() != self.id());
+            let child_death_signal = parent.child_death_signal.lock();
+            
+            parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
         }
+        
+        self.wait_queue.wake_all();
     }
 
     pub fn exit_code(&self) -> Option<i32> {
@@ -224,4 +236,39 @@ impl Process {
             None
         }
     }
+    
+    pub fn wait_dead(&self) {
+        self.wait_queue.wait_until(|| self.exit_code());
+    }
+}
+
+impl Process {
+    pub fn enqueue_signal(&self, signal_kind: SignalKind) {
+            if self.exit_code().is_some() {
+                return;
+            }
+    
+            let signal_disposition = self.signal_disposition.lock();
+    
+            // Drop the signal if it's ignored. See explanation at `enqueue_signal_locked`.
+            let signal = signal_kind.signal();
+            if signal_disposition.get(signal).will_ignore(signal) {
+                return;
+            }
+    
+            let threads = self.threads.read();
+    
+            // Enqueue the signal to the first thread that does not block the signal.
+            for thread in threads.as_slice() {
+                let data = thread.direct_downcast::<UserThreadData>().unwrap();
+                if !data.blocked_signals().contains(signal) {
+                    data.enqueue_signal_locked(signal_kind);
+                }
+            }
+    
+            // If all threads block the signal, enqueue the signal to the main thread.
+            let thread = threads[0].clone();
+            let data = thread.direct_downcast::<UserThreadData>().unwrap();
+            data.enqueue_signal_locked(signal_kind);
+        }
 }

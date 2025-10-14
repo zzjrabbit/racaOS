@@ -16,6 +16,16 @@ pub enum SignalAction {
     },
 }
 
+impl SignalAction {
+    pub fn will_ignore(&self, signal: Signal) -> bool {
+        match self {
+            SignalAction::Default => false,
+            SignalAction::Ignore => true,
+            SignalAction::User { mask, .. } => mask.contains(signal),
+        }
+    }
+}
+
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct SignalActionFlags: u32 {

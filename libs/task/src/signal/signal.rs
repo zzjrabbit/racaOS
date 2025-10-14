@@ -1,5 +1,51 @@
 use derive_more::{Add, AddAssign, Deref, DerefMut, Display, Sub, SubAssign};
 
+#[derive(Clone, Copy)]
+pub enum SignalKind {
+    Fault {
+        signal: Signal,
+        code: i32,
+        address: Option<u64>,
+    },
+    Kernel {
+        signal: Signal,
+    },
+    User {
+        signal: Signal,
+        kind: UserSignalKind,
+        pid: usize,
+    },
+}
+
+impl SignalKind {
+    pub fn signal(&self) -> Signal {
+        match self {
+            SignalKind::Fault { signal, .. } => *signal,
+            SignalKind::Kernel { signal } => *signal,
+            SignalKind::User { signal, .. } => *signal,
+        }
+    }
+    
+    pub fn new_kernel(signal: Signal) -> Self {
+        SignalKind::Kernel { signal }
+    }
+    
+    pub fn new_user(signal: Signal, kind: UserSignalKind, pid: usize) -> Self {
+        SignalKind::User { signal, kind, pid }
+    }
+    
+    pub fn new_fault(signal: Signal, code: i32, address: Option<u64>) -> Self {
+        SignalKind::Fault { signal, code, address }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum UserSignalKind {
+    Kill,
+    TKill,
+    SignalQueue,
+}
+
 #[derive(
     Debug,
     Default,
@@ -33,6 +79,16 @@ impl Signal {
     pub(crate) const MIN_RT_SIGNAL: Self = Self(32);
     /// Inclusive
     pub(crate) const MAX_RT_SIGNAL: Self = Self(64);
+}
+
+impl Signal {
+    pub fn is_std(&self) -> bool {
+        Self::MIN_STD_SIGNAL.0 <= self.0 && self.0 <= Self::MAX_STD_SIGNAL.0
+    }
+
+    pub fn is_rt(&self) -> bool {
+        Self::MIN_RT_SIGNAL.0 <= self.0 && self.0 <= Self::MAX_RT_SIGNAL.0
+    }
 }
 
 impl TryFrom<u8> for Signal {

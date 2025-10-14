@@ -461,6 +461,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "events"
+version = "0.1.0"
+dependencies = [
+ "ostd",
+]
+
+[[package]]
 name = "fatfs"
 version = "0.4.0"
 source = "git+https://github.com/rafalh/rust-fatfs#4eccb50d011146fbed20e133d33b22f3c27292e7"
@@ -1439,6 +1446,7 @@ dependencies = [
  "derive_more",
  "elf",
  "errors",
+ "events",
  "filesystem",
  "log",
  "memory",

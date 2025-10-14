@@ -5,13 +5,16 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
+use events::Observer;
 use ostd::{
     arch::cpu::context::{CpuException, UserContext},
     mm::Vaddr,
-    sync::RwLock,
+    sync::{RwLock, SpinLock, Waker},
     task::{Task, TaskOptions},
     user::{ReturnReason, UserMode},
 };
+
+use crate::{Signal, SignalEvent, SignalEventFilter, SignalKind, SignalMask, SignalQueue};
 
 use {
     crate::syscall::syscall_handler,
@@ -62,7 +65,7 @@ pub fn spawn_user_thread(
 
         let mut user_mode = UserMode::new(user_context);
         user_mode.context().activate_tls_pointer();
-        
+
         loop {
             {
                 let current = Task::current().unwrap();
@@ -144,6 +147,9 @@ pub struct UserThreadData {
     tid: usize,
     memory_info: Arc<MemoryInfo>,
     fs_info: Arc<FileSystemInfo>,
+    signal_mask: RwLock<SignalMask>,
+    signal_queues: SignalQueue,
+    signalled_waker: SpinLock<Option<Arc<Waker>>>,
 }
 
 static TID: AtomicUsize = AtomicUsize::new(0);
@@ -162,6 +168,9 @@ impl UserThreadData {
             tid_address: RwLock::new(None),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info: Arc::new(FileSystemInfo::new(stdin, stdout, stderr)),
+            signal_mask: RwLock::new(SignalMask::default()),
+            signal_queues: SignalQueue::new(),
+            signalled_waker: SpinLock::new(None),
         }
     }
 
@@ -177,6 +186,9 @@ impl UserThreadData {
             tid_address: RwLock::new(tid_address),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info,
+            signal_mask: RwLock::new(SignalMask::default()),
+            signal_queues: SignalQueue::new(),
+            signalled_waker: SpinLock::new(None),
         }
     }
 }
@@ -194,5 +206,72 @@ impl UserThreadData {
 
     pub fn fs_info(&self) -> &Arc<FileSystemInfo> {
         &self.fs_info
+    }
+}
+
+impl UserThreadData {
+    pub fn block_signal(&self, signal: Signal) {
+        *self.signal_mask.write() += signal;
+    }
+
+    pub fn unblock_signal(&self, signal: Signal) {
+        *self.signal_mask.write() -= signal;
+    }
+
+    pub fn blocked_signals(&self) -> SignalMask {
+        self.signal_mask.read().clone()
+    }
+
+    pub fn has_pending_signals(&self) -> bool {
+        self.signal_queues.has_pending(self.blocked_signals())
+    }
+
+    pub fn set_signalled_waker(&self, waker: Arc<Waker>) {
+        *self.signalled_waker.lock() = Some(waker);
+    }
+
+    pub fn clear_signalled_waker(&self) {
+        *self.signalled_waker.lock() = None;
+    }
+
+    pub fn wake_signalled_waker(&self) {
+        if let Some(waker) = &*self.signalled_waker.lock() {
+            waker.wake_up();
+        }
+    }
+
+    pub fn enqueue_signal(&self, signal_kind: SignalKind) {
+        let process = self.process.upgrade().unwrap();
+
+        let signal_disposition = process.signal_disposition();
+        let signal_disposition = signal_disposition.lock();
+
+        let signal = signal_kind.signal();
+        if signal_disposition.get(signal).will_ignore(signal) {
+            return;
+        }
+
+        self.enqueue_signal_locked(signal_kind);
+    }
+    
+    pub(crate) fn enqueue_signal_locked(&self, signal_kind: SignalKind) {
+        self.signal_queues.enqueue(signal_kind);
+        self.wake_signalled_waker();
+    }
+
+    pub fn dequeue_signal(&self, mask: SignalMask) -> Option<SignalKind> {
+        self.signal_queues.dequeue(&mask)
+    }
+
+    pub fn register_signal_queue_observer(
+        &self,
+        observer: Weak<dyn Observer<SignalEvent>>,
+        filter: SignalEventFilter,
+    ) {
+        self.signal_queues.register_observer(observer, filter);
+    }
+
+    pub fn unregister_signal_queue_observer(&self, observer: &Weak<dyn Observer<SignalEvent>>) {
+        self.signal_queues.unregister_observer(observer);
     }
 }
