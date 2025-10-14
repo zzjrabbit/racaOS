@@ -31,7 +31,7 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
         core::str::from_utf8(&path)
             .map_err(|_| Errno::EINVAL.with_message("Unable to parse path with utf-8."))?,
     );
-    
+
     if let Some(file) = data.open_file(&path) {
         let fd = data.fs_info().add_file(file, access_mode, open_flags);
         Ok(fd as isize)
@@ -288,7 +288,7 @@ pub fn chdir(file_name: Vaddr) -> SyscallResult {
 
     let path = core::str::from_utf8(&buffer).map_err(|_| Errno::EINVAL.no_message())?;
     let path = Path::from(path);
-    
+
     if data.open_file(&path).is_none() {
         return Err(Errno::ENOENT.no_message());
     }

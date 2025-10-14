@@ -1,12 +1,12 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+use ::filesystem::{FileType, Path};
 use alloc::{
     boxed::Box,
     sync::{Arc, Weak},
     vec::Vec,
 };
 use events::Observer;
-use ::filesystem::{FileType, Path};
 use ostd::{
     arch::cpu::context::{CpuException, UserContext},
     mm::Vaddr,
@@ -287,15 +287,15 @@ impl UserThreadData {
     pub fn cwd(&self) -> Path {
         self.fs_resolver.read().cwd().clone()
     }
-    
+
     pub fn root(&self) -> Path {
         self.fs_resolver.read().root().clone()
     }
-    
+
     pub fn set_cwd(&self, path: Path) {
         self.fs_resolver.write().set_cwd(path);
     }
-    
+
     pub fn set_root(&self, path: Path) {
         self.fs_resolver.write().set_root(path);
     }
@@ -303,11 +303,11 @@ impl UserThreadData {
     pub fn open_file(&self, path: &Path) -> Option<Arc<File>> {
         self.fs_resolver.read().open_file(path)
     }
-    
+
     pub fn create_file(&self, path: &Path, file_type: FileType) -> Option<Arc<File>> {
         self.fs_resolver.write().create_file(path, file_type)
     }
-    
+
     pub fn clone_fs_resolver(&self) -> FsResolver {
         self.fs_resolver.read().clone()
     }

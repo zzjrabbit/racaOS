@@ -37,7 +37,7 @@ impl FsResolver {
     pub fn open_file(&self, path: &Path) -> Option<Arc<File>> {
         open_file(&self.absolute_path(path))
     }
-    
+
     pub fn create_file(&self, path: &Path, file_type: FileType) -> Option<Arc<File>> {
         let parent = self.open_file(&path.parent()?)?;
         parent.create(path.name(), file_type)

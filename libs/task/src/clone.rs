@@ -89,7 +89,13 @@ pub fn clone_child(
     let tid_address = parent_data.tid_address.read().clone();
     let fs_resolver = parent_data.clone_fs_resolver();
 
-    let child_data = UserThreadData::new_all(&process, memory_info.clone(), fs_info, fs_resolver, tid_address);
+    let child_data = UserThreadData::new_all(
+        &process,
+        memory_info.clone(),
+        fs_info,
+        fs_resolver,
+        tid_address,
+    );
 
     let mut child_context = context.clone();
     child_context.set_rax(0);
