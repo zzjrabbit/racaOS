@@ -6,6 +6,7 @@ use alloc::{
     vec::Vec,
 };
 use events::Observer;
+use ::filesystem::{FileType, Path};
 use ostd::{
     arch::cpu::context::{CpuException, UserContext},
     mm::Vaddr,
@@ -25,8 +26,10 @@ use {
 };
 
 mod filesystem;
+mod fs_resolver;
 
 pub use filesystem::*;
+pub use fs_resolver::*;
 
 static THREADS: RwLock<Vec<Arc<Task>>> = RwLock::new(Vec::new());
 
@@ -147,6 +150,7 @@ pub struct UserThreadData {
     tid: usize,
     memory_info: Arc<MemoryInfo>,
     fs_info: Arc<FileSystemInfo>,
+    fs_resolver: RwLock<FsResolver>,
     signal_mask: RwLock<SignalMask>,
     signal_queues: SignalQueue,
     signalled_waker: SpinLock<Option<Arc<Waker>>>,
@@ -168,6 +172,7 @@ impl UserThreadData {
             tid_address: RwLock::new(None),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info: Arc::new(FileSystemInfo::new(stdin, stdout, stderr)),
+            fs_resolver: RwLock::new(FsResolver::new(Path::from("/"), Path::from("/"))),
             signal_mask: RwLock::new(SignalMask::default()),
             signal_queues: SignalQueue::new(),
             signalled_waker: SpinLock::new(None),
@@ -178,6 +183,7 @@ impl UserThreadData {
         process: &Arc<Process>,
         memory_info: Arc<MemoryInfo>,
         fs_info: Arc<FileSystemInfo>,
+        fs_resolver: FsResolver,
         tid_address: Option<Vaddr>,
     ) -> Self {
         Self {
@@ -186,6 +192,7 @@ impl UserThreadData {
             tid_address: RwLock::new(tid_address),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info,
+            fs_resolver: RwLock::new(fs_resolver),
             signal_mask: RwLock::new(SignalMask::default()),
             signal_queues: SignalQueue::new(),
             signalled_waker: SpinLock::new(None),
@@ -253,7 +260,7 @@ impl UserThreadData {
 
         self.enqueue_signal_locked(signal_kind);
     }
-    
+
     pub(crate) fn enqueue_signal_locked(&self, signal_kind: SignalKind) {
         self.signal_queues.enqueue(signal_kind);
         self.wake_signalled_waker();
@@ -273,5 +280,35 @@ impl UserThreadData {
 
     pub fn unregister_signal_queue_observer(&self, observer: &Weak<dyn Observer<SignalEvent>>) {
         self.signal_queues.unregister_observer(observer);
+    }
+}
+
+impl UserThreadData {
+    pub fn cwd(&self) -> Path {
+        self.fs_resolver.read().cwd().clone()
+    }
+    
+    pub fn root(&self) -> Path {
+        self.fs_resolver.read().root().clone()
+    }
+    
+    pub fn set_cwd(&self, path: Path) {
+        self.fs_resolver.write().set_cwd(path);
+    }
+    
+    pub fn set_root(&self, path: Path) {
+        self.fs_resolver.write().set_root(path);
+    }
+
+    pub fn open_file(&self, path: &Path) -> Option<Arc<File>> {
+        self.fs_resolver.read().open_file(path)
+    }
+    
+    pub fn create_file(&self, path: &Path, file_type: FileType) -> Option<Arc<File>> {
+        self.fs_resolver.write().create_file(path, file_type)
+    }
+    
+    pub fn clone_fs_resolver(&self) -> FsResolver {
+        self.fs_resolver.read().clone()
     }
 }

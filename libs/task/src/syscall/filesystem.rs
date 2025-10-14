@@ -31,10 +31,8 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
         core::str::from_utf8(&path)
             .map_err(|_| Errno::EINVAL.with_message("Unable to parse path with utf-8."))?,
     );
-    let path = data.fs_info().absolute_path(path);
-    log::info!("Opening file: {}", path);
-
-    if let Some(file) = open_file(&path) {
+    
+    if let Some(file) = data.open_file(&path) {
         let fd = data.fs_info().add_file(file, access_mode, open_flags);
         Ok(fd as isize)
     } else if open_flags.contains(OpenFlags::O_CREAT) {
@@ -264,7 +262,7 @@ pub fn getcwd(buffer: Vaddr, len: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
     let data = thread.direct_downcast::<UserThreadData>().unwrap();
     let vmar = data.memory_info().vmar();
-    let cwd = data.fs_info().current_dir();
+    let cwd = data.cwd();
 
     if cwd.len() >= len {
         Ok(0)
@@ -290,14 +288,12 @@ pub fn chdir(file_name: Vaddr) -> SyscallResult {
 
     let path = core::str::from_utf8(&buffer).map_err(|_| Errno::EINVAL.no_message())?;
     let path = Path::from(path);
-    let path = data.fs_info().absolute_path(path);
-    log::info!("Changing directory to {}", path);
-
-    if open_file(&path).is_none() {
+    
+    if data.open_file(&path).is_none() {
         return Err(Errno::ENOENT.no_message());
     }
 
-    data.fs_info().set_current_dir(path);
+    data.set_cwd(path);
 
     Ok(0)
 }
@@ -311,7 +307,7 @@ pub fn fchdir(fd: FileDescriptor) -> SyscallResult {
         .with_file_mut(fd, |_, _access_mode, _open_flags, file| file.path())
         .ok_or(Errno::EBADFD.no_message())?;
 
-    data.fs_info().set_current_dir(path);
+    data.set_cwd(path);
 
     Ok(0)
 }

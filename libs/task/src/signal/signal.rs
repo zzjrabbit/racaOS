@@ -25,17 +25,21 @@ impl SignalKind {
             SignalKind::User { signal, .. } => *signal,
         }
     }
-    
+
     pub fn new_kernel(signal: Signal) -> Self {
         SignalKind::Kernel { signal }
     }
-    
+
     pub fn new_user(signal: Signal, kind: UserSignalKind, pid: usize) -> Self {
         SignalKind::User { signal, kind, pid }
     }
-    
+
     pub fn new_fault(signal: Signal, code: i32, address: Option<u64>) -> Self {
-        SignalKind::Fault { signal, code, address }
+        SignalKind::Fault {
+            signal,
+            code,
+            address,
+        }
     }
 }
 

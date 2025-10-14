@@ -196,10 +196,10 @@ impl Process {
                 .write()
                 .retain(|child| child.id() != self.id());
             let child_death_signal = parent.child_death_signal.lock();
-            
+
             parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
         }
-        
+
         self.wait_queue.wake_all();
     }
 
@@ -222,10 +222,10 @@ impl Process {
                 .write()
                 .retain(|child| child.id() != self.id());
             let child_death_signal = parent.child_death_signal.lock();
-            
+
             parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
         }
-        
+
         self.wait_queue.wake_all();
     }
 
@@ -236,7 +236,7 @@ impl Process {
             None
         }
     }
-    
+
     pub fn wait_dead(&self) {
         self.wait_queue.wait_until(|| self.exit_code());
     }
@@ -244,31 +244,31 @@ impl Process {
 
 impl Process {
     pub fn enqueue_signal(&self, signal_kind: SignalKind) {
-            if self.exit_code().is_some() {
-                return;
-            }
-    
-            let signal_disposition = self.signal_disposition.lock();
-    
-            // Drop the signal if it's ignored. See explanation at `enqueue_signal_locked`.
-            let signal = signal_kind.signal();
-            if signal_disposition.get(signal).will_ignore(signal) {
-                return;
-            }
-    
-            let threads = self.threads.read();
-    
-            // Enqueue the signal to the first thread that does not block the signal.
-            for thread in threads.as_slice() {
-                let data = thread.direct_downcast::<UserThreadData>().unwrap();
-                if !data.blocked_signals().contains(signal) {
-                    data.enqueue_signal_locked(signal_kind);
-                }
-            }
-    
-            // If all threads block the signal, enqueue the signal to the main thread.
-            let thread = threads[0].clone();
-            let data = thread.direct_downcast::<UserThreadData>().unwrap();
-            data.enqueue_signal_locked(signal_kind);
+        if self.exit_code().is_some() {
+            return;
         }
+
+        let signal_disposition = self.signal_disposition.lock();
+
+        // Drop the signal if it's ignored. See explanation at `enqueue_signal_locked`.
+        let signal = signal_kind.signal();
+        if signal_disposition.get(signal).will_ignore(signal) {
+            return;
+        }
+
+        let threads = self.threads.read();
+
+        // Enqueue the signal to the first thread that does not block the signal.
+        for thread in threads.as_slice() {
+            let data = thread.direct_downcast::<UserThreadData>().unwrap();
+            if !data.blocked_signals().contains(signal) {
+                data.enqueue_signal_locked(signal_kind);
+            }
+        }
+
+        // If all threads block the signal, enqueue the signal to the main thread.
+        let thread = threads[0].clone();
+        let data = thread.direct_downcast::<UserThreadData>().unwrap();
+        data.enqueue_signal_locked(signal_kind);
+    }
 }

@@ -3,7 +3,7 @@ use core::sync::atomic::{AtomicI32, Ordering};
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use ostd::sync::RwLock;
 
-use filesystem::{AccessMode, File, FileDescriptor, OpenFlags, Path};
+use filesystem::{AccessMode, File, FileDescriptor, OpenFlags};
 
 type FileDescription = (u64, AccessMode, OpenFlags, Arc<File>);
 type FileDescriptorTable = RwLock<BTreeMap<FileDescriptor, FileDescription>>;
@@ -11,7 +11,6 @@ type FileDescriptorTable = RwLock<BTreeMap<FileDescriptor, FileDescription>>;
 pub struct FileSystemInfo {
     fd_table: FileDescriptorTable,
     next_fd: AtomicI32,
-    current_dir: RwLock<Path>,
 }
 
 impl FileSystemInfo {
@@ -24,7 +23,6 @@ impl FileSystemInfo {
         FileSystemInfo {
             fd_table: RwLock::new(fd_table),
             next_fd: AtomicI32::new(3),
-            current_dir: RwLock::new(Path::new("/")),
         }
     }
 
@@ -32,25 +30,6 @@ impl FileSystemInfo {
         FileSystemInfo {
             fd_table: RwLock::new(self.fd_table.read().clone()),
             next_fd: AtomicI32::new(self.next_fd.load(Ordering::SeqCst)),
-            current_dir: RwLock::new(self.current_dir.read().clone()),
-        }
-    }
-}
-
-impl FileSystemInfo {
-    pub fn current_dir(&self) -> Path {
-        self.current_dir.read().clone()
-    }
-
-    pub fn set_current_dir(&self, path: Path) {
-        *self.current_dir.write() = path;
-    }
-
-    pub fn absolute_path(&self, path: Path) -> Path {
-        if path.is_absolute() {
-            path
-        } else {
-            self.current_dir.read().join(path)
         }
     }
 }
