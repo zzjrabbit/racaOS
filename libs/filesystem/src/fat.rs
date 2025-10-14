@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicU64, Ordering};
+
 use alloc::{boxed::Box, string::String, sync::Arc};
 use errors::{Errno, Result};
 use fatfs::{
@@ -28,6 +30,7 @@ pub fn parse_fat(device: Arc<File>) -> Result<Arc<File>> {
             root.0.root_dir(),
             root_lock.clone(),
             root.0.cluster_size() as u64,
+            Arc::new(AtomicU64::new(1)),
         ),
         FileType::Directory,
     ))
@@ -44,7 +47,9 @@ impl FatRoot {
 pub struct FatDir {
     dir: RwLock<Dir<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>>,
     root_lock: Arc<Mutex<()>>,
+    inode_count: Arc<AtomicU64>,
     cluster_size: u64,
+    inode_id: u64,
 }
 
 #[allow(unsafe_code)]
@@ -58,11 +63,15 @@ impl FatDir {
         dir: Dir<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>,
         root_lock: Arc<Mutex<()>>,
         cluster_size: u64,
+        inode_count: Arc<AtomicU64>,
     ) -> Self {
+        let inode_id = inode_count.fetch_add(1, Ordering::SeqCst);
         FatDir {
             dir: RwLock::new(dir),
             root_lock,
+            inode_count,
             cluster_size,
+            inode_id,
         }
     }
 }
@@ -85,6 +94,7 @@ impl InodeOperation for FatDir {
                     file,
                     self.root_lock.clone(),
                     self.cluster_size,
+                    self.inode_count.fetch_add(1, Ordering::SeqCst),
                 )))
             }
             FileType::Directory => {
@@ -93,6 +103,7 @@ impl InodeOperation for FatDir {
                     dir,
                     self.root_lock.clone(),
                     self.cluster_size,
+                    self.inode_count.clone(),
                 )))
             }
             _ => None,
@@ -128,6 +139,7 @@ impl InodeOperation for FatDir {
                     file,
                     self.root_lock.clone(),
                     self.cluster_size,
+                    self.inode_count.fetch_add(1, Ordering::SeqCst),
                 ));
                 Some(file)
             }
@@ -135,9 +147,14 @@ impl InodeOperation for FatDir {
                 dir.open_dir(&name).ok()?,
                 self.root_lock.clone(),
                 self.cluster_size,
+                self.inode_count.clone(),
             ))),
             _ => None,
         }
+    }
+    
+    fn inode_id(&self) -> u64 {
+        self.inode_id
     }
 }
 
@@ -149,6 +166,7 @@ pub struct FatFile {
     file: RwLock<FatFileInner>,
     root_lock: Arc<Mutex<()>>,
     cluster_size: u64,
+    inode_id: u64,
 }
 
 #[allow(unsafe_code)]
@@ -163,12 +181,14 @@ impl FatFile {
         file: FatFileInner,
         root_lock: Arc<Mutex<()>>,
         cluster_size: u64,
+        inode_id: u64,
     ) -> Self {
         FatFile {
             entry,
             file: RwLock::new(file),
             root_lock,
             cluster_size,
+            inode_id,
         }
     }
 }
@@ -248,6 +268,10 @@ impl InodeOperation for FatFile {
         }
 
         written as usize
+    }
+    
+    fn inode_id(&self) -> u64 {
+        self.inode_id
     }
 }
 
