@@ -160,3 +160,9 @@ where
         Path::new(value)
     }
 }
+
+impl From<&Path> for Path {
+    fn from(value: &Path) -> Self {
+        value.clone()
+    }
+}

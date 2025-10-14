@@ -152,7 +152,7 @@ impl InodeOperation for FatDir {
             _ => None,
         }
     }
-    
+
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
@@ -269,7 +269,7 @@ impl InodeOperation for FatFile {
 
         written as usize
     }
-    
+
     fn inode_id(&self) -> u64 {
         self.inode_id
     }

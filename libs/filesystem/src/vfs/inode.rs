@@ -48,7 +48,7 @@ pub trait InodeOperation: Sync + Send + 'static {
         log::warn!("This inode does not support ioctl.");
         Err(OstdError::AccessDenied)
     }
-    
+
     fn inode_id(&self) -> u64 {
         static INODE_ID: AtomicU64 = AtomicU64::new(0);
         INODE_ID.fetch_add(1, Ordering::SeqCst)
