@@ -47,7 +47,7 @@ impl Vmar {
         if size == 0 {
             return Ok(());
         }
-        
+
         let aligned = align_down_by_page_size(addr);
         let size = align_up_by_page_size(size + addr - aligned);
 
@@ -101,7 +101,7 @@ impl Vmar {
         if size == 0 {
             return Ok(());
         }
-        
+
         let mut inner = self.inner.write();
 
         for mapping in inner.vm_mappings.iter_mut() {
@@ -132,7 +132,7 @@ impl Vmar {
         if size == 0 {
             return Ok(());
         }
-        
+
         let mut inner = self.inner.write();
 
         for mapping in inner.vm_mappings.iter_mut() {
@@ -176,14 +176,14 @@ impl Vmar {
 impl Vmar {
     pub fn deep_clone(&self) -> Result<Arc<Self>> {
         let guard = disable_preempt();
-        
+
         let mut vm_mappings = Vec::new();
         for mapping in self.inner.write().vm_mappings.iter_mut() {
             vm_mappings.push(mapping.clone()?);
             if mapping.perm().contains(PageFlags::W) {
                 let address = mapping.start();
                 let size = mapping.size();
-                
+
                 log::debug!("OK {address:x} {size:x}");
                 let mut cursor = self
                     .vm_space

@@ -76,7 +76,7 @@ impl VmMapping {
     pub fn clone(&mut self) -> Result<Self> {
         let mut prop = self.prop;
         prop.flags.remove(PageFlags::W);
-        
+
         self.set_prop(prop);
 
         Ok(Self::new(
