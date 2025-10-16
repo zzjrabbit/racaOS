@@ -1,9 +1,7 @@
-use core::sync::atomic::{AtomicU64, Ordering};
-
 use alloc::{string::String, sync::Arc};
 use ostd::{Error as OstdError, mm::Vaddr};
 
-use crate::FileType;
+use crate::{FileSystem, FileType};
 
 pub struct InodeData {
     inner: Arc<dyn InodeOperation>,
@@ -49,10 +47,8 @@ pub trait InodeOperation: Sync + Send + 'static {
         Err(OstdError::AccessDenied)
     }
 
-    fn inode_id(&self) -> u64 {
-        static INODE_ID: AtomicU64 = AtomicU64::new(0);
-        INODE_ID.fetch_add(1, Ordering::SeqCst)
-    }
+    fn inode_id(&self) -> u64;
+    fn file_system(&self) -> Arc<dyn FileSystem>;
 }
 
 #[allow(dead_code)]

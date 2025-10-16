@@ -2,7 +2,7 @@ use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use errors::{Errno, Result};
 use ostd::sync::RwLock;
 
-use crate::{File, InodeOperation};
+use crate::{DefaultFs, File, FileSystem, InodeOperation};
 
 mod gpt;
 mod mbr;
@@ -35,11 +35,12 @@ pub struct Partition {
     inner: Arc<File>,
     start: u64,
     end: u64,
+    inode_id: u64,
 }
 
 impl Partition {
     pub fn new(inner: Arc<File>, start: u64, end: u64) -> Self {
-        Self { inner, start, end }
+        Self { inner, start, end, inode_id: DefaultFs::new().next_inode_id() }
     }
 }
 
@@ -89,5 +90,13 @@ impl InodeOperation for Partition {
 
         let buf = &buf[..buf_len.min((self.end - inner_offset) as usize)];
         self.inner.write_at(inner_offset, buf)
+    }
+    
+    fn inode_id(&self) -> u64 {
+        self.inode_id
+    }
+    
+    fn file_system(&self) -> Arc<dyn FileSystem> {
+        DefaultFs::new()
     }
 }

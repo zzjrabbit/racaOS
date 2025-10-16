@@ -8,12 +8,11 @@ use component::{ComponentInitError, init_component};
 use spin::Lazy;
 
 mod dev;
-mod ext;
-mod fat;
 mod part;
 mod probe;
 mod ramfs;
 mod vfs;
+mod underlying;
 
 pub use dev::init_terminal;
 pub use probe::add_block_device;
@@ -43,8 +42,7 @@ pub fn open_file(path: &Path) -> Option<Arc<File>> {
 pub fn init() -> Result<(), ComponentInitError> {
     dev::init();
 
-    ext::init();
-    fat::init();
+    underlying::init();
 
     part::init();
 

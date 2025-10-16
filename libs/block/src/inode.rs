@@ -1,15 +1,16 @@
 use crate::{BLOCK_SIZE, BlockDevice, BlockIo, BlockOperation, SECTOR_SIZE};
 use alloc::sync::Arc;
 
-use filesystem::{FileType, InodeOperation};
+use filesystem::{DefaultFs, FileType, InodeOperation};
 
 pub(super) struct BlockInode {
     device: Arc<dyn BlockDevice>,
+    inode_id: u64,
 }
 
 impl BlockInode {
     pub fn new(device: Arc<dyn BlockDevice>) -> Self {
-        BlockInode { device }
+        BlockInode { device, inode_id: DefaultFs::new().next_inode_id() }
     }
 }
 
@@ -59,5 +60,13 @@ impl InodeOperation for BlockInode {
         waiter.wait();
 
         len
+    }
+    
+    fn file_system(&self) -> Arc<dyn filesystem::FileSystem> {
+        DefaultFs::new()
+    }
+    
+    fn inode_id(&self) -> u64 {
+        self.inode_id
     }
 }

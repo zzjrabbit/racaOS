@@ -1,16 +1,18 @@
 use alloc::{sync::Arc, vec::Vec};
 use spin::RwLock;
 
-use crate::InodeOperation;
+use crate::{DefaultFs, FileSystem, InodeOperation};
 
 pub struct RamInode {
     data: RwLock<Vec<u8>>,
+    inode_id: u64,
 }
 
 impl RamInode {
     pub fn new() -> Self {
         Self {
             data: RwLock::new(Vec::new()),
+            inode_id: DefaultFs::new().next_inode_id(),
         }
     }
 }
@@ -64,10 +66,19 @@ impl InodeOperation for RamInode {
     ) -> Option<alloc::sync::Arc<dyn InodeOperation>> {
         Some(Arc::new(Self {
             data: RwLock::new(Vec::new()),
+            inode_id: DefaultFs::new().next_inode_id(),
         }))
     }
 
     fn remove(&self, _name: alloc::string::String) -> Option<()> {
         Some(())
+    }
+    
+    fn inode_id(&self) -> u64 {
+        self.inode_id
+    }
+    
+    fn file_system(&self) -> Arc<dyn FileSystem> {
+        DefaultFs::new()
     }
 }

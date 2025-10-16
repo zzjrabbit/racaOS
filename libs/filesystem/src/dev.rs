@@ -1,14 +1,16 @@
 mod null;
 mod terminal;
 mod zero;
+mod fs;
 
-use null::*;
-use terminal::*;
-use zero::*;
+use alloc::sync::Arc;
+use spin::Lazy;
 
 pub use terminal::init_terminal;
 
-use crate::{File, Path, ROOT_FS};
+use crate::{ROOT_FS, dev::fs::DevFs};
+
+static DEV_FS: Lazy<Arc<DevFs>> = Lazy::new(|| DevFs::new());
 
 pub fn init() {
     let root_fs = ROOT_FS.clone();
@@ -26,21 +28,9 @@ pub fn init() {
         .create("tty".into(), super::FileType::CharDevice)
         .unwrap();
 
-    let null_device = File::new(
-        Path::new("/dev/null"),
-        NullDevice,
-        super::FileType::CharDevice,
-    );
-    let zero_device = File::new(
-        Path::new("/dev/zero"),
-        ZeroDevice,
-        super::FileType::CharDevice,
-    );
-    let terminal_device = File::new(
-        Path::new("/dev/tty"),
-        TerminalInode,
-        super::FileType::CharDevice,
-    );
+    let null_device = DEV_FS.new_null();
+    let zero_device = DEV_FS.new_zero();
+    let terminal_device = DEV_FS.new_terminal();
 
     null_device.mount(null);
     zero_device.mount(zero);

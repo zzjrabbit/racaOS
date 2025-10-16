@@ -6,7 +6,8 @@ use lwext4_rust::{
 };
 use ostd::sync::RwLock;
 
-use crate::{File, FileType, InodeOperation, Path, ext::Lwext4Disk};
+use crate::{File, FileType, InodeOperation, Path};
+use super::Lwext4Disk;
 
 pub fn parse_ext4_fs(dev: Arc<File>) -> Result<Arc<File>> {
     let disk = Lwext4Disk::new(dev);

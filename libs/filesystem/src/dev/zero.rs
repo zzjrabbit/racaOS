@@ -1,6 +1,21 @@
-use crate::InodeOperation;
+use alloc::sync::Arc;
 
-pub struct ZeroDevice;
+use crate::{InodeOperation, dev::fs::DevFs};
+
+pub struct ZeroDevice {
+    fs: Arc<DevFs>,
+    inode_id: u64,
+}
+
+impl ZeroDevice {
+    pub fn new(fs: Arc<DevFs>) -> Self {
+        let inode_id = fs.next_inode_id();
+        ZeroDevice {
+            fs,
+            inode_id,
+        }
+    }
+}
 
 impl InodeOperation for ZeroDevice {
     fn read_at(&self, _offset: u64, buf: &mut [u8]) -> usize {
@@ -14,5 +29,13 @@ impl InodeOperation for ZeroDevice {
 
     fn len(&self) -> u64 {
         0
+    }
+
+    fn inode_id(&self) -> u64 {
+        self.inode_id
+    }
+
+    fn file_system(&self) -> Arc<dyn crate::FileSystem> {
+        self.fs.clone()
     }
 }

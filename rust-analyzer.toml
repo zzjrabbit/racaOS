@@ -1,2 +1,3 @@
 [check]
 targets = ["x86_64-unknown-none"]
+allTargets = false

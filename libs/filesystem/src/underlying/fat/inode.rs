@@ -1,55 +1,19 @@
-use core::sync::atomic::{AtomicU64, Ordering};
+use core::sync::atomic::Ordering;
 
-use alloc::{boxed::Box, string::String, sync::Arc};
-use errors::{Errno, Result};
+use alloc::{string::String, sync::Arc};
 use fatfs::{
-    DefaultTimeProvider, Dir, DirEntry, File as FileInner, FileSystem, FsOptions, IoBase,
+    DefaultTimeProvider, Dir, DirEntry, File as FileInner,
     LossyOemCpConverter, Read, Seek, SeekFrom, Write,
 };
-use ostd::sync::{Mutex, RwLock};
+use ostd::sync::RwLock;
 
-use crate::{File, FileType, InodeOperation, Path, probe::register_probe};
+use crate::{FileType, InodeOperation, underlying::fat::fs::{FatDisk, FatFs}};
 
-pub fn init() {
-    register_probe(parse_fat);
-}
-
-// TODO: Fix memory leak
-pub fn parse_fat(device: Arc<File>) -> Result<Arc<File>> {
-    let disk = FatDisk { device, offset: 0 };
-
-    let root = Box::leak(Box::new(FatRoot::new(
-        FileSystem::new(disk, FsOptions::new()).map_err(|_| Errno::EINVAL.no_message())?,
-    )));
-
-    let root_lock = Arc::new(Mutex::new(()));
-
-    Ok(File::new(
-        Path::from(root.0.volume_label()),
-        FatDir::new(
-            root.0.root_dir(),
-            root_lock.clone(),
-            root.0.cluster_size() as u64,
-            Arc::new(AtomicU64::new(1)),
-        ),
-        FileType::Directory,
-    ))
-}
-
-struct FatRoot(FileSystem<FatDisk>);
-
-impl FatRoot {
-    fn new(fs: FileSystem<FatDisk>) -> Self {
-        Self(fs)
-    }
-}
-
-pub struct FatDir {
+pub(super) struct FatDir {
     dir: RwLock<Dir<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>>,
-    root_lock: Arc<Mutex<()>>,
-    inode_count: Arc<AtomicU64>,
     cluster_size: u64,
     inode_id: u64,
+    fs: Arc<FatFs>,
 }
 
 #[allow(unsafe_code)]
@@ -59,27 +23,25 @@ unsafe impl Send for FatDir {}
 unsafe impl Sync for FatDir {}
 
 impl FatDir {
-    fn new(
+    pub(super) fn new(
         dir: Dir<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>,
-        root_lock: Arc<Mutex<()>>,
         cluster_size: u64,
-        inode_count: Arc<AtomicU64>,
+        fs: Arc<FatFs>,
     ) -> Self {
-        let inode_id = inode_count.fetch_add(1, Ordering::SeqCst);
+        let inode_id = fs.inode_count().fetch_add(1, Ordering::SeqCst);
         FatDir {
             dir: RwLock::new(dir),
-            root_lock,
-            inode_count,
             cluster_size,
             inode_id,
+            fs,
         }
     }
 }
 
 impl InodeOperation for FatDir {
     fn create(&self, name: String, file_type: FileType) -> Option<Arc<dyn InodeOperation>> {
-        let _guard = self.root_lock.lock();
-
+        let _guard = self.fs.lock();
+        
         match file_type {
             FileType::File => {
                 let dir = self.dir.read();
@@ -92,18 +54,16 @@ impl InodeOperation for FatDir {
                 Some(Arc::new(FatFile::new(
                     entry,
                     file,
-                    self.root_lock.clone(),
                     self.cluster_size,
-                    self.inode_count.fetch_add(1, Ordering::SeqCst),
+                    self.fs.clone(),
                 )))
             }
             FileType::Directory => {
                 let dir = self.dir.read().create_dir(&name).ok()?;
                 Some(Arc::new(FatDir::new(
                     dir,
-                    self.root_lock.clone(),
                     self.cluster_size,
-                    self.inode_count.clone(),
+                    self.fs.clone(),
                 )))
             }
             _ => None,
@@ -115,7 +75,7 @@ impl InodeOperation for FatDir {
     }
 
     fn lookup(&self, name: String) -> Option<Arc<dyn InodeOperation>> {
-        let _guard = self.root_lock.lock();
+        let _guard = self.fs.lock();
 
         let dir = self.dir.read();
         let entry = dir
@@ -137,17 +97,15 @@ impl InodeOperation for FatDir {
                 let file = Arc::new(FatFile::new(
                     entry,
                     file,
-                    self.root_lock.clone(),
                     self.cluster_size,
-                    self.inode_count.fetch_add(1, Ordering::SeqCst),
+                    self.fs.clone(),
                 ));
                 Some(file)
             }
             FileType::Directory => Some(Arc::new(FatDir::new(
                 dir.open_dir(&name).ok()?,
-                self.root_lock.clone(),
                 self.cluster_size,
-                self.inode_count.clone(),
+                self.fs.clone(),
             ))),
             _ => None,
         }
@@ -156,17 +114,21 @@ impl InodeOperation for FatDir {
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
+    
+    fn file_system(&self) -> Arc<dyn crate::FileSystem> {
+        self.fs.clone()
+    }
 }
 
 type FatDirEntry = DirEntry<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>;
 type FatFileInner = FileInner<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>;
 
-pub struct FatFile {
+pub(super) struct FatFile {
     entry: FatDirEntry,
     file: RwLock<FatFileInner>,
-    root_lock: Arc<Mutex<()>>,
     cluster_size: u64,
     inode_id: u64,
+    fs: Arc<FatFs>,
 }
 
 #[allow(unsafe_code)]
@@ -176,19 +138,19 @@ unsafe impl Send for FatFile {}
 unsafe impl Sync for FatFile {}
 
 impl FatFile {
-    fn new(
+    pub(super) fn new(
         entry: FatDirEntry,
         file: FatFileInner,
-        root_lock: Arc<Mutex<()>>,
         cluster_size: u64,
-        inode_id: u64,
+        fs: Arc<FatFs>,
     ) -> Self {
+        let inode_id = fs.inode_count().fetch_add(1, Ordering::SeqCst);
         FatFile {
             entry,
             file: RwLock::new(file),
-            root_lock,
             cluster_size,
             inode_id,
+            fs,
         }
     }
 }
@@ -203,8 +165,8 @@ impl InodeOperation for FatFile {
     }
 
     fn read_at(&self, offset: u64, buffer: &mut [u8]) -> usize {
-        let _guard = self.root_lock.lock();
-
+        let _guard = self.fs.lock();
+                
         let mut read: u64 = 0;
         let cluster_size = self.cluster_size;
         let file_len = self.len();
@@ -237,7 +199,7 @@ impl InodeOperation for FatFile {
     }
 
     fn write_at(&self, offset: u64, buffer: &[u8]) -> usize {
-        let _guard = self.root_lock.lock();
+        let _guard = self.fs.lock();
 
         let mut written: u64 = 0;
         let cluster_size = self.cluster_size;
@@ -273,45 +235,9 @@ impl InodeOperation for FatFile {
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-}
-
-struct FatDisk {
-    device: Arc<File>,
-    offset: u64,
-}
-
-impl IoBase for FatDisk {
-    type Error = ();
-}
-
-impl Read for FatDisk {
-    fn read(&mut self, buf: &mut [u8]) -> ::core::result::Result<usize, Self::Error> {
-        let r = self.device.read_at(self.offset, buf);
-        self.offset += r as u64;
-        Ok(r)
+    
+    fn file_system(&self) -> Arc<dyn crate::FileSystem> {
+        self.fs.clone()
     }
 }
 
-impl Write for FatDisk {
-    fn write(&mut self, buf: &[u8]) -> ::core::result::Result<usize, Self::Error> {
-        let r = self.device.write_at(self.offset, buf);
-        self.offset += r as u64;
-        Ok(r)
-    }
-
-    fn flush(&mut self) -> ::core::result::Result<(), Self::Error> {
-        Ok(())
-    }
-}
-
-impl Seek for FatDisk {
-    fn seek(&mut self, pos: SeekFrom) -> ::core::result::Result<u64, Self::Error> {
-        let new_offset = match pos {
-            SeekFrom::Current(offset) => self.offset.checked_add_signed(offset).ok_or(())?,
-            SeekFrom::Start(offset) => offset,
-            SeekFrom::End(offset) => self.device.len().checked_add_signed(offset).ok_or(())?,
-        };
-        self.offset = new_offset;
-        Ok(new_offset)
-    }
-}
