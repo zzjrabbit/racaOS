@@ -14,6 +14,7 @@ pub struct VmMapping {
 
 impl VmMapping {
     pub fn new(vmo: Vmo, start: Vaddr, size: usize, prop: PageProperty, perm: PageFlags) -> Self {
+        log::trace!("VmMapping::new({start:x}, {size:x})");
         VmMapping {
             vmo,
             start,
@@ -72,9 +73,11 @@ impl VmMapping {
 }
 
 impl VmMapping {
-    pub fn clone(&self) -> Result<Self> {
+    pub fn clone(&mut self) -> Result<Self> {
         let mut prop = self.prop;
         prop.flags.remove(PageFlags::W);
+        
+        self.set_prop(prop);
 
         Ok(Self::new(
             self.vmo.clone(),

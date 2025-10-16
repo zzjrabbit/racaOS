@@ -44,6 +44,10 @@ impl Vmar {
 
 impl Vmar {
     pub fn map(&self, addr: Vaddr, size: usize, prop: PageProperty) -> Result<()> {
+        if size == 0 {
+            return Ok(());
+        }
+        
         let aligned = align_down_by_page_size(addr);
         let size = align_up_by_page_size(size + addr - aligned);
 
@@ -94,6 +98,10 @@ impl Vmar {
     }
 
     pub fn unmap(&self, addr: Vaddr, size: usize) -> Result<()> {
+        if size == 0 {
+            return Ok(());
+        }
+        
         let mut inner = self.inner.write();
 
         for mapping in inner.vm_mappings.iter_mut() {
@@ -121,6 +129,10 @@ impl Vmar {
     }
 
     pub fn protect(&self, addr: Vaddr, size: usize, flags: PageFlags) -> Result<()> {
+        if size == 0 {
+            return Ok(());
+        }
+        
         let mut inner = self.inner.write();
 
         for mapping in inner.vm_mappings.iter_mut() {
@@ -163,9 +175,28 @@ impl Vmar {
 
 impl Vmar {
     pub fn deep_clone(&self) -> Result<Arc<Self>> {
+        let guard = disable_preempt();
+        
         let mut vm_mappings = Vec::new();
-        for mapping in self.inner.read().vm_mappings.iter() {
+        for mapping in self.inner.write().vm_mappings.iter_mut() {
             vm_mappings.push(mapping.clone()?);
+            if mapping.perm().contains(PageFlags::W) {
+                let address = mapping.start();
+                let size = mapping.size();
+                
+                log::debug!("OK {address:x} {size:x}");
+                let mut cursor = self
+                    .vm_space
+                    .cursor_mut(&guard, &(address..address + size))?;
+                log::debug!("OK");
+                cursor.protect_next(size, |cprop, _| {
+                    cprop.remove(PageFlags::W);
+                });
+                cursor
+                    .flusher()
+                    .issue_tlb_flush(TlbFlushOp::for_range(address..address + size));
+                cursor.flusher().dispatch_tlb_flush();
+            }
         }
 
         Ok(Arc::new(Self {
