@@ -40,7 +40,12 @@ pub struct Partition {
 
 impl Partition {
     pub fn new(inner: Arc<File>, start: u64, end: u64) -> Self {
-        Self { inner, start, end, inode_id: DefaultFs::new().next_inode_id() }
+        Self {
+            inner,
+            start,
+            end,
+            inode_id: DefaultFs::new().next_inode_id(),
+        }
     }
 }
 
@@ -68,9 +73,9 @@ impl InodeOperation for Partition {
         self.end - self.start
     }
 
-    fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
+    fn read_at(&self, offset: u64, buf: &mut [u8]) -> Result<usize> {
         if offset >= self.len() {
-            return 0;
+            return Err(Errno::EOVERFLOW.no_message());
         }
 
         let buf_len = buf.len();
@@ -80,9 +85,9 @@ impl InodeOperation for Partition {
         self.inner.read_at(inner_offset, buf)
     }
 
-    fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
+    fn write_at(&self, offset: u64, buf: &[u8]) -> Result<usize> {
         if offset >= self.len() {
-            return 0;
+            return Err(Errno::EOVERFLOW.no_message());
         }
 
         let buf_len = buf.len();
@@ -91,11 +96,11 @@ impl InodeOperation for Partition {
         let buf = &buf[..buf_len.min((self.end - inner_offset) as usize)];
         self.inner.write_at(inner_offset, buf)
     }
-    
+
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-    
+
     fn file_system(&self) -> Arc<dyn FileSystem> {
         DefaultFs::new()
     }

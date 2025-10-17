@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(result_flattening)]
 
 extern crate alloc;
 

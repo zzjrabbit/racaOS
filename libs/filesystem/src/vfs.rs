@@ -1,9 +1,9 @@
 mod file;
+mod fs;
 mod inode;
 mod path;
-mod fs;
 
 pub use file::*;
+pub use fs::*;
 pub use inode::*;
 pub use path::*;
-pub use fs::*;

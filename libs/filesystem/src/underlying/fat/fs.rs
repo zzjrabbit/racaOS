@@ -1,8 +1,8 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use alloc::{boxed::Box, sync::Arc};
+use fatfs::{FileSystem as FatFileSystem, IoBase, Read, Seek, SeekFrom, Write};
 use ostd::sync::{Mutex, MutexGuard};
-use fatfs::{FileSystem as FatFileSystem, Seek, Read, Write, IoBase, SeekFrom};
 
 use crate::{File, FileSystem};
 
@@ -24,11 +24,11 @@ impl FatFs {
     pub fn lock(&self) -> MutexGuard<()> {
         self.lock.lock()
     }
-    
+
     pub fn inode_count(&self) -> &AtomicU64 {
         &self.inode_count
     }
-    
+
     pub fn root(&self) -> &'static FatFileSystem<FatDisk> {
         self.root
     }
@@ -38,11 +38,11 @@ impl FileSystem for FatFs {
     fn inode_count(&self) -> u64 {
         self.inode_count().load(Ordering::SeqCst)
     }
-    
+
     fn name(&self) -> alloc::string::String {
         "fat".into()
     }
-    
+
     fn label(&self) -> alloc::string::String {
         self.root.volume_label()
     }
@@ -65,7 +65,7 @@ impl IoBase for FatDisk {
 
 impl Read for FatDisk {
     fn read(&mut self, buf: &mut [u8]) -> ::core::result::Result<usize, Self::Error> {
-        let r = self.device.read_at(self.offset, buf);
+        let r = self.device.read_at(self.offset, buf).map_err(|_| ())?;
         self.offset += r as u64;
         Ok(r)
     }
@@ -73,7 +73,7 @@ impl Read for FatDisk {
 
 impl Write for FatDisk {
     fn write(&mut self, buf: &[u8]) -> ::core::result::Result<usize, Self::Error> {
-        let r = self.device.write_at(self.offset, buf);
+        let r = self.device.write_at(self.offset, buf).map_err(|_| ())?;
         self.offset += r as u64;
         Ok(r)
     }

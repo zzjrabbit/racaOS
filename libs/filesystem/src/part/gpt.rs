@@ -66,7 +66,7 @@ impl BlockIo for FileWrapper {
     fn read_blocks(&mut self, start_lba: gpt_disk_types::Lba, dst: &mut [u8]) -> Result<()> {
         let block_id = start_lba.to_u64();
 
-        let r = self.0.read_at(block_id * SECTOR_SIZE as u64, dst);
+        let r = self.0.read_at(block_id * SECTOR_SIZE as u64, dst)?;
 
         if r != dst.len() {
             Err(Errno::EIO.with_message("Failed to read all the blocks."))
@@ -78,7 +78,7 @@ impl BlockIo for FileWrapper {
     fn write_blocks(&mut self, start_lba: gpt_disk_types::Lba, src: &[u8]) -> Result<()> {
         let block_id = start_lba.to_u64();
 
-        let r = self.0.write_at(block_id * SECTOR_SIZE as u64, src);
+        let r = self.0.write_at(block_id * SECTOR_SIZE as u64, src)?;
 
         if r != src.len() {
             Err(Errno::EIO.with_message("Failed to write all the blocks."))

@@ -1,5 +1,6 @@
 use alloc::{string::String, sync::Arc};
-use ostd::{Error as OstdError, mm::Vaddr};
+use errors::{Errno, Result};
+use ostd::mm::Vaddr;
 
 use crate::{FileSystem, FileType};
 
@@ -13,14 +14,14 @@ pub trait InodeOperation: Sync + Send + 'static {
         FileType::File
     }
 
-    fn read_at(&self, _offset: u64, _buf: &mut [u8]) -> usize {
+    fn read_at(&self, _offset: u64, _buf: &mut [u8]) -> Result<usize> {
         log::warn!("Attempt to read unreadable inodes.");
-        0
+        Err(Errno::EACCES.no_message())
     }
 
-    fn write_at(&self, _offset: u64, _buf: &[u8]) -> usize {
+    fn write_at(&self, _offset: u64, _buf: &[u8]) -> Result<usize> {
         log::warn!("Attempt to write to unwritable inodes.");
-        0
+        Err(Errno::EACCES.no_message())
     }
 
     fn len(&self) -> u64 {
@@ -42,9 +43,9 @@ pub trait InodeOperation: Sync + Send + 'static {
         None
     }
 
-    fn ioctl(&self, _cmd: u32, _arg: Vaddr) -> Result<usize, OstdError> {
+    fn ioctl(&self, _cmd: u32, _arg: Vaddr) -> Result<usize> {
         log::warn!("This inode does not support ioctl.");
-        Err(OstdError::AccessDenied)
+        Err(Errno::EACCES.no_message())
     }
 
     fn inode_id(&self) -> u64;
@@ -66,11 +67,11 @@ impl InodeData {
         self.inner.file_type()
     }
 
-    pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
+    pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> Result<usize> {
         self.inner.read_at(offset, buf)
     }
 
-    pub fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
+    pub fn write_at(&self, offset: u64, buf: &[u8]) -> Result<usize> {
         self.inner.write_at(offset, buf)
     }
 
@@ -94,7 +95,7 @@ impl InodeData {
         self.inner.remove(name)
     }
 
-    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize, OstdError> {
+    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize> {
         self.inner.ioctl(cmd, arg)
     }
 }

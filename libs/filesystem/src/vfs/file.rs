@@ -3,7 +3,8 @@ use alloc::{
     string::{String, ToString},
     sync::Arc,
 };
-use ostd::{Error as OstdError, mm::Vaddr};
+use errors::Result;
+use ostd::mm::Vaddr;
 use spin::RwLock;
 
 use crate::{InodeData, InodeOperation, Path};
@@ -208,11 +209,7 @@ impl File {
 }
 
 impl File {
-    pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
-        if offset > self.len() {
-            return 0;
-        }
-
+    pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> Result<usize> {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.read_at(offset, buf)
         } else {
@@ -220,7 +217,7 @@ impl File {
         }
     }
 
-    pub fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
+    pub fn write_at(&self, offset: u64, buf: &[u8]) -> Result<usize> {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.write_at(offset, buf)
         } else {
@@ -236,7 +233,7 @@ impl File {
         }
     }
 
-    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize, OstdError> {
+    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize> {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.ioctl(cmd, arg)
         } else {

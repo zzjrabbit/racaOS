@@ -1,13 +1,17 @@
 use core::sync::atomic::Ordering;
 
 use alloc::{string::String, sync::Arc};
+use errors::Result;
 use fatfs::{
-    DefaultTimeProvider, Dir, DirEntry, File as FileInner,
-    LossyOemCpConverter, Read, Seek, SeekFrom, Write,
+    DefaultTimeProvider, Dir, DirEntry, File as FileInner, LossyOemCpConverter, Read, Seek,
+    SeekFrom, Write,
 };
 use ostd::sync::RwLock;
 
-use crate::{FileType, InodeOperation, underlying::fat::fs::{FatDisk, FatFs}};
+use crate::{
+    FileType, InodeOperation,
+    underlying::fat::fs::{FatDisk, FatFs},
+};
 
 pub(super) struct FatDir {
     dir: RwLock<Dir<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>>,
@@ -41,7 +45,7 @@ impl FatDir {
 impl InodeOperation for FatDir {
     fn create(&self, name: String, file_type: FileType) -> Option<Arc<dyn InodeOperation>> {
         let _guard = self.fs.lock();
-        
+
         match file_type {
             FileType::File => {
                 let dir = self.dir.read();
@@ -114,7 +118,7 @@ impl InodeOperation for FatDir {
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-    
+
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
     }
@@ -164,9 +168,9 @@ impl InodeOperation for FatFile {
         self.entry.len()
     }
 
-    fn read_at(&self, offset: u64, buffer: &mut [u8]) -> usize {
+    fn read_at(&self, offset: u64, buffer: &mut [u8]) -> Result<usize> {
         let _guard = self.fs.lock();
-                
+
         let mut read: u64 = 0;
         let cluster_size = self.cluster_size;
         let file_len = self.len();
@@ -195,10 +199,10 @@ impl InodeOperation for FatFile {
             read += chunk_size;
         }
 
-        read as usize
+        Ok(read as usize)
     }
 
-    fn write_at(&self, offset: u64, buffer: &[u8]) -> usize {
+    fn write_at(&self, offset: u64, buffer: &[u8]) -> Result<usize> {
         let _guard = self.fs.lock();
 
         let mut written: u64 = 0;
@@ -229,15 +233,14 @@ impl InodeOperation for FatFile {
             written += chunk_size;
         }
 
-        written as usize
+        Ok(written as usize)
     }
 
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-    
+
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
     }
 }
-

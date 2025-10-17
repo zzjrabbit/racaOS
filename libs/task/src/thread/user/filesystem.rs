@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
-use ostd::sync::RwLock;
+use spin::RwLock;
 
 use filesystem::{AccessMode, File, FileDescriptor, OpenFlags};
 

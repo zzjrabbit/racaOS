@@ -9,3 +9,4 @@ component.workspace = true
 log.workspace = true
 thiserror = { version = "2.0.17", default-features = false }
 filesystem.workspace = true
+errors.workspace = true

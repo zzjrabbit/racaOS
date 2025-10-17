@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use errors::Result;
 
 use crate::{InodeOperation, dev::fs::DevFs};
 
@@ -10,21 +11,18 @@ pub struct ZeroDevice {
 impl ZeroDevice {
     pub fn new(fs: Arc<DevFs>) -> Self {
         let inode_id = fs.next_inode_id();
-        ZeroDevice {
-            fs,
-            inode_id,
-        }
+        ZeroDevice { fs, inode_id }
     }
 }
 
 impl InodeOperation for ZeroDevice {
-    fn read_at(&self, _offset: u64, buf: &mut [u8]) -> usize {
+    fn read_at(&self, _offset: u64, buf: &mut [u8]) -> Result<usize> {
         buf.fill(0);
-        buf.len()
+        Ok(buf.len())
     }
 
-    fn write_at(&self, _offset: u64, buf: &[u8]) -> usize {
-        buf.len()
+    fn write_at(&self, _offset: u64, buf: &[u8]) -> Result<usize> {
+        Ok(buf.len())
     }
 
     fn len(&self) -> u64 {

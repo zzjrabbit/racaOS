@@ -1,13 +1,18 @@
 use alloc::sync::Arc;
 use errors::{Errno, Result};
-use fatfs::{
-    FileSystem as FatFileSystem, FsOptions,
+use fatfs::{FileSystem as FatFileSystem, FsOptions};
+
+use crate::{
+    File, FileSystem, FileType, Path,
+    probe::register_probe,
+    underlying::fat::{
+        fs::{FatDisk, FatFs},
+        inode::FatDir,
+    },
 };
 
-use crate::{File, FileSystem, FileType, Path, probe::register_probe, underlying::fat::{fs::{FatDisk, FatFs}, inode::FatDir}};
-
-mod inode;
 mod fs;
+mod inode;
 
 pub fn init() {
     register_probe(parse_fat);
@@ -17,7 +22,9 @@ pub fn init() {
 pub fn parse_fat(device: Arc<File>) -> Result<Arc<File>> {
     let disk = FatDisk::new(device);
 
-    let fs = Arc::new(FatFs::new(FatFileSystem::new(disk, FsOptions::new()).map_err(|_| Errno::EINVAL.no_message())?));
+    let fs = Arc::new(FatFs::new(
+        FatFileSystem::new(disk, FsOptions::new()).map_err(|_| Errno::EINVAL.no_message())?,
+    ));
 
     Ok(File::new(
         Path::from(fs.label()),

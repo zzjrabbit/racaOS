@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use errors::Result;
 
 use crate::{InodeOperation, dev::fs::DevFs};
 
@@ -15,22 +16,22 @@ impl NullDevice {
 }
 
 impl InodeOperation for NullDevice {
-    fn read_at(&self, _offset: u64, _buf: &mut [u8]) -> usize {
-        0
+    fn read_at(&self, _offset: u64, _buf: &mut [u8]) -> Result<usize> {
+        Ok(0)
     }
 
-    fn write_at(&self, _offset: u64, buf: &[u8]) -> usize {
-        buf.len()
+    fn write_at(&self, _offset: u64, buf: &[u8]) -> Result<usize> {
+        Ok(buf.len())
     }
 
     fn len(&self) -> u64 {
         0
     }
-    
+
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-    
+
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
     }

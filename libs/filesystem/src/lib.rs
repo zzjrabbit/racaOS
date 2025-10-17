@@ -11,10 +11,10 @@ mod dev;
 mod part;
 mod probe;
 mod ramfs;
-mod vfs;
 mod underlying;
+mod vfs;
 
-pub use dev::init_terminal;
+pub use dev::{Terminal, init_terminal};
 pub use probe::add_block_device;
 pub use vfs::*;
 

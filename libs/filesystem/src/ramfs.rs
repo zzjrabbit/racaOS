@@ -1,4 +1,5 @@
 use alloc::{sync::Arc, vec::Vec};
+use errors::Result;
 use spin::RwLock;
 
 use crate::{DefaultFs, FileSystem, InodeOperation};
@@ -18,7 +19,7 @@ impl RamInode {
 }
 
 impl InodeOperation for RamInode {
-    fn read_at(&self, offset: u64, buf: &mut [u8]) -> usize {
+    fn read_at(&self, offset: u64, buf: &mut [u8]) -> Result<usize> {
         let offset = offset as usize;
 
         let len = buf.len().min(self.data.read().len() - offset);
@@ -27,10 +28,10 @@ impl InodeOperation for RamInode {
             *byte = self.data.read()[offset + index];
         }
 
-        len
+        Ok(len)
     }
 
-    fn write_at(&self, offset: u64, buf: &[u8]) -> usize {
+    fn write_at(&self, offset: u64, buf: &[u8]) -> Result<usize> {
         let offset = offset as usize;
 
         {
@@ -52,7 +53,7 @@ impl InodeOperation for RamInode {
             }
         }
 
-        buf.len()
+        Ok(buf.len())
     }
 
     fn len(&self) -> u64 {
@@ -73,11 +74,11 @@ impl InodeOperation for RamInode {
     fn remove(&self, _name: alloc::string::String) -> Option<()> {
         Some(())
     }
-    
+
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-    
+
     fn file_system(&self) -> Arc<dyn FileSystem> {
         DefaultFs::new()
     }

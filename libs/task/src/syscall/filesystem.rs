@@ -78,7 +78,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             };
 
             let mut buf = vec![0; len];
-            let len = file.read_at(*offset, &mut buf);
+            let len = file.read_at(*offset, &mut buf)?;
 
             for (id, byte) in buf.iter().enumerate() {
                 data.memory_info().vmar().write_val(address + id, byte)?;
@@ -105,7 +105,7 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
                 .map(|id| data.memory_info().vmar().read_val::<u8>(address + id))
                 .collect::<Result<Vec<_>>>()?;
 
-            let len = file.write_at(*offset, &buffer);
+            let len = file.write_at(*offset, &buffer)?;
             *offset += len as u64;
 
             Ok(len as isize)
@@ -151,7 +151,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
                     .map(|id| data.memory_info().vmar().read_val::<u8>(base + id))
                     .collect::<Result<Vec<_>>>()?;
 
-                let len = file.write_at(*offset, &buffer);
+                let len = file.write_at(*offset, &buffer)?;
 
                 *offset += len as u64;
                 total_len += len;

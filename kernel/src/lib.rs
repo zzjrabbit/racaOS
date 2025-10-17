@@ -67,7 +67,7 @@ fn first_kernel_thread() {
 
     let hello = open_file(&Path::from("/part0/hello.bin")).unwrap();
     let mut buffer = alloc::vec![0u8; hello.len() as usize];
-    hello.read_at(0, &mut buffer);
+    hello.read_at(0, &mut buffer).unwrap();
 
     let hello = Process::new(&buffer, tty.clone(), tty.clone(), tty.clone()).unwrap();
 

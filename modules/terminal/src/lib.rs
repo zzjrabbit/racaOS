@@ -9,31 +9,36 @@ use filesystem::{Path, init_terminal, open_file};
 use spin::Lazy;
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
-use os_terminal::{DrawTarget, Terminal, font::TrueTypeFont};
+use os_terminal::{Terminal, font::TrueTypeFont};
 use ostd::{
-    boot::boot_info,
-    io::IoMem,
-    mm::VmIo,
     sync::RwLock,
     task::{Task, TaskOptions},
 };
 
+use crate::{
+    display::Display,
+    keyboard::SCANCODE_QUEUE,
+    terminal::{OsTerminal, set_done},
+};
+
 extern crate alloc;
+
+mod display;
+mod keyboard;
+mod terminal;
 
 #[init_component(kthread)]
 pub fn terminal_init() -> Result<(), ComponentInitError> {
     Lazy::force(&TERMINAL_THREAD);
-    init_terminal(terminal_write);
+    init_terminal(Arc::new(OsTerminal));
+    keyboard::init();
 
     Ok(())
 }
 
 static TERMINAL_BUFFER: RwLock<VecDeque<Vec<u8>>> = RwLock::new(VecDeque::new());
+static INPUT_BUFFER: RwLock<VecDeque<u8>> = RwLock::new(VecDeque::new());
 static NEED_FLUSH: AtomicBool = AtomicBool::new(false);
-
-fn terminal_write(str: Vec<u8>) {
-    TERMINAL_BUFFER.write().push_back(str);
-}
 
 pub struct TerminalWriter;
 
@@ -41,22 +46,6 @@ impl Write for TerminalWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         TERMINAL_BUFFER.write().push_back(s.as_bytes().to_vec());
         Ok(())
-    }
-}
-
-impl DrawTarget for Display {
-    fn draw_pixel(&mut self, x: usize, y: usize, color: os_terminal::Rgb) {
-        let (r, g, b) = color;
-
-        let base = (x + y * self.width) * 4;
-        self.buffer.write_val(base, &b).unwrap();
-        self.buffer.write_val(base + 1, &g).unwrap();
-        self.buffer.write_val(base + 2, &r).unwrap();
-        self.buffer.write_val(base + 3, &0xFFu8).unwrap();
-    }
-
-    fn size(&self) -> (usize, usize) {
-        (self.width, self.height)
     }
 }
 
@@ -71,6 +60,13 @@ fn terminal_flush(terminal: &mut Terminal<Display>) {
     }
 }
 
+fn terminal_event(terminal: &mut Terminal<Display>) {
+    while let Some(scancode) = SCANCODE_QUEUE.pop() {
+        terminal.handle_keyboard(scancode);
+        NEED_FLUSH.store(true, Ordering::Relaxed);
+    }
+}
+
 fn logger(args: Arguments) {
     let msg = alloc::format!("{}", args);
     ostd::early_println!("{}", msg);
@@ -80,7 +76,7 @@ fn terminal_thread() {
     let data = {
         let font_file = open_file(&Path::from("/part0/SourceCodePro.otf")).unwrap();
         let mut data = alloc::vec![0u8; font_file.len() as usize];
-        font_file.read_at(0, &mut data);
+        font_file.read_at(0, &mut data).unwrap();
         Box::leak(Box::new(data))
     };
 
@@ -91,9 +87,18 @@ fn terminal_thread() {
     terminal.set_font_manager(Box::new(TrueTypeFont::new(12.0, data)));
     terminal.set_logger(logger);
 
-    terminal.set_pty_writer(Box::new(|s: String| TerminalWriter.write_str(&s).unwrap()));
+    terminal.set_pty_writer(Box::new(|s: String| {
+        if s.contains("\n") {
+            set_done();
+        }
+        for byte in s.bytes() {
+            INPUT_BUFFER.write().push_back(byte);
+        }
+        TerminalWriter.write_str(&s).unwrap()
+    }));
 
     loop {
+        terminal_event(&mut terminal);
         terminal_flush(&mut terminal);
         Task::yield_now();
     }
@@ -104,27 +109,3 @@ static TERMINAL_THREAD: Lazy<Arc<Task>> = Lazy::new(|| {
     thread.run();
     thread
 });
-
-pub struct Display {
-    width: usize,
-    height: usize,
-    buffer: IoMem,
-}
-
-impl Default for Display {
-    fn default() -> Self {
-        let frame_buffer = boot_info().framebuffer_arg.as_ref().unwrap();
-
-        let address = frame_buffer.address;
-        let len = frame_buffer.width * frame_buffer.height * frame_buffer.bpp / 8;
-
-        log::info!(target: "kernel", "{}x{}x{}", frame_buffer.width, frame_buffer.height, frame_buffer.bpp);
-        log::info!(target: "kernel", "Display MMIO address: {:x}..{:x}", address, address + len);
-
-        Self {
-            width: frame_buffer.width,
-            height: frame_buffer.height,
-            buffer: IoMem::acquire(address..address + len).unwrap(),
-        }
-    }
-}

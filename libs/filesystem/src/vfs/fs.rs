@@ -18,13 +18,13 @@ impl DefaultFs {
         static DEFAULT_FS: Lazy<Arc<DefaultFs>> = Lazy::new(|| Arc::new(DefaultFs::new_one()));
         DEFAULT_FS.clone()
     }
-    
+
     fn new_one() -> Self {
         DefaultFs {
             inode_count: AtomicU64::new(0),
         }
     }
-    
+
     pub fn next_inode_id(&self) -> u64 {
         self.inode_count.fetch_add(1, Ordering::SeqCst)
     }
@@ -34,11 +34,11 @@ impl FileSystem for DefaultFs {
     fn inode_count(&self) -> u64 {
         self.inode_count.load(Ordering::SeqCst)
     }
-    
+
     fn label(&self) -> String {
         "".into()
     }
-    
+
     fn name(&self) -> String {
         "default".into()
     }
