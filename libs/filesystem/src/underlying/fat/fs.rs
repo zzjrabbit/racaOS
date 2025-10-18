@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use alloc::{boxed::Box, sync::Arc};
+use errors::Errno;
 use fatfs::{FileSystem as FatFileSystem, IoBase, Read, Seek, SeekFrom, Write};
 use ostd::sync::{Mutex, MutexGuard};
 
@@ -45,6 +46,29 @@ impl FileSystem for FatFs {
 
     fn label(&self) -> alloc::string::String {
         self.root.volume_label()
+    }
+
+    fn sync(&self) -> errors::Result<()> {
+        let root_dir = self.root.root_dir();
+
+        fn sync_dir(
+            dir: fatfs::Dir<'_, FatDisk, fatfs::NullTimeProvider, fatfs::LossyOemCpConverter>,
+        ) -> errors::Result<()> {
+            for entry in dir.iter().flatten() {
+                let name = entry.file_name();
+                if entry.is_dir() {
+                    let sub_dir = dir.open_dir(&name).unwrap();
+                    sync_dir(sub_dir)?;
+                } else {
+                    let mut file = dir.open_file(&name).unwrap();
+                    file.flush().map_err(|_| Errno::EIO.no_message())?;
+                }
+            }
+
+            Ok(())
+        }
+
+        sync_dir(root_dir)
     }
 }
 

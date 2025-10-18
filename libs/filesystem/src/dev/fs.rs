@@ -61,4 +61,8 @@ impl FileSystem for DevFs {
     fn name(&self) -> alloc::string::String {
         "dev".into()
     }
+
+    fn sync(&self) -> errors::Result<()> {
+        Ok(())
+    }
 }

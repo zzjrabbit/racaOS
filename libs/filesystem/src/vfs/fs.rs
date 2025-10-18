@@ -1,12 +1,14 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use alloc::{string::String, sync::Arc};
+use errors::Result;
 use spin::Lazy;
 
 pub trait FileSystem {
     fn name(&self) -> String;
     fn label(&self) -> String;
     fn inode_count(&self) -> u64;
+    fn sync(&self) -> Result<()>;
 }
 
 pub struct DefaultFs {
@@ -41,5 +43,9 @@ impl FileSystem for DefaultFs {
 
     fn name(&self) -> String {
         "default".into()
+    }
+
+    fn sync(&self) -> Result<()> {
+        Ok(())
     }
 }
