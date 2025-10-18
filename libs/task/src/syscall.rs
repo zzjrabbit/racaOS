@@ -36,7 +36,9 @@ pub fn syscall_handler(context: &mut UserContext) {
         1 => write(arg1 as FileDescriptor, arg2, arg3),
         2 => open(arg1, arg2 as i32, arg3 as u32),
         3 => close(arg1 as FileDescriptor),
+        4 => stat(arg1 as Vaddr, arg2 as Vaddr),
         5 => fstat(arg1 as FileDescriptor, arg2 as Vaddr),
+        6 => lstat(arg1 as Vaddr, arg2 as Vaddr),
         8 => lseek(
             arg1 as FileDescriptor,
             arg2 as isize,
@@ -71,6 +73,12 @@ pub fn syscall_handler(context: &mut UserContext) {
         186 => get_tid(),
         218 => set_tid_address(arg1),
         231 => exit(arg1 as i32),
+        262 => fstatat(
+            Some(arg1 as FileDescriptor),
+            arg2 as Vaddr,
+            arg3 as Vaddr,
+            arg4 as u32,
+        ),
         _ => {
             log::warn!("Unimplemented syscall{}", syscall_id);
             Ok(0)
@@ -113,9 +121,6 @@ impl From<Duration> for timespec_t {
     fn from(value: Duration) -> Self {
         let sec = value.as_secs() as i64;
         let nsec = value.subsec_nanos() as i64;
-        Self {
-            sec,
-            nsec,
-        }
+        Self { sec, nsec }
     }
 }

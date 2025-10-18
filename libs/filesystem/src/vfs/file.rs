@@ -7,7 +7,7 @@ use errors::Result;
 use ostd::mm::Vaddr;
 use spin::RwLock;
 
-use crate::{InodeData, InodeMode, InodeOperation, Metadata, Path};
+use crate::{InodeData, InodeOperation, Metadata, Path};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -249,7 +249,7 @@ impl File {
             Arc::strong_count(&self.data)
         }
     }
-    
+
     pub fn metadata(&self) -> Metadata {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.metadata()
@@ -257,7 +257,7 @@ impl File {
             self.data.metadata()
         }
     }
-    
+
     pub fn inode_id(&self) -> u64 {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.inode_id()

@@ -1,5 +1,6 @@
-use errors::Result;
-use ostd::Pod;
+use alloc::{ffi::CString, vec::Vec};
+use errors::{Errno, Result};
+use ostd::{Pod, mm::Vaddr};
 
 use crate::Vmar;
 
@@ -70,5 +71,23 @@ impl Vmar {
         }
 
         Ok(())
+    }
+}
+
+impl Vmar {
+    pub fn read_cstring(&self, address: Vaddr) -> Result<CString> {
+        let mut buffer = Vec::new();
+        let mut current_address = address;
+
+        loop {
+            let byte: u8 = self.read_val(current_address)?;
+            if byte == 0 {
+                break;
+            }
+            buffer.push(byte);
+            current_address += 1;
+        }
+
+        CString::new(buffer).map_err(|_| Errno::EINVAL.no_message())
     }
 }

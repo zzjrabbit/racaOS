@@ -100,11 +100,11 @@ impl InodeData {
     pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize> {
         self.inner.ioctl(cmd, arg)
     }
-    
+
     pub fn metadata(&self) -> Metadata {
         self.inner.metadata()
     }
-    
+
     pub fn inode_id(&self) -> u64 {
         self.inner.inode_id()
     }
