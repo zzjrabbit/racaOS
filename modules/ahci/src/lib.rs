@@ -3,13 +3,9 @@
 
 extern crate alloc;
 
-use alloc::{sync::Arc, vec::Vec};
+use alloc::sync::Arc;
 use block::register_device;
 use component::{ComponentInitError, init_component};
-use ostd::{
-    mm::{FrameAllocOptions, HasPaddr, USegment},
-    sync::Mutex,
-};
 use pci::{device_type::DeviceType, get_pci_devices};
 
 use crate::driver::Ahci;
@@ -32,19 +28,7 @@ pub fn init() -> Result<(), ComponentInitError> {
 
             log::info!("AHCI MMIO address: {:x}", address);
 
-            let devices = match Ahci::new(address) {
-                Ok(devices) => devices,
-                Err(_) => {
-                    static AHCI_MMIO_MEM: Mutex<Vec<USegment>> = Mutex::new(Vec::new());
-
-                    let mmio = FrameAllocOptions::new().alloc_segment(4).unwrap();
-                    let mmio_address = mmio.paddr();
-
-                    device.write_bar(5, mmio_address);
-
-                    Ahci::new_from(mmio.into()).unwrap()
-                }
-            };
+            let devices = Ahci::new(address).unwrap();
 
             for ahci_device in devices {
                 log::info!("AHCI device exist");

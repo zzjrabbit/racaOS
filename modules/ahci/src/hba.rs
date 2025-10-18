@@ -3,7 +3,7 @@ use bit_field::BitField;
 use driver::{DmaList, Mmio};
 use ostd::mm::{Paddr, VmIo};
 
-use super::cmd::{CommandHeader, CommandTable, FisRegH2D};
+use super::cmd::{CommandHeader, CommandTable};
 use super::driver::Ahci;
 
 const BLOCK_SIZE: usize = 512;
@@ -11,9 +11,8 @@ const SATA_SIG_ATAPI: u32 = 0xEB140101;
 const SATA_SIG_SEMB: u32 = 0xC33C0101;
 const SATA_SIG_PM: u32 = 0x96690101;
 
-pub struct HbaMemory<I: VmIo + 'static> {
+pub struct HbaMemory {
     base: Paddr,
-    inner: Option<Arc<I>>,
     pub capability: Mmio<u32>,
     pub global_host_control: Mmio<u32>,
     pub interrupt_status: Mmio<u32>,
@@ -27,11 +26,10 @@ pub struct HbaMemory<I: VmIo + 'static> {
     pub bios_os_handoff_control: Mmio<u32>,
 }
 
-impl<I: VmIo + 'static> HbaMemory<I> {
+impl HbaMemory {
     pub fn from_address(address: Paddr) -> ostd::Result<Self> {
         Ok(Self {
             base: address,
-            inner: None,
             capability: Mmio::new(address)?,
             global_host_control: Mmio::new(address + 4)?,
             interrupt_status: Mmio::new(address + 2 * 4)?,
@@ -45,27 +43,17 @@ impl<I: VmIo + 'static> HbaMemory<I> {
             bios_os_handoff_control: Mmio::new(address + 10 * 4)?,
         })
     }
-
-    pub fn from_inner_offset(address: Paddr, offset: usize, inner: Arc<I>) -> ostd::Result<Self> {
-        Ok(Self {
-            base: address + offset,
-            inner: Some(inner.clone()),
-            capability: Mmio::new_from(inner.clone(), offset),
-            global_host_control: Mmio::new_from(inner.clone(), offset + 4),
-            interrupt_status: Mmio::new_from(inner.clone(), offset + 2 * 4),
-            port_implemented: Mmio::new_from(inner.clone(), offset + 3 * 4),
-            version: Mmio::new_from(inner.clone(), offset + 4 * 4),
-            ccc_control: Mmio::new_from(inner.clone(), offset + 5 * 4),
-            ccc_ports: Mmio::new_from(inner.clone(), offset + 6 * 4),
-            em_location: Mmio::new_from(inner.clone(), offset + 7 * 4),
-            em_control: Mmio::new_from(inner.clone(), offset + 8 * 4),
-            capabilities2: Mmio::new_from(inner.clone(), offset + 9 * 4),
-            bios_os_handoff_control: Mmio::new_from(inner.clone(), offset + 10 * 4),
-        })
-    }
 }
 
-impl<I: VmIo + 'static> HbaMemory<I> {
+impl HbaMemory {
+    pub fn enable_ahci(&self) {
+        self.global_host_control.write(&(self.global_host_control.read() | (1 << 31)));
+    }
+    
+    pub fn disable_interrupt(&self) {
+        self.global_host_control.write(&(self.global_host_control.read() & !(1 << 1)));
+    }
+    
     pub fn ahci_enabled(&self) -> bool {
         self.global_host_control.read().get_bit(31)
     }
@@ -85,10 +73,7 @@ impl<I: VmIo + 'static> HbaMemory<I> {
         let offset = 0x100 + 0x80 * port_num;
         let port_address = hba_ptr + offset;
 
-        let port = match HbaPort::from_address(port_address) {
-            Ok(port) => port,
-            Err(_) => HbaPort::from_inner_offset(offset, self.inner.clone().unwrap())?,
-        };
+        let port = HbaPort::from_address(port_address)?;
 
         Ok((port.device_connected() && port.is_sata_device()).then_some(port))
     }
@@ -172,6 +157,15 @@ impl HbaPort {
         command.write(command.read().set_bit(4, false));
         while command.read().get_bit(15) || command.read().get_bit(14) {}
     }
+    
+    pub fn reset(&self) {
+        let sata_control = &self.sata_control;
+        sata_control.write(&((sata_control.read() & !0xf) | 1));
+        for _ in 0..1000000 {
+            core::hint::spin_loop();
+        }
+        sata_control.write(&(sata_control.read() & !0xf));
+    }
 
     pub fn is_sata_device(&self) -> bool {
         !matches!(
@@ -191,24 +185,24 @@ impl HbaPort {
         log::info!("Initializing HBA port.");
 
         self.stop_cmd();
+        self.reset();
 
         let cmd_list = DmaList::<CommandHeader>::new(32);
         let cmd_table = DmaList::<CommandTable>::new(32);
+        let recieve = DmaList::<u8>::new(4096);
+        
+        self.command_issue.write(&0);
 
         self.command_list_base_address
             .write(&(cmd_list.device_address() as u64));
-
-        for index in 0..32 {
-            cmd_list.with_value(index, |cmd_header| {
-                cmd_header.command_table_base_address = cmd_table.device_address_of(index) as u64;
-                cmd_header.flags = (size_of::<FisRegH2D>() / size_of::<u32>()) as u16;
-                cmd_header.prdt_length = 1;
-            })
-        }
+        self.fis_base_address.write(&(recieve.device_address() as u64));
+        
+        self.start_cmd();
 
         Ahci {
             cmd_list,
             cmd_table,
+            recieve,
             port: self,
         }
     }

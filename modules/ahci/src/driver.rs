@@ -1,4 +1,3 @@
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 use bit_field::BitField;
 use block::{
@@ -6,9 +5,8 @@ use block::{
     BlockOperation, SECTOR_SIZE,
 };
 use driver::DmaList;
-use ostd::mm::HasPaddr;
 use ostd::mm::{
-    DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, HasPaddrRange, Paddr, USegment, VmIo,
+    DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, HasPaddrRange, Paddr, VmIo,
 };
 
 use super::cmd::{CommandHeader, CommandTable, FisRegH2D};
@@ -24,6 +22,7 @@ pub struct Ahci {
     pub port: HbaPort,
     pub cmd_list: DmaList<CommandHeader>,
     pub cmd_table: DmaList<CommandTable>,
+    pub recieve: DmaList<u8>,
 }
 
 unsafe impl Send for Ahci {}
@@ -58,30 +57,10 @@ impl BlockDevice for Ahci {
 
 impl Ahci {
     pub fn new(address: Paddr) -> ostd::Result<Vec<Self>> {
-        let hba_memory = HbaMemory::<USegment>::from_address(address)?;
+        let hba_memory = HbaMemory::from_address(address)?;
 
-        if !hba_memory.ahci_enabled() {
-            log::warn!("AHCI Not enabled");
-            return Ok(Vec::new());
-        }
-
-        log::info!("AHCI supports {} ports.", hba_memory.support_port_count());
-
-        Ok((0..hba_memory.support_port_count())
-            .filter(|&port_num| hba_memory.port_active(port_num))
-            .flat_map(|port_num| hba_memory.get_port(port_num))
-            .flatten()
-            .map(|port| unsafe { port.init_ahci() })
-            .collect())
-    }
-
-    pub fn new_from(inner: USegment) -> ostd::Result<Vec<Self>> {
-        let hba_memory = HbaMemory::from_inner_offset(inner.paddr(), 0, Arc::new(inner))?;
-
-        if !hba_memory.ahci_enabled() {
-            log::warn!("AHCI Not enabled");
-            return Ok(Vec::new());
-        }
+        hba_memory.enable_ahci();
+        hba_memory.disable_interrupt();
 
         log::info!("AHCI supports {} ports.", hba_memory.support_port_count());
 
@@ -121,6 +100,7 @@ impl Ahci {
 
         log::info!("sector count: {}", sector_count);
 
+        let cmd_table_address = self.cmd_table.device_address_of(index);
         self.cmd_table.with_value(index, |cmd_table| {
             log::info!("ready to set prdt entries!");
 
@@ -129,13 +109,15 @@ impl Ahci {
                 let len = dma_stream.paddr_range().len();
 
                 cmd_table.prdt[id].data_base_address = address as u64;
-                cmd_table.prdt[id].byte_count_i = len as u32;
+                cmd_table.prdt[id].byte_count_i = len as u32 - 1;
             }
 
             log::info!("prdt entries written!");
 
             self.cmd_list.with_value(index, |cmd_header| {
                 cmd_header.prdt_length = memory.len() as u16;
+                cmd_header.flags = (size_of::<FisRegH2D>() / size_of::<u32>()) as u16;
+                cmd_header.command_table_base_address = cmd_table_address as u64;
             });
 
             log::info!("prdt set!");
@@ -162,9 +144,9 @@ impl Ahci {
 
         self.port.command_issue.write(&(1 << index));
 
-        self.port.start_cmd();
-
         // TODO: Async
         while self.port.command_issue.read().get_bit(index) {}
+        
+        
     }
 }
