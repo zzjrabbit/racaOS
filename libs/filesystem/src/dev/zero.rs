@@ -36,7 +36,7 @@ impl InodeOperation for ZeroDevice {
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
     }
-    
+
     fn metadata(&self) -> Metadata {
         Metadata::new(InodeMode::full())
     }

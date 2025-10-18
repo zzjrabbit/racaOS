@@ -63,8 +63,10 @@ impl DateTime {
         let month = Month::try_from(self.month).unwrap();
         let date = Date::from_calendar_date(2000 + self.year as i32, month, self.day).unwrap();
         let time = Time::from_hms(self.hour, self.minute, self.second).unwrap();
-        ::core::time::Duration::from_secs(PrimitiveDateTime::new(date, time)
-            .assume_utc()
-            .unix_timestamp() as u64)
+        ::core::time::Duration::from_secs(
+            PrimitiveDateTime::new(date, time)
+                .assume_utc()
+                .unix_timestamp() as u64,
+        )
     }
 }

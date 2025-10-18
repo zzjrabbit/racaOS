@@ -1,6 +1,8 @@
+use core::time::Duration;
+
 use alloc::vec;
 use errors::{Errno, Result};
-use ostd::{arch::cpu::context::UserContext, mm::Vaddr};
+use ostd::{Pod, arch::cpu::context::UserContext, mm::Vaddr};
 
 use {crate::Process, ::filesystem::FileDescriptor};
 
@@ -34,6 +36,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         1 => write(arg1 as FileDescriptor, arg2, arg3),
         2 => open(arg1, arg2 as i32, arg3 as u32),
         3 => close(arg1 as FileDescriptor),
+        5 => fstat(arg1 as FileDescriptor, arg2 as Vaddr),
         8 => lseek(
             arg1 as FileDescriptor,
             arg2 as isize,
@@ -96,4 +99,23 @@ pub fn syscall_handler(context: &mut UserContext) {
         result,
     );
     context.set_rax(result as usize);
+}
+
+#[repr(C)]
+#[allow(non_camel_case_types)]
+#[derive(Debug, Default, Clone, Copy, Pod)]
+struct timespec_t {
+    pub sec: i64,
+    pub nsec: i64,
+}
+
+impl From<Duration> for timespec_t {
+    fn from(value: Duration) -> Self {
+        let sec = value.as_secs() as i64;
+        let nsec = value.subsec_nanos() as i64;
+        Self {
+            sec,
+            nsec,
+        }
+    }
 }

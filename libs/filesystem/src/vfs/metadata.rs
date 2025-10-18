@@ -8,12 +8,12 @@ use crate::vfs::InodeMode;
 pub struct Metadata {
     pub dev: u64,
     pub rdev: u64,
-    
+
     pub inode_mode: InodeMode,
-    
+
     pub uid: Uid,
     pub gid: Gid,
-    
+
     pub access_time: Duration,
     pub modification_time: Duration,
     pub creation_time: Duration,

@@ -7,7 +7,7 @@ use errors::Result;
 use ostd::mm::Vaddr;
 use spin::RwLock;
 
-use crate::{InodeData, InodeOperation, Path};
+use crate::{InodeData, InodeMode, InodeOperation, Metadata, Path};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -241,12 +241,28 @@ impl File {
             self.data.ioctl(cmd, arg)
         }
     }
-    
+
     pub fn link_num(&self) -> usize {
         if let Some(mount) = self.mount.read().as_ref() {
             mount.link_num()
         } else {
             Arc::strong_count(&self.data)
+        }
+    }
+    
+    pub fn metadata(&self) -> Metadata {
+        if let Some(mount) = self.mount.read().as_ref() {
+            mount.metadata()
+        } else {
+            self.data.metadata()
+        }
+    }
+    
+    pub fn inode_id(&self) -> u64 {
+        if let Some(mount) = self.mount.read().as_ref() {
+            mount.inode_id()
+        } else {
+            self.data.inode_id()
         }
     }
 }

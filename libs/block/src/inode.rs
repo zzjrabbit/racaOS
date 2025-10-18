@@ -73,7 +73,7 @@ impl InodeOperation for BlockInode {
     fn inode_id(&self) -> u64 {
         self.inode_id
     }
-    
+
     fn metadata(&self) -> Metadata {
         Metadata::new(InodeMode::full())
     }

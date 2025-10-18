@@ -47,13 +47,15 @@ impl HbaMemory {
 
 impl HbaMemory {
     pub fn enable_ahci(&self) {
-        self.global_host_control.write(&(self.global_host_control.read() | (1 << 31)));
+        self.global_host_control
+            .write(&(self.global_host_control.read() | (1 << 31)));
     }
-    
+
     pub fn disable_interrupt(&self) {
-        self.global_host_control.write(&(self.global_host_control.read() & !(1 << 1)));
+        self.global_host_control
+            .write(&(self.global_host_control.read() & !(1 << 1)));
     }
-    
+
     pub fn ahci_enabled(&self) -> bool {
         self.global_host_control.read().get_bit(31)
     }
@@ -157,7 +159,7 @@ impl HbaPort {
         command.write(command.read().set_bit(4, false));
         while command.read().get_bit(15) || command.read().get_bit(14) {}
     }
-    
+
     pub fn reset(&self) {
         let sata_control = &self.sata_control;
         sata_control.write(&((sata_control.read() & !0xf) | 1));
@@ -190,13 +192,14 @@ impl HbaPort {
         let cmd_list = DmaList::<CommandHeader>::new(32);
         let cmd_table = DmaList::<CommandTable>::new(32);
         let recieve = DmaList::<u8>::new(4096);
-        
+
         self.command_issue.write(&0);
 
         self.command_list_base_address
             .write(&(cmd_list.device_address() as u64));
-        self.fis_base_address.write(&(recieve.device_address() as u64));
-        
+        self.fis_base_address
+            .write(&(recieve.device_address() as u64));
+
         self.start_cmd();
 
         Ahci {

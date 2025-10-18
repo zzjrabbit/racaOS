@@ -14,7 +14,6 @@ pub struct VmMapping {
 
 impl VmMapping {
     pub fn new(vmo: Vmo, start: Vaddr, size: usize, prop: PageProperty, perm: PageFlags) -> Self {
-        log::trace!("VmMapping::new({start:x}, {size:x})");
         VmMapping {
             vmo,
             start,

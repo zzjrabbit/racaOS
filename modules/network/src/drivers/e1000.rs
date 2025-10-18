@@ -5,7 +5,6 @@ use alloc::vec::Vec;
 use core::mem::size_of;
 use core::sync::atomic::{Ordering, fence};
 use driver::{DmaList, Mmio};
-use time::DateTime;
 use ostd::Pod;
 use ostd::mm::{DmaCoherent, FrameAllocOptions, HasDaddr, PAGE_SIZE, VmIo, VmIoFill};
 use ostd::sync::Mutex;
@@ -15,6 +14,7 @@ use smoltcp::phy::{self, DeviceCapabilities};
 use smoltcp::socket::dhcpv4::{Event, Socket};
 use smoltcp::time::{Duration, Instant};
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpCidr};
+use time::DateTime;
 
 use bit_field::*;
 use bitflags::*;
@@ -48,7 +48,8 @@ pub fn init() {
             let dhcp_handle = sockets.add(dhcp_socket);
 
             loop {
-                let timestamp = Instant::from_secs(DateTime::default().unix_timestamp().as_secs() as i64);
+                let timestamp =
+                    Instant::from_secs(DateTime::default().unix_timestamp().as_secs() as i64);
                 let poll = iface.poll(timestamp, &mut driver, &mut sockets);
 
                 if poll == PollResult::None {

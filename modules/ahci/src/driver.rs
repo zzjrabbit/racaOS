@@ -5,9 +5,7 @@ use block::{
     BlockOperation, SECTOR_SIZE,
 };
 use driver::DmaList;
-use ostd::mm::{
-    DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, HasPaddrRange, Paddr, VmIo,
-};
+use ostd::mm::{DmaDirection, DmaStream, FrameAllocOptions, HasDaddr, HasPaddrRange, Paddr, VmIo};
 
 use super::cmd::{CommandHeader, CommandTable, FisRegH2D};
 use super::hba::{HbaMemory, HbaPort};
@@ -146,7 +144,5 @@ impl Ahci {
 
         // TODO: Async
         while self.port.command_issue.read().get_bit(index) {}
-        
-        
     }
 }

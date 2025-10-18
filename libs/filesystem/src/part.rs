@@ -104,7 +104,7 @@ impl InodeOperation for Partition {
     fn file_system(&self) -> Arc<dyn FileSystem> {
         DefaultFs::new()
     }
-    
+
     fn metadata(&self) -> Metadata {
         Metadata::new(InodeMode::full())
     }
