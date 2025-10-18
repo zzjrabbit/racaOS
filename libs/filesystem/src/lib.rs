@@ -11,11 +11,10 @@ mod dev;
 mod part;
 mod probe;
 mod ramfs;
-mod underlying;
 mod vfs;
 
 pub use dev::{Terminal, init_terminal};
-pub use probe::add_block_device;
+pub use probe::{add_block_device, register_probe};
 pub use vfs::*;
 
 use crate::ramfs::RamInode;
@@ -41,8 +40,6 @@ pub fn open_file(path: &Path) -> Option<Arc<File>> {
 #[init_component]
 pub fn init() -> Result<(), ComponentInitError> {
     dev::init();
-
-    underlying::init();
 
     part::init();
 

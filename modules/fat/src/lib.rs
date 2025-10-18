@@ -1,21 +1,25 @@
+#![no_std]
+
+extern crate alloc;
+
 use alloc::sync::Arc;
+use component::{ComponentInitError, init_component};
 use errors::{Errno, Result};
 use fatfs::{FileSystem as FatFileSystem, FsOptions};
+use filesystem::{File, FileSystem, FileType, Path, register_probe};
 
 use crate::{
-    File, FileSystem, FileType, Path,
-    probe::register_probe,
-    underlying::fat::{
-        fs::{FatDisk, FatFs},
-        inode::FatDir,
-    },
+    fs::{FatDisk, FatFs},
+    inode::FatDir,
 };
 
 mod fs;
 mod inode;
 
-pub fn init() {
+#[init_component(kthread)]
+pub fn init() -> ::core::result::Result<(), ComponentInitError> {
     register_probe(parse_fat);
+    Ok(())
 }
 
 // TODO: Fix memory leak

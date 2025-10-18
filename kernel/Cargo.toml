@@ -19,3 +19,4 @@ ahci = { path = "../modules/ahci" }
 network = { path = "../modules/network" }
 nvme = { path = "../modules/nvme" }
 ramdisk = { path = "../modules/ramdisk" }
+fat = { version = "0.1.0", path = "../modules/fat" }

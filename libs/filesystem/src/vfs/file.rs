@@ -42,7 +42,8 @@ struct FileInner {
 }
 
 impl File {
-    pub(crate) fn new<T>(path: Path, inode_operation: T, file_type: FileType) -> Arc<Self>
+    /// Only used when creating a root dir.
+    pub fn new<T>(path: Path, inode_operation: T, file_type: FileType) -> Arc<Self>
     where
         T: InodeOperation,
     {

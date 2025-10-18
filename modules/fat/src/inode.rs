@@ -7,11 +7,11 @@ use fatfs::{
     SeekFrom, Write,
 };
 use ostd::sync::RwLock;
-
-use crate::{
+use filesystem::{
     FileType, InodeOperation,
-    underlying::fat::fs::{FatDisk, FatFs},
 };
+
+use crate::fs::{FatDisk, FatFs};
 
 pub(super) struct FatDir {
     dir: RwLock<Dir<'static, FatDisk, DefaultTimeProvider, LossyOemCpConverter>>,

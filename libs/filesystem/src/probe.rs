@@ -47,7 +47,7 @@ pub fn add_block_device(
     }
 }
 
-pub(super) fn register_probe(probe: FileSystemProbe) {
+pub fn register_probe(probe: FileSystemProbe) {
     FILE_SYSTEMS.write().push(probe);
 }
 

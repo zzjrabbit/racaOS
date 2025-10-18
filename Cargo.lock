@@ -488,6 +488,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fat"
+version = "0.1.0"
+dependencies = [
+ "component",
+ "errors",
+ "fatfs",
+ "filesystem",
+ "ostd",
+]
+
+[[package]]
 name = "fatfs"
 version = "0.4.0"
 source = "git+https://github.com/rafalh/rust-fatfs#4eccb50d011146fbed20e133d33b22f3c27292e7"
@@ -509,7 +520,6 @@ dependencies = [
  "bitflags 2.9.4",
  "component",
  "errors",
- "fatfs",
  "gpt_disk_io",
  "log",
  "lwext4_rust",
@@ -719,6 +729,7 @@ dependencies = [
  "block",
  "component",
  "driver",
+ "fat",
  "filesystem",
  "log",
  "logger",
