@@ -16,7 +16,7 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
         .map_err(|()| Errno::EINVAL.with_message("Invalid access mode."))?;
     let open_flags = OpenFlags::from(flags);
 
-    let _mode = InodeMode::from(mode);
+    let _mode = InodeMode::from_bits_truncate(mode as u16);
 
     let mut path = Vec::new();
     loop {

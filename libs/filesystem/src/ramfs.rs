@@ -2,7 +2,7 @@ use alloc::{sync::Arc, vec::Vec};
 use errors::Result;
 use spin::RwLock;
 
-use crate::{DefaultFs, FileSystem, InodeOperation};
+use crate::{DefaultFs, FileSystem, InodeOperation, Metadata, vfs::InodeMode};
 
 pub struct RamInode {
     data: RwLock<Vec<u8>>,
@@ -81,5 +81,9 @@ impl InodeOperation for RamInode {
 
     fn file_system(&self) -> Arc<dyn FileSystem> {
         DefaultFs::new()
+    }
+    
+    fn metadata(&self) -> Metadata {
+        Metadata::new(InodeMode::full())
     }
 }

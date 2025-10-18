@@ -2,7 +2,7 @@ use crate::{BLOCK_SIZE, BlockDevice, BlockIo, BlockOperation, SECTOR_SIZE};
 use alloc::sync::Arc;
 
 use errors::{Errno, Result};
-use filesystem::{DefaultFs, FileType, InodeOperation};
+use filesystem::{DefaultFs, FileType, InodeMode, InodeOperation, Metadata};
 
 pub(super) struct BlockInode {
     device: Arc<dyn BlockDevice>,
@@ -72,5 +72,9 @@ impl InodeOperation for BlockInode {
 
     fn inode_id(&self) -> u64 {
         self.inode_id
+    }
+    
+    fn metadata(&self) -> Metadata {
+        Metadata::new(InodeMode::full())
     }
 }

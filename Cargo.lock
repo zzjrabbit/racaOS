@@ -445,7 +445,6 @@ version = "0.1.0"
 dependencies = [
  "component",
  "ostd",
- "time",
 ]
 
 [[package]]
@@ -519,6 +518,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags 2.9.4",
  "component",
+ "credentials",
  "errors",
  "gpt_disk_io",
  "log",
@@ -526,6 +526,7 @@ dependencies = [
  "ostd",
  "spin 0.10.0",
  "thiserror",
+ "time 0.1.0",
 ]
 
 [[package]]
@@ -900,6 +901,7 @@ dependencies = [
  "pci",
  "smoltcp",
  "spin 0.10.0",
+ "time 0.1.0",
 ]
 
 [[package]]
@@ -1531,6 +1533,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
+]
+
+[[package]]
+name = "time"
+version = "0.1.0"
+dependencies = [
+ "ostd",
+ "time 0.3.44",
 ]
 
 [[package]]

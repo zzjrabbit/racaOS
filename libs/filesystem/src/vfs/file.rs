@@ -241,4 +241,12 @@ impl File {
             self.data.ioctl(cmd, arg)
         }
     }
+    
+    pub fn link_num(&self) -> usize {
+        if let Some(mount) = self.mount.read().as_ref() {
+            mount.link_num()
+        } else {
+            Arc::strong_count(&self.data)
+        }
+    }
 }

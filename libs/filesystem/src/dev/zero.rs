@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 use errors::Result;
 
-use crate::{InodeOperation, dev::fs::DevFs};
+use crate::{InodeOperation, Metadata, dev::fs::DevFs, vfs::InodeMode};
 
 pub struct ZeroDevice {
     fs: Arc<DevFs>,
@@ -35,5 +35,9 @@ impl InodeOperation for ZeroDevice {
 
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
+    }
+    
+    fn metadata(&self) -> Metadata {
+        Metadata::new(InodeMode::full())
     }
 }

@@ -1,3 +1,5 @@
+#![no_std]
+
 use ostd::arch::device::cmos::{CMOS_ADDRESS, CMOS_DATA};
 use time::PrimitiveDateTime;
 use time::{Date, Month, Time};
@@ -57,12 +59,12 @@ impl DateTime {
         ((value / 16 * 10) + (value % 16)) | msb
     }
 
-    pub fn unix_timestamp(&self) -> i64 {
+    pub fn unix_timestamp(&self) -> ::core::time::Duration {
         let month = Month::try_from(self.month).unwrap();
         let date = Date::from_calendar_date(2000 + self.year as i32, month, self.day).unwrap();
         let time = Time::from_hms(self.hour, self.minute, self.second).unwrap();
-        PrimitiveDateTime::new(date, time)
+        ::core::time::Duration::from_secs(PrimitiveDateTime::new(date, time)
             .assume_utc()
-            .unix_timestamp()
+            .unix_timestamp() as u64)
     }
 }

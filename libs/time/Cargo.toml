@@ -1,8 +1,8 @@
 [package]
-name = "driver"
+name = "time"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-component.workspace = true
+time = { version = "0.3.44", default-features = false }
 ostd.workspace = true

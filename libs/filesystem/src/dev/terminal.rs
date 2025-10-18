@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use errors::Result;
 use spin::Once;
 
-use crate::{InodeOperation, dev::fs::DevFs};
+use crate::{InodeOperation, Metadata, dev::fs::DevFs, vfs::InodeMode};
 
 static TERMINAL: Once<Arc<dyn Terminal>> = Once::new();
 
@@ -41,6 +41,10 @@ impl InodeOperation for TerminalInode {
 
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
+    }
+    
+    fn metadata(&self) -> Metadata {
+        Metadata::new(InodeMode::full())
     }
 }
 

@@ -8,7 +8,7 @@ use fatfs::{
 };
 use ostd::sync::RwLock;
 use filesystem::{
-    FileType, InodeOperation,
+    FileType, InodeMode, InodeOperation, Metadata
 };
 
 use crate::fs::{FatDisk, FatFs};
@@ -121,6 +121,10 @@ impl InodeOperation for FatDir {
 
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
+    }
+    
+    fn metadata(&self) -> Metadata {
+        Metadata::new(InodeMode::full())
     }
 }
 
@@ -242,5 +246,9 @@ impl InodeOperation for FatFile {
 
     fn file_system(&self) -> Arc<dyn crate::FileSystem> {
         self.fs.clone()
+    }
+    
+    fn metadata(&self) -> Metadata {
+        Metadata::new(InodeMode::full())
     }
 }
