@@ -5,9 +5,7 @@ use ostd::mm::Vaddr;
 
 use crate::{FileSystem, FileType, Metadata};
 
-pub struct InodeData {
-    inner: Arc<dyn InodeOperation>,
-}
+pub type InodeData = Arc<dyn InodeOperation>;
 
 #[allow(dead_code)]
 pub trait InodeOperation: Sync + Send + 'static {
@@ -52,62 +50,6 @@ pub trait InodeOperation: Sync + Send + 'static {
     fn inode_id(&self) -> u64;
     fn file_system(&self) -> Arc<dyn FileSystem>;
     fn metadata(&self) -> Metadata;
-}
-
-#[allow(dead_code)]
-impl InodeData {
-    pub(crate) fn new<T>(func: T) -> Self
-    where
-        T: InodeOperation + Send + Sync + 'static,
-    {
-        Self {
-            inner: Arc::new(func),
-        }
-    }
-
-    pub fn file_type(&self) -> FileType {
-        self.inner.file_type()
-    }
-
-    pub fn read_at(&self, offset: u64, buf: &mut [u8]) -> Result<usize> {
-        self.inner.read_at(offset, buf)
-    }
-
-    pub fn write_at(&self, offset: u64, buf: &[u8]) -> Result<usize> {
-        self.inner.write_at(offset, buf)
-    }
-
-    pub fn len(&self) -> u64 {
-        self.inner.len()
-    }
-
-    pub fn create(&self, name: String, file_type: FileType) -> Option<Arc<Self>> {
-        Some(Arc::new(Self {
-            inner: self.inner.create(name, file_type)?,
-        }))
-    }
-
-    pub fn lookup(&self, name: String) -> Option<Arc<Self>> {
-        Some(Arc::new(Self {
-            inner: self.inner.lookup(name)?,
-        }))
-    }
-
-    pub fn remove(&self, name: String) -> Option<()> {
-        self.inner.remove(name)
-    }
-
-    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize> {
-        self.inner.ioctl(cmd, arg)
-    }
-
-    pub fn metadata(&self) -> Metadata {
-        self.inner.metadata()
-    }
-
-    pub fn inode_id(&self) -> u64 {
-        self.inner.inode_id()
-    }
 }
 
 bitflags! {

@@ -69,7 +69,7 @@ pub fn fstatat(
     let thread = Task::current().unwrap();
     let data = thread.direct_downcast::<UserThreadData>().unwrap();
     let flags = StatFlags::from_bits(flags).ok_or(Errno::EINVAL.no_message())?;
-    let file_name = data.memory_info().vmar().read_cstring(file_name_address)?;
+    let file_name = data.memory_info().vmar().read_cstring(file_name_address, None)?;
 
     if file_name.is_empty() {
         if !flags.contains(StatFlags::AT_EMPTY_PATH) {

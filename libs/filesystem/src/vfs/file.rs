@@ -30,7 +30,7 @@ impl FileType {
 }
 
 pub struct File {
-    data: Arc<InodeData>,
+    data: InodeData,
     inner: RwLock<FileInner>,
     file_type: FileType,
     mount: RwLock<Option<Arc<Self>>>,
@@ -48,7 +48,7 @@ impl File {
         T: InodeOperation,
     {
         let file = Arc::new(Self {
-            data: Arc::new(InodeData::new(inode_operation)),
+            data: Arc::new(inode_operation),
             file_type,
             inner: RwLock::new(FileInner {
                 path,

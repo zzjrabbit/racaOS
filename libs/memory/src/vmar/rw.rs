@@ -75,19 +75,21 @@ impl Vmar {
 }
 
 impl Vmar {
-    pub fn read_cstring(&self, address: Vaddr) -> Result<CString> {
+    pub fn read_cstring(&self, address: Vaddr, max_string_len: Option<usize>) -> Result<CString> {
         let mut buffer = Vec::new();
         let mut current_address = address;
 
         loop {
+            if current_address - address == max_string_len.unwrap_or(usize::MAX) {
+                return Err(Errno::E2BIG.no_message());
+            }
+            
             let byte: u8 = self.read_val(current_address)?;
             if byte == 0 {
-                break;
+                return CString::new(buffer).map_err(|_| Errno::EINVAL.no_message());
             }
             buffer.push(byte);
             current_address += 1;
         }
-
-        CString::new(buffer).map_err(|_| Errno::EINVAL.no_message())
     }
 }
