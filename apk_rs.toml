@@ -2,11 +2,15 @@
 path = "target/apk/rootfs.img"
 
 [package]
-list = []
+list = ["coreutils", "alpine-base"]
 
 [[files]]
 source = "apps/hello.bin"
 dest = "hello.bin"
+
+[[files]]
+source = "apps/test.bin"
+dest = "test.bin"
 
 [[files]]
 source = "out.txt"

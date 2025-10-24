@@ -58,6 +58,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         16 => ioctl(arg1 as FileDescriptor, arg2 as u32, arg3 as Vaddr),
         20 => writev(arg1 as FileDescriptor, arg2 as Vaddr, arg3),
         57 => fork(context),
+        59 => execve(arg1 as Vaddr, arg2 as Vaddr, arg3 as Vaddr, context),
         60 => exit(arg1 as i32),
         63 => uname(arg1 as Vaddr),
         72 => fcntl(
@@ -70,6 +71,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         80 => chdir(arg1 as Vaddr),
         81 => fchdir(arg1 as FileDescriptor),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2, context),
+        161 => chroot(arg1 as Vaddr),
         186 => get_tid(),
         218 => set_tid_address(arg1),
         231 => exit(arg1 as i32),

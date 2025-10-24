@@ -114,10 +114,9 @@ impl Vmar {
                     .vm_space
                     .cursor_mut(&guard, &(aligned..aligned + size))?;
                 cursor.unmap(size);
-                cursor
-                    .flusher()
-                    .issue_tlb_flush(TlbFlushOp::for_range(aligned..aligned + size));
-                cursor.flusher().dispatch_tlb_flush();
+                let flusher = cursor.flusher();
+                flusher.issue_tlb_flush(TlbFlushOp::for_range(aligned..aligned + size));
+                flusher.dispatch_tlb_flush();
             }
         }
 

@@ -77,6 +77,9 @@ pub fn spawn_user_thread(
                 if data.is_dead() {
                     break;
                 }
+
+                let data = current.direct_downcast::<UserThreadData>().unwrap();
+                data.memory_info().vmar().activate();
             }
 
             let return_reason = user_mode.execute(|| false);
@@ -148,7 +151,7 @@ pub struct UserThreadData {
     pub process: Weak<Process>,
     pub tid_address: RwLock<Option<Vaddr>>,
     tid: usize,
-    memory_info: Arc<MemoryInfo>,
+    memory_info: RwLock<Arc<MemoryInfo>>,
     fs_info: Arc<FileSystemInfo>,
     fs_resolver: RwLock<FsResolver>,
     signal_mask: RwLock<SignalMask>,
@@ -168,7 +171,7 @@ impl UserThreadData {
     ) -> Self {
         Self {
             process: Arc::downgrade(process),
-            memory_info,
+            memory_info: RwLock::new(memory_info),
             tid_address: RwLock::new(None),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info: Arc::new(FileSystemInfo::new(stdin, stdout, stderr)),
@@ -188,7 +191,7 @@ impl UserThreadData {
     ) -> Self {
         Self {
             process: Arc::downgrade(process),
-            memory_info,
+            memory_info: RwLock::new(memory_info),
             tid_address: RwLock::new(tid_address),
             tid: TID.fetch_add(1, Ordering::SeqCst),
             fs_info,
@@ -207,8 +210,12 @@ impl UserThreadData {
 }
 
 impl UserThreadData {
-    pub fn memory_info(&self) -> &Arc<MemoryInfo> {
-        &self.memory_info
+    pub fn memory_info(&self) -> Arc<MemoryInfo> {
+        self.memory_info.read().clone()
+    }
+
+    pub fn replace_memory_info(&self, memory_info: Arc<MemoryInfo>) {
+        *self.memory_info.write() = memory_info;
     }
 
     pub fn fs_info(&self) -> &Arc<FileSystemInfo> {

@@ -11,11 +11,12 @@ use ostd::{
     task::Task,
 };
 
-use crate::{Signal, SignalDisposition, SignalKind, process::loader::ElfLoader};
+use crate::{Signal, SignalDisposition, SignalKind};
 
 pub use memory::MemoryInfo;
+pub(crate) use user_stack::UserStack;
 use {
-    crate::{AsThread, UserThreadData, process::user_stack::UserStack, spawn_user_thread},
+    crate::{AsThread, UserThreadData, spawn_user_thread},
     ::memory::Vmar,
     filesystem::File,
 };
@@ -89,7 +90,8 @@ impl Process {
         let vmar = Vmar::new();
         let memory_info = Arc::new(MemoryInfo::new(vmar));
 
-        let (entry, aux_vec) = memory_info.vmar().load(binary)?;
+        let (_, entry, aux_vec) = memory_info.load(binary)?;
+        log::trace!("both program and dynamic linker are loaded into memory!");
 
         let mut user_stack = UserStack::new(memory_info.as_ref());
 
@@ -186,9 +188,9 @@ impl Process {
             thread.as_thread().unwrap().exit();
         }
 
-        for child in self.children.read().clone() {
+        /*for child in self.children.read().clone() {
             child.kill();
-        }
+        }*/
 
         if let Some(parent) = self.parent() {
             parent

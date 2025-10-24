@@ -82,7 +82,7 @@ pub fn clone_child(
         Arc::new(parent_data.fs_info().deep_clone())
     };
     let memory_info = if clone_args.flags.contains(CloneFlags::CLONE_VM) {
-        parent_data.memory_info().clone()
+        parent_data.memory_info()
     } else {
         Arc::new(parent_data.memory_info().deep_clone())
     };

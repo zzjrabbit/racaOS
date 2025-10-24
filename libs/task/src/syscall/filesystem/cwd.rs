@@ -1,3 +1,4 @@
+use ::filesystem::FileType;
 use alloc::vec::Vec;
 use ostd::{mm::Vaddr, task::Task};
 
@@ -58,6 +59,30 @@ pub fn fchdir(fd: FileDescriptor) -> SyscallResult {
         .ok_or(Errno::EBADFD.no_message())?;
 
     data.set_cwd(path);
+
+    Ok(0)
+}
+
+pub fn chroot(file_name: Vaddr) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+    let vmar = data.memory_info().vmar();
+
+    let path = vmar.read_cstring(file_name, None)?;
+
+    let path = path.to_string_lossy();
+    let path = Path::from(path);
+
+    match data.open_file(&path) {
+        Some(file) => {
+            if file.r#type() != FileType::Directory {
+                return Err(Errno::ENOTDIR.no_message());
+            }
+        }
+        None => return Err(Errno::ENOENT.no_message()),
+    }
+
+    data.set_root(path);
 
     Ok(0)
 }

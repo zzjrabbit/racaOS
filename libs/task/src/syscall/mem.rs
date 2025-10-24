@@ -69,8 +69,9 @@ pub fn mmap(
     }?
     .start_address();
     log::trace!(
-        "mmap: address: {:x} prot: {:?} flags: {:?}",
+        "mmap: address: {:x} len: {:x} prot: {:?} flags: {:?}",
         address,
+        len,
         protection_flags,
         flags
     );

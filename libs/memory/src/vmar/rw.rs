@@ -58,7 +58,7 @@ impl Vmar {
                 .iter()
                 .find(|mapping| mapping.contains(current_address))
                 .map(|mapping| (mapping.start(), mapping.size(), mapping.vmo().clone()))
-                .unwrap();
+                .ok_or(Errno::EFAULT.no_message())?;
 
             let remaining = buffer.len() - written;
             let chunk_size = mapping_size.min(remaining);
@@ -83,7 +83,7 @@ impl Vmar {
             if current_address - address == max_string_len.unwrap_or(usize::MAX) {
                 return Err(Errno::E2BIG.no_message());
             }
-            
+
             let byte: u8 = self.read_val(current_address)?;
             if byte == 0 {
                 return CString::new(buffer).map_err(|_| Errno::EINVAL.no_message());

@@ -1,6 +1,6 @@
 use errors::Result;
 use ostd::{
-    mm::{PAGE_SIZE, PageFlags, Vaddr},
+    mm::{PAGE_SIZE, PageFlags, Vaddr, tlb::TlbFlushOp},
     task::disable_preempt,
 };
 
@@ -14,6 +14,12 @@ impl Vmar {
             if mapping.contains(vaddr) {
                 let perm = mapping.perm();
                 if !perm.contains(perm_required) {
+                    log::warn!(
+                        "Page fault at {:x} with required permissions {:?}, but got {:?}",
+                        vaddr,
+                        perm_required,
+                        perm
+                    );
                     continue;
                 }
 
@@ -32,6 +38,7 @@ impl Vmar {
                         .map_iomem(io_mem.clone(), prop, vmo.len(), base_offset);
                 } else if perm_required.contains(PageFlags::W) && !prop.flags.contains(PageFlags::W)
                 {
+                    log::info!("CoW");
                     // Perform CoW.
                     prop.flags |= PageFlags::W;
                     mapping.set_prop(prop);
@@ -64,10 +71,18 @@ impl Vmar {
 
                     let start = align_down_by_page_size(vaddr);
 
-                    self.vm_space
-                        .cursor_mut(&disable_preempt(), &(start..start + PAGE_SIZE))?
-                        .map(frame, prop);
+                    let guard = disable_preempt();
+                    let mut cursor = self
+                        .vm_space
+                        .cursor_mut(&guard, &(start..start + PAGE_SIZE))?;
+                    cursor.map(frame, prop);
+
+                    let flusher = cursor.flusher();
+                    flusher.issue_tlb_flush(TlbFlushOp::for_range(start..start + PAGE_SIZE));
+                    flusher.dispatch_tlb_flush();
                 }
+
+                break;
             }
         }
         Ok(handled)
