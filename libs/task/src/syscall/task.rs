@@ -130,3 +130,8 @@ fn read_cstring_array(
 
     Err(Errno::E2BIG.no_message())
 }
+
+pub fn sched_yield() -> SyscallResult {
+    Task::yield_now();
+    Ok(0)
+}

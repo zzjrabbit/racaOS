@@ -21,9 +21,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             let mut buf = vec![0; len];
             let len = file.read_at(*offset, &mut buf)?;
 
-            for (id, byte) in buf.iter().enumerate() {
-                data.memory_info().vmar().write_val(address + id, byte)?;
-            }
+            data.memory_info().vmar().write(address, &buf)?;
 
             *offset += len as u64;
 
@@ -42,9 +40,8 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
                 return Err(Errno::EACCES.no_message());
             }
 
-            let buffer = (0..len)
-                .map(|id| data.memory_info().vmar().read_val::<u8>(address + id))
-                .collect::<Result<Vec<_>>>()?;
+            let mut buffer = vec![0; len];
+            data.memory_info().vmar().read(address, &mut buffer)?;
 
             let len = file.write_at(*offset, &buffer)?;
             *offset += len as u64;
@@ -54,15 +51,47 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
         .ok_or(Errno::EBADFD.no_message())?
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Pod)]
 #[repr(C)]
 struct IoVec {
     base: Vaddr,
     len: usize,
 }
 
-#[allow(unsafe_code)]
-unsafe impl Pod for IoVec {}
+pub fn readv(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+    data.fs_info()
+        .with_file_mut(fd, |offset, access_mode, _open_flags, file| {
+            if !access_mode.is_readable() {
+                return Err(Errno::EACCES.no_message());
+            }
+
+            let mut total_len = 0;
+
+            for i in 0..count {
+                let vec = data
+                    .memory_info()
+                    .vmar()
+                    .read_val::<IoVec>(iov_address + (i * 2 * 8))?;
+
+                let IoVec { base, len } = vec;
+
+                let mut buffer = vec![0u8; len];
+
+                let len = file.read_at(*offset, &mut buffer)?;
+
+                data.memory_info().vmar().write(base, &buffer)?;
+
+                *offset += len as u64;
+                total_len += len;
+            }
+
+            Ok(total_len as isize)
+        })
+        .ok_or(Errno::ENOENT.no_message())?
+}
 
 pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallResult {
     let thread = Task::current().unwrap();
@@ -84,10 +113,6 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
 
                 let IoVec { base, len } = vec;
 
-                if len > 0xffffff {
-                    return Ok(0);
-                }
-
                 let buffer = (0..len)
                     .map(|id| data.memory_info().vmar().read_val::<u8>(base + id))
                     .collect::<Result<Vec<_>>>()?;
@@ -101,4 +126,44 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
             Ok(total_len as isize)
         })
         .ok_or(Errno::ENOENT.no_message())?
+}
+
+pub fn pread64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+    data.fs_info()
+        .with_file_mut(fd, |_offset, access_mode, _open_flags, file| {
+            if !access_mode.is_readable() {
+                return Err(Errno::EACCES.no_message());
+            };
+
+            let mut buf = vec![0; len];
+            let len = file.read_at(offset, &mut buf)?;
+
+            data.memory_info().vmar().write(address, &buf)?;
+
+            Ok(len as isize)
+        })
+        .ok_or(Errno::EBADFD.no_message())?
+}
+
+pub fn pwrite64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+    data.fs_info()
+        .with_file_mut(fd, |_offset, access_mode, _open_flags, file| {
+            if !access_mode.is_writable() {
+                return Err(Errno::EACCES.no_message());
+            };
+
+            let mut buf = vec![0; len];
+            data.memory_info().vmar().read(address, &mut buf)?;
+            
+            let len = file.write_at(offset, &buf)?;
+
+            Ok(len as isize)
+        })
+        .ok_or(Errno::EBADFD.no_message())?
 }
