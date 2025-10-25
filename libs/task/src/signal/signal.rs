@@ -1,4 +1,5 @@
 use derive_more::{Add, AddAssign, Deref, DerefMut, Display, Sub, SubAssign};
+use errors::{Errno, Error};
 
 #[derive(Clone, Copy)]
 pub enum SignalKind {
@@ -96,10 +97,10 @@ impl Signal {
 }
 
 impl TryFrom<u8> for Signal {
-    type Error = ();
+    type Error = Error;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         if value > Self::SIGNAL_NUM as u8 {
-            Err(())
+            Err(Errno::EINVAL.no_message())
         } else {
             Ok(Self(value))
         }

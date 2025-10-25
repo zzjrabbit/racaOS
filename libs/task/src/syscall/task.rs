@@ -5,6 +5,7 @@ use crate::{AsThread, CloneArgs, MemoryInfo, UserStack, UserThreadData, clone_ch
 use super::*;
 use ::filesystem::Path;
 use alloc::{ffi::CString, sync::Arc, vec::Vec};
+use credentials::Uid;
 use memory::Vmar;
 use ostd::{
     arch::cpu::context::GeneralRegs, mm::Vaddr, sync::Waiter, task::Task, user::UserContextApi,
@@ -184,4 +185,18 @@ pub fn wait4(_pid: u64, status: Vaddr, _options: u32, _rusage: Vaddr) -> Syscall
     done(child.clone(), exit_code)?;
 
     Ok(child.id() as isize)
+}
+
+pub fn getpid() -> SyscallResult {
+    let process = Process::current();
+    Ok(process.id() as isize)
+}
+
+pub fn getuid() -> SyscallResult {
+    Ok(u32::from(Uid::new_root()) as isize)
+}
+
+pub fn getppid() -> SyscallResult {
+    let process = Process::current();
+    Ok(process.parent().unwrap().id() as isize)
 }

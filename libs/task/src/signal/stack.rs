@@ -2,14 +2,14 @@ use bitflags::bitflags;
 use ostd::mm::Vaddr;
 
 #[derive(Debug, Default)]
-pub struct SigStack {
+pub struct SignalStack {
     base: Vaddr,
-    flags: SigStackFlags,
+    flags: SignalStackFlags,
     size: usize,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum SigStackStatus {
+pub enum SignalStackStatus {
     /// The stack is enabled but currently inactive.
     Inactive,
     /// The stack is currently active.
@@ -20,16 +20,16 @@ pub enum SigStackStatus {
 
 bitflags! {
     #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-    pub struct SigStackFlags: u32 {
+    pub struct SignalStackFlags: u32 {
         const SS_ONSTACK = 1 << 0;
         const SS_DISABLE = 1 << 1;
         const SS_AUTODISARM = 1 << 31;
     }
 }
 
-impl SigStack {
+impl SignalStack {
     /// Creates a new signal stack.
-    pub fn new(base: Vaddr, flags: SigStackFlags, size: usize) -> Self {
+    pub fn new(base: Vaddr, flags: SignalStackFlags, size: usize) -> Self {
         Self { base, flags, size }
     }
 
@@ -39,22 +39,22 @@ impl SigStack {
     }
 
     /// Returns the signal stack flags as set by the user.
-    pub fn flags(&self) -> SigStackFlags {
+    pub fn flags(&self) -> SignalStackFlags {
         self.flags
     }
 
     /// Returns the current active status of the signal stack
     /// based on the given stack pointer.
-    pub fn active_status(&self, sp: usize) -> SigStackStatus {
+    pub fn active_status(&self, sp: usize) -> SignalStackStatus {
         if self.size == 0 {
-            return SigStackStatus::Disable;
+            return SignalStackStatus::Disable;
         }
 
         if self.contains(sp) {
-            return SigStackStatus::Active;
+            return SignalStackStatus::Active;
         }
 
-        SigStackStatus::Inactive
+        SignalStackStatus::Inactive
     }
 
     /// Returns the signal stack size.
@@ -69,7 +69,7 @@ impl SigStack {
     /// In this case, even if `sp` lies within the stack range,
     /// we consider that the signal stack is not active.
     pub fn contains(&self, sp: usize) -> bool {
-        if self.flags().contains(SigStackFlags::SS_AUTODISARM) {
+        if self.flags().contains(SignalStackFlags::SS_AUTODISARM) {
             return false;
         }
 
@@ -81,7 +81,7 @@ impl SigStack {
     pub(crate) fn reset(&mut self) {
         self.base = 0;
         self.size = 0;
-        self.flags = SigStackFlags::SS_DISABLE;
+        self.flags = SignalStackFlags::SS_DISABLE;
     }
 }
 
@@ -92,8 +92,8 @@ pub struct stack_t {
     pub ss_size: usize,
 }
 
-impl From<&SigStack> for stack_t {
-    fn from(value: &SigStack) -> Self {
+impl From<&SignalStack> for stack_t {
+    fn from(value: &SignalStack) -> Self {
         Self {
             ss_sp: value.base,
             ss_flags: value.flags.bits(),

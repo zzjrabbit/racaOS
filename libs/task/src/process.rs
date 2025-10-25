@@ -177,6 +177,10 @@ impl Process {
             t_data.tid() != tid
         });
     }
+
+    pub fn threads(&self) -> Vec<Arc<Task>> {
+        self.threads.read().clone()
+    }
 }
 
 #[allow(dead_code)]

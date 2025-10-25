@@ -10,13 +10,17 @@ use arch::*;
 use filesystem::*;
 use kernel::*;
 use mem::*;
+use signal::*;
 use task::*;
+use time::*;
 
 mod arch;
 mod filesystem;
 mod kernel;
 mod mem;
+mod signal;
 mod task;
+mod time;
 
 type SyscallResult = Result<isize>;
 
@@ -55,6 +59,8 @@ pub fn syscall_handler(context: &mut UserContext) {
         ),
         10 => mprotect(arg1, arg2, MMapProtection::from_bits_truncate(arg3 as i32)),
         11 => munmap(arg1, arg2),
+        13 => rt_sigaction(arg1 as u8, arg2 as Vaddr, arg3 as Vaddr, arg4 as u64),
+        14 => rt_sigprocmask(arg1 as u32, arg2 as Vaddr, arg3 as Vaddr, arg4 as u64),
         16 => ioctl(arg1 as FileDescriptor, arg2 as u32, arg3 as Vaddr),
         17 => pread64(
             arg1 as FileDescriptor,
@@ -71,6 +77,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         19 => readv(arg1 as FileDescriptor, arg2 as Vaddr, arg3),
         20 => writev(arg1 as FileDescriptor, arg2 as Vaddr, arg3),
         24 => sched_yield(),
+        39 => getpid(),
         57 => fork(context),
         59 => execve(arg1 as Vaddr, arg2 as Vaddr, arg3 as Vaddr, context),
         60 => exit(arg1 as i32),
@@ -85,10 +92,13 @@ pub fn syscall_handler(context: &mut UserContext) {
         79 => getcwd(arg1 as Vaddr, arg2),
         80 => chdir(arg1 as Vaddr),
         81 => fchdir(arg1 as FileDescriptor),
+        102 => getuid(),
+        110 => getppid(),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2, context),
         161 => chroot(arg1 as Vaddr),
         186 => get_tid(),
         218 => set_tid_address(arg1),
+        228 => clock_gettime(arg1 as i32, arg2 as Vaddr),
         231 => exit(arg1 as i32),
         262 => fstatat(
             Some(arg1 as FileDescriptor),

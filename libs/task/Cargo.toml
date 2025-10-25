@@ -17,3 +17,4 @@ errors.workspace = true
 events.workspace = true
 spin.workspace = true
 credentials.workspace = true
+time.workspace = true

@@ -25,9 +25,9 @@ impl SignalDisposition {
         self.map[id]
     }
 
-    pub fn set(&mut self, signal: Signal, action: SignalAction) {
+    pub fn set(&mut self, signal: Signal, action: SignalAction) -> SignalAction {
         let id = Self::signal_to_id(signal);
-        self.map[id] = action;
+        core::mem::replace(&mut self.map[id], action)
     }
 
     pub fn set_default(&mut self, signal: Signal) {

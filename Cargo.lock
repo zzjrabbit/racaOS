@@ -1487,6 +1487,7 @@ dependencies = [
  "ostd",
  "spin 0.10.0",
  "thiserror",
+ "time 0.1.0",
 ]
 
 [[package]]

@@ -15,7 +15,9 @@ use ostd::{
     user::{ReturnReason, UserMode},
 };
 
-use crate::{Signal, SignalEvent, SignalEventFilter, SignalKind, SignalMask, SignalQueue};
+use crate::{
+    Signal, SignalEvent, SignalEventFilter, SignalKind, SignalMask, SignalQueue, SignalStack,
+};
 
 use {
     crate::syscall::syscall_handler,
@@ -158,9 +160,12 @@ pub struct UserThreadData {
     memory_info: RwLock<Arc<MemoryInfo>>,
     fs_info: Arc<FileSystemInfo>,
     fs_resolver: RwLock<FsResolver>,
+
     signal_mask: RwLock<SignalMask>,
     signal_queues: SignalQueue,
     signalled_waker: SpinLock<Option<Arc<Waker>>>,
+    signal_context: RwLock<Option<Vaddr>>,
+    signal_stack: RwLock<SignalStack>,
 }
 
 static TID: AtomicUsize = AtomicUsize::new(0);
@@ -183,6 +188,8 @@ impl UserThreadData {
             signal_mask: RwLock::new(SignalMask::default()),
             signal_queues: SignalQueue::new(),
             signalled_waker: SpinLock::new(None),
+            signal_context: RwLock::new(None),
+            signal_stack: RwLock::new(SignalStack::default()),
         }
     }
 
@@ -203,6 +210,8 @@ impl UserThreadData {
             signal_mask: RwLock::new(SignalMask::default()),
             signal_queues: SignalQueue::new(),
             signalled_waker: SpinLock::new(None),
+            signal_context: RwLock::new(None),
+            signal_stack: RwLock::new(SignalStack::default()),
         }
     }
 }
@@ -238,6 +247,10 @@ impl UserThreadData {
 
     pub fn blocked_signals(&self) -> SignalMask {
         self.signal_mask.read().clone()
+    }
+
+    pub fn replace_signal_mask(&self, mask: SignalMask) {
+        *self.signal_mask.write() = mask;
     }
 
     pub fn has_pending_signals(&self) -> bool {
@@ -277,8 +290,8 @@ impl UserThreadData {
         self.wake_signalled_waker();
     }
 
-    pub fn dequeue_signal(&self, mask: SignalMask) -> Option<SignalKind> {
-        self.signal_queues.dequeue(&mask)
+    pub fn dequeue_signal(&self, mask: &SignalMask) -> Option<SignalKind> {
+        self.signal_queues.dequeue(mask)
     }
 
     pub fn register_signal_queue_observer(
