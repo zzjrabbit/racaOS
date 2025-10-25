@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use ostd::{mm::Vaddr, task::Task};
 
 use {
@@ -18,19 +17,10 @@ pub fn open(address: Vaddr, flags: i32, mode: u32) -> SyscallResult {
 
     let _mode = InodeMode::from_bits_truncate(mode as u16);
 
-    let mut path = Vec::new();
-    loop {
-        let byte = data.memory_info().vmar().read_val(address + path.len())?;
-        if byte == 0 {
-            break;
-        }
-        path.push(byte);
-    }
+    let path = data.memory_info().vmar().read_cstring(address, None)?;
 
-    let path = Path::new(
-        core::str::from_utf8(&path)
-            .map_err(|_| Errno::EINVAL.with_message("Unable to parse path with utf-8."))?,
-    );
+    let path = Path::from(path.to_string_lossy());
+    log::info!("Opening path: {}", path);
 
     if let Some(file) = data.open_file(&path) {
         let fd = data.fs_info().add_file(file, access_mode, open_flags);

@@ -131,3 +131,20 @@ impl Vmo {
         }
     }
 }
+
+impl Vmo {
+    pub fn split(&self, id: usize) -> Result<Self> {
+        match self.inner.as_ref() {
+            VmoInner::Ram { frames } => {
+                let mut frames = frames.write();
+                let new_frames = frames.split_off(id);
+                Ok(Self {
+                    inner: Arc::new(VmoInner::Ram {
+                        frames: RwMutex::new(new_frames),
+                    }),
+                })
+            }
+            VmoInner::IoMem { .. } => Err(Errno::EINVAL.no_message()),
+        }
+    }
+}

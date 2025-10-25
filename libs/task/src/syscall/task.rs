@@ -51,25 +51,27 @@ pub fn execve(
             .to_string_lossy()
             .into_owned(),
     );
-    let mut argv = read_cstring_array(vmar.clone(), argv, 128, 4096)?;
+    let argv = read_cstring_array(vmar.clone(), argv, 128, 4096)?;
     let envp = read_cstring_array(vmar.clone(), envp, 128, 4096)?;
-
-    argv.insert(0, CString::from_str(&file_name).unwrap());
 
     let new_memory_info = Arc::new(MemoryInfo::new(Vmar::new()));
 
-    let (_, entry, aux_vec) = {
+    let mut user_stack = UserStack::new(&new_memory_info);
+
+    let (entry, aux_vec) = {
         let file = data
             .open_file(&file_name)
             .ok_or(Errno::ENOENT.no_message())?;
-        let mut data = alloc::vec![0u8; file.len() as usize];
-        file.read_at(0, &mut data)?;
-        new_memory_info.load(&data)?
+        let mut buffer = alloc::vec![0u8; file.len() as usize];
+        file.read_at(0, &mut buffer)?;
+
+        let exec_file_name =
+            user_stack.push_a_lot(CString::from_str(&file_name).unwrap().as_bytes_with_nul());
+
+        new_memory_info.load(exec_file_name, Some(&data), &buffer)?
     };
 
     let stack_pointer = {
-        let mut user_stack = UserStack::new(&new_memory_info);
-
         let mut envp = envp
             .iter()
             .map(|cstring| user_stack.push_a_lot(cstring.as_bytes_with_nul()))
@@ -100,6 +102,8 @@ pub fn execve(
 
     data.replace_memory_info(new_memory_info.clone());
     new_memory_info.vmar().activate();
+    
+    data.fs_info().close_on_execve();
 
     Ok(0)
 }

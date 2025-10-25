@@ -65,7 +65,7 @@ pub fn mmap(
     let address = if address == 0 {
         memory_info.allocate(len)
     } else {
-        memory_info.allocate_at(address, len)
+        memory_info.allocate_at(address, len, flags.contains(MMapFlags::FIXED))
     }?
     .start_address();
     log::trace!(
@@ -80,6 +80,7 @@ pub fn mmap(
         address,
         len,
         PageProperty::new_user(protection_flags, CachePolicy::Writeback),
+        true,
     )?;
 
     Ok(address as isize)

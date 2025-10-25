@@ -1,5 +1,5 @@
 use errors::Result;
-use ostd::mm::{PageFlags, PageProperty, Vaddr};
+use ostd::mm::{PAGE_SIZE, PageFlags, PageProperty, Vaddr};
 
 use crate::Vmo;
 
@@ -59,15 +59,50 @@ impl VmMapping {
     }
 
     pub fn overlaps(&self, other: &VmMapping) -> bool {
-        self.start <= other.start + other.size && other.start < self.start + self.size
+        self.start < other.end() && other.start < self.end()
     }
 
     pub fn contains_range(&self, start: Vaddr, size: usize) -> bool {
-        self.start <= start && start + size <= self.start + self.size
+        self.start <= start && start + size <= self.end()
     }
 
     pub fn contains(&self, addr: Vaddr) -> bool {
-        self.start <= addr && addr < self.start + self.size
+        self.start <= addr && addr < self.end()
+    }
+
+    pub fn end(&self) -> Vaddr {
+        self.start + self.size
+    }
+
+    pub fn make_not_overlap_with(&mut self, other: &Self) -> (Option<Self>, bool) {
+        if self.start() == other.start() && self.size() == other.size() {
+            return (None, true);
+        }
+
+        if self.contains_range(other.start(), other.size()) {
+            let new_self_size = self.end() - other.end();
+            let new_self = Self::new(
+                self.vmo
+                    .split((self.vmo.len() - new_self_size) / PAGE_SIZE)
+                    .unwrap(),
+                other.end(),
+                new_self_size,
+                self.prop,
+                self.perm,
+            );
+            self.size = other.start() - self.start();
+            (Some(new_self), false)
+        } else if other.contains_range(self.start(), self.size()) {
+            (None, true)
+        } else if self.start() <= other.end() {
+            self.start = other.end();
+            (None, false)
+        } else if other.start() <= self.end() {
+            self.size = other.start() - self.start();
+            (None, false)
+        } else {
+            (None, false)
+        }
     }
 }
 

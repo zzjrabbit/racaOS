@@ -41,6 +41,7 @@ pub fn user_page_fault_handler(cpu_exception: &CpuException) -> Result<(), ()> {
     {
         log::error!("Unhandled page fault: {:x?}", cpu_exception);
         process.exit(-1);
+        return Err(());
     }
 
     Ok(())

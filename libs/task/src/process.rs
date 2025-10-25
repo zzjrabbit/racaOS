@@ -90,7 +90,7 @@ impl Process {
         let vmar = Vmar::new();
         let memory_info = Arc::new(MemoryInfo::new(vmar));
 
-        let (_, entry, aux_vec) = memory_info.load(binary)?;
+        let (entry, aux_vec) = memory_info.load(0, None, binary)?;
         log::trace!("both program and dynamic linker are loaded into memory!");
 
         let mut user_stack = UserStack::new(memory_info.as_ref());

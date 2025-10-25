@@ -93,7 +93,11 @@ pub fn spawn_user_thread(
                     let exception = context.take_exception().unwrap();
 
                     match exception {
-                        CpuException::PageFault(_) => user_page_fault_handler(&exception).unwrap(),
+                        CpuException::PageFault(_) => {
+                            if user_page_fault_handler(&exception).is_err() {
+                                log::error!("User Context: {:#x?}", context);
+                            }
+                        }
                         _ => {
                             let process = Process::current();
 

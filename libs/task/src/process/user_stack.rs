@@ -22,6 +22,7 @@ impl UserStack {
             stack_region.start_address(),
             USER_STACK_SIZE,
             PageProperty::new_user(PageFlags::RW, CachePolicy::Writeback),
+            true,
         )
         .unwrap();
 
@@ -51,7 +52,7 @@ impl UserStack {
 
     pub fn push_zero_until_aligned(&mut self, alignment: usize) {
         let remainder = self.stack_pointer % alignment;
-        self.push_a_lot(&alloc::vec![0u8; remainder]);
+        self.push_a_lot(&alloc::vec![0u8; alignment - remainder]);
     }
 
     pub fn stack_pointer(&self) -> usize {
@@ -97,6 +98,7 @@ impl AuxKey {
     }
 }
 
+#[derive(Debug)]
 pub struct AuxVec {
     table: BTreeMap<AuxKey, u64>,
 }

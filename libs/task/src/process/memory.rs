@@ -93,15 +93,38 @@ impl MemoryInfo {
         region.ok_or(Errno::ENOMEM.with_message("Failed to allocate memory region."))
     }
 
-    pub fn allocate_at(&self, address: Vaddr, len: usize) -> Result<MemoryRegion> {
+    pub fn allocate_at(&self, address: Vaddr, len: usize, fixed: bool) -> Result<MemoryRegion> {
         let mut inner = self.inner.write();
 
         let required_region = MemoryRegion::new(address, len);
 
+        let mut new_regions = Vec::new();
+        let mut to_remove = Vec::new();
         for mapped in inner.allocated.iter() {
             if mapped.overlap(&required_region) {
-                return Err(Errno::ENOMEM.with_message("Required region overlaps."));
+                if !fixed {
+                    return self.allocate(len);
+                } else {
+                    to_remove.push(mapped.clone());
+                    let pre_len = mapped.start as isize - required_region.start as isize;
+                    let post_len = mapped.end as isize - required_region.end as isize;
+                    if pre_len > 0 {
+                        new_regions
+                            .push(MemoryRegion::new(required_region.start, pre_len as usize));
+                    }
+                    if post_len > 0 {
+                        new_regions.push(MemoryRegion::new(required_region.end, post_len as usize));
+                    }
+                }
             }
+        }
+
+        for region in to_remove {
+            inner.allocated.retain(|r| *r != region);
+        }
+
+        for region in new_regions {
+            inner.allocated.push(region);
         }
 
         inner.allocated.push(required_region);
@@ -132,7 +155,7 @@ impl MemoryInfo {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MemoryRegion {
     start: usize,
     end: usize,

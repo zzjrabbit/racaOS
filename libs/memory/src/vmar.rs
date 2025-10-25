@@ -43,7 +43,13 @@ impl Vmar {
 }
 
 impl Vmar {
-    pub fn map(&self, addr: Vaddr, size: usize, prop: PageProperty) -> Result<()> {
+    pub fn map(
+        &self,
+        addr: Vaddr,
+        size: usize,
+        prop: PageProperty,
+        process_overlap: bool,
+    ) -> Result<()> {
         if size == 0 {
             return Ok(());
         }
@@ -57,42 +63,31 @@ impl Vmar {
 
         let vm_mapping = VmMapping::new(vmo, aligned, size, prop, prop.flags);
 
-        let mut new_mappings = Vec::new();
-        let mut overlap = false;
-
-        for mapping in inner.vm_mappings.iter() {
-            if mapping.overlaps(&vm_mapping) {
-                overlap = true;
-                let pre_len = mapping.start() as isize - aligned as isize;
-                let post_len =
-                    (aligned + size) as isize - (mapping.start() + mapping.size()) as isize;
-                if pre_len > 0 {
-                    new_mappings.push(VmMapping::new(
-                        Vmo::allocate_ram(pre_len as usize / PAGE_SIZE)?,
-                        aligned,
-                        pre_len as usize,
-                        prop,
-                        prop.flags,
-                    ));
+        if process_overlap {
+            let mut new_mappings = Vec::new();
+            let mut mappings_to_remove = Vec::new();
+            for mapping in inner.vm_mappings.iter_mut() {
+                if mapping.overlaps(&vm_mapping) {
+                    let (new, to_remove) = mapping.make_not_overlap_with(&vm_mapping);
+                    if let Some(new) = new {
+                        new_mappings.push(new);
+                    }
+                    if to_remove {
+                        mappings_to_remove.push(mapping.start());
+                    }
                 }
-                if post_len > 0 {
-                    new_mappings.push(VmMapping::new(
-                        Vmo::allocate_ram(post_len as usize / PAGE_SIZE)?,
-                        aligned + size - post_len as usize,
-                        post_len as usize,
-                        prop,
-                        prop.flags,
-                    ));
-                }
-                break;
             }
-        }
 
-        if !overlap {
-            inner.vm_mappings.push(vm_mapping);
-        } else {
+            mappings_to_remove.sort();
+            mappings_to_remove.dedup();
+            for start in mappings_to_remove {
+                inner.vm_mappings.retain(|mapping| mapping.start() != start);
+            }
+
             inner.vm_mappings.extend(new_mappings);
         }
+
+        inner.vm_mappings.push(vm_mapping);
 
         Ok(())
     }

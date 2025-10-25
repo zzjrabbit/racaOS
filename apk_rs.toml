@@ -2,7 +2,9 @@
 path = "target/apk/rootfs.img"
 
 [package]
-list = ["coreutils", "alpine-base"]
+list = [
+    "busybox",
+]
 
 [[files]]
 source = "apps/hello.bin"

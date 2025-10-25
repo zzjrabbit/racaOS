@@ -34,14 +34,25 @@ pub fn uname(address: Vaddr) -> SyscallResult {
     let data = task.direct_downcast::<UserThreadData>().unwrap();
 
     let mut utsname = UtsName::new();
-    utsname.sysname.copy_from_slice(b"racaOS");
-    utsname.release.copy_from_slice(b"RELEASE");
-    utsname
-        .version
-        .copy_from_slice(core::env!("CARGO_PKG_VERSION").as_bytes());
-    utsname.machine.copy_from_slice(b"x86_64");
-    utsname.nodename.copy_from_slice(b"root");
-
+    
+    let sys_name = b"racaOS";
+    utsname.sysname[0..sys_name.len()].copy_from_slice(sys_name);
+    
+    let release = b"RELEASE";
+    utsname.release[0..release.len()].copy_from_slice(release);
+    
+    let version = core::env!("CARGO_PKG_VERSION").as_bytes();
+    utsname.version[0..version.len()].copy_from_slice(version);
+    
+    let machine = b"x86_64";
+    utsname.machine[0..machine.len()].copy_from_slice(machine);
+    
+    let domainname = b"domain";
+    utsname.domainname[0..domainname.len()].copy_from_slice(domainname);
+    
+    let nodename = b"root";
+    utsname.nodename[0..nodename.len()].copy_from_slice(nodename);
+    
     data.memory_info().vmar().write_val(address, &utsname)?;
 
     Ok(0)

@@ -62,6 +62,12 @@ impl FileSystemInfo {
     pub fn remove_file(&self, descriptor: FileDescriptor) -> Option<()> {
         self.fd_table.write().remove(&descriptor).map(|_| ())
     }
+    
+    pub fn close_on_execve(&self) {
+        self.fd_table.write().retain(|_, (_, _, open_flags, _)| {
+            !open_flags.contains(OpenFlags::O_CLOEXEC)
+        });
+    }
 
     pub fn with_file<R>(
         &self,

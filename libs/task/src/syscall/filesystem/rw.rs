@@ -160,7 +160,7 @@ pub fn pwrite64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> 
 
             let mut buf = vec![0; len];
             data.memory_info().vmar().read(address, &mut buf)?;
-            
+
             let len = file.write_at(offset, &buf)?;
 
             Ok(len as isize)
