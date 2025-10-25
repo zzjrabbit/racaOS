@@ -6,7 +6,9 @@ use super::*;
 use ::filesystem::Path;
 use alloc::{ffi::CString, sync::Arc, vec::Vec};
 use memory::Vmar;
-use ostd::{arch::cpu::context::GeneralRegs, mm::Vaddr, task::Task, user::UserContextApi};
+use ostd::{
+    arch::cpu::context::GeneralRegs, mm::Vaddr, sync::Waiter, task::Task, user::UserContextApi,
+};
 
 pub fn get_tid() -> SyscallResult {
     let thread = Task::current().unwrap();
@@ -102,7 +104,7 @@ pub fn execve(
 
     data.replace_memory_info(new_memory_info.clone());
     new_memory_info.vmar().activate();
-    
+
     data.fs_info().close_on_execve();
 
     Ok(0)
@@ -138,4 +140,48 @@ fn read_cstring_array(
 pub fn sched_yield() -> SyscallResult {
     Task::yield_now();
     Ok(0)
+}
+
+pub fn wait4(_pid: u64, status: Vaddr, _options: u32, _rusage: Vaddr) -> SyscallResult {
+    let done = |child: Arc<Process>, exit_code: i32| -> Result<()> {
+        let thread = Task::current().unwrap();
+        let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+        data.memory_info().vmar().write_val(status, &exit_code)?;
+
+        child.clear_zombie();
+
+        Ok(())
+    };
+
+    let process = Process::current();
+
+    if let Some((child, exit_code)) = process
+        .children()
+        .iter()
+        .map(|child| (child.clone(), child.status().exit_code()))
+        .find(|(_, exit_code)| exit_code.is_some())
+    {
+        done(child, exit_code.unwrap())?;
+    };
+
+    let (waiter, waker) = Waiter::new_pair();
+
+    for child in process.children() {
+        child.add_zombie_waker(waker.clone());
+    }
+
+    waiter.wait();
+
+    let (child, exit_code) = process
+        .children()
+        .iter()
+        .map(|child| (child.clone(), child.status().exit_code()))
+        .find(|(_, exit_code)| exit_code.is_some())
+        .unwrap();
+    let exit_code = exit_code.unwrap();
+
+    done(child.clone(), exit_code)?;
+
+    Ok(child.id() as isize)
 }

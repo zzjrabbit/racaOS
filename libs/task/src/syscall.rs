@@ -74,6 +74,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         57 => fork(context),
         59 => execve(arg1 as Vaddr, arg2 as Vaddr, arg3 as Vaddr, context),
         60 => exit(arg1 as i32),
+        61 => wait4(arg1 as u64, arg2 as Vaddr, arg3 as u32, arg4 as Vaddr),
         63 => uname(arg1 as Vaddr),
         72 => fcntl(
             arg1 as FileDescriptor,

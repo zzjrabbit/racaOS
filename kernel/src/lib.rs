@@ -71,7 +71,7 @@ fn first_kernel_thread() {
 
     let hello = Process::new(&buffer, tty.clone(), tty.clone(), tty.clone()).unwrap();
 
-    while hello.exit_code().is_none() {
+    while !hello.status().is_zombie() {
         halt_cpu();
     }
 

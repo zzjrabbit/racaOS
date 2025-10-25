@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use alloc::{
     sync::{Arc, Weak},
@@ -7,13 +7,14 @@ use alloc::{
 use errors::Result;
 use ostd::{
     arch::cpu::context::UserContext,
-    sync::{Mutex, RwLock, WaitQueue},
+    sync::{Mutex, RwLock, Waker},
     task::Task,
 };
 
 use crate::{Signal, SignalDisposition, SignalKind};
 
 pub use memory::MemoryInfo;
+pub use status::ProcessStatus;
 pub(crate) use user_stack::UserStack;
 use {
     crate::{AsThread, UserThreadData, spawn_user_thread},
@@ -23,6 +24,7 @@ use {
 
 mod loader;
 mod memory;
+mod status;
 mod user_stack;
 
 static PROCESSES: RwLock<Vec<Arc<Process>>> = RwLock::new(Vec::new());
@@ -31,13 +33,13 @@ pub struct Process {
     threads: RwLock<Vec<Arc<Task>>>,
     parent: Option<Weak<Self>>,
     children: RwLock<Vec<Arc<Self>>>,
-    exit_code: AtomicI32,
     default_files: [Arc<File>; 3],
     id: usize,
+    status: Mutex<ProcessStatus>,
 
     child_death_signal: Mutex<Signal>,
     signal_disposition: Arc<Mutex<SignalDisposition>>,
-    wait_queue: WaitQueue,
+    wakers: RwLock<Vec<Arc<Waker>>>,
 }
 
 static NEXT_PROCESS_ID: AtomicUsize = AtomicUsize::new(1);
@@ -52,11 +54,11 @@ impl Process {
             threads: RwLock::new(Vec::new()),
             parent: Some(Arc::downgrade(self)),
             children: RwLock::new(Vec::new()),
-            exit_code: AtomicI32::new(0),
+            status: Mutex::new(ProcessStatus::Alive),
             default_files: self.default_files.clone(),
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
             child_death_signal: Mutex::new(child_death_signal),
-            wait_queue: WaitQueue::new(),
+            wakers: RwLock::new(Vec::new()),
             signal_disposition,
         });
 
@@ -77,12 +79,12 @@ impl Process {
             threads: RwLock::new(Vec::new()),
             parent: None,
             children: RwLock::new(Vec::new()),
-            exit_code: AtomicI32::new(0),
+            status: Mutex::new(ProcessStatus::Alive),
             default_files: [stdin, stdout, stderr],
             id: NEXT_PROCESS_ID.fetch_add(1, Ordering::Relaxed),
             child_death_signal: Mutex::new(Signal::SIGCHLD),
             signal_disposition: Arc::new(Mutex::new(SignalDisposition::default())),
-            wait_queue: WaitQueue::new(),
+            wakers: RwLock::new(Vec::new()),
         });
 
         PROCESSES.write().push(new_self.clone());
@@ -182,71 +184,80 @@ impl Process {
     pub fn exit(&self, exit_code: i32) {
         log::info!("Process {} exited with code {}", self.id(), exit_code);
 
-        self.exit_code.store(exit_code, Ordering::SeqCst);
+        *self.status.lock() = ProcessStatus::Zombie(exit_code);
         let threads = self.threads.read().clone();
         for thread in threads.iter() {
             thread.as_thread().unwrap().exit();
         }
+        self.threads.write().clear();
 
         /*for child in self.children.read().clone() {
             child.kill();
         }*/
 
         if let Some(parent) = self.parent() {
-            parent
-                .children
-                .write()
-                .retain(|child| child.id() != self.id());
-            let child_death_signal = parent.child_death_signal.lock();
+            {
+                let child_death_signal = parent.child_death_signal.lock();
+                parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
+            }
 
-            parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
+            for waker in self.wakers.read().clone() {
+                waker.wake_up();
+            }
+            self.wakers.write().clear();
         }
-
-        self.wait_queue.wake_all();
     }
 
     pub fn kill(&self) {
         log::info!("Process {} killed", self.id());
 
-        self.exit_code.store(-1, Ordering::SeqCst);
+        *self.status.lock() = ProcessStatus::Zombie(-1);
         let threads = self.threads.read().clone();
         for thread in threads.iter() {
             thread.as_thread().unwrap().on_kill();
         }
+        self.threads.write().clear();
 
         for child in self.children.read().clone() {
             child.kill();
         }
 
         if let Some(parent) = self.parent() {
-            parent
-                .children
-                .write()
-                .retain(|child| child.id() != self.id());
-            let child_death_signal = parent.child_death_signal.lock();
+            {
+                let child_death_signal = parent.child_death_signal.lock();
+                parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
+            }
 
-            parent.enqueue_signal(SignalKind::new_kernel(*child_death_signal));
-        }
-
-        self.wait_queue.wake_all();
-    }
-
-    pub fn exit_code(&self) -> Option<i32> {
-        if self.threads.read().is_empty() {
-            Some(self.exit_code.load(Ordering::SeqCst))
-        } else {
-            None
+            for waker in self.wakers.read().clone() {
+                waker.wake_up();
+            }
+            self.wakers.write().clear();
         }
     }
 
-    pub fn wait_dead(&self) {
-        self.wait_queue.wait_until(|| self.exit_code());
+    pub fn status(&self) -> ProcessStatus {
+        *self.status.lock()
+    }
+
+    pub fn add_zombie_waker(&self, waker: Arc<Waker>) {
+        self.wakers.write().push(waker);
+    }
+
+    pub(crate) fn clear_zombie(&self) {
+        if self.status().is_zombie() {
+            if let Some(parent) = self.parent() {
+                parent
+                    .children
+                    .write()
+                    .retain(|child| child.id() != self.id());
+            }
+        }
     }
 }
 
 impl Process {
     pub fn enqueue_signal(&self, signal_kind: SignalKind) {
-        if self.exit_code().is_some() {
+        if self.status().is_zombie() {
             return;
         }
 

@@ -78,7 +78,7 @@ impl SigStack {
     }
 
     /// Resets the signal stack settings.
-    pub(super) fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.base = 0;
         self.size = 0;
         self.flags = SigStackFlags::SS_DISABLE;
