@@ -1,10 +1,10 @@
 use alloc::sync::Arc;
 use errors::{Errno, Error};
-use ostd::{Pod, mm::Vaddr, task::Task};
+use ostd::{Pod, arch::cpu::context::UserContext, mm::Vaddr, task::Task, user::UserContextApi};
 
 use crate::{
     AsThread, Process, Signal, SignalAction, SignalActionFlags, SignalMask, SignalSet,
-    UserThreadData, syscall::SyscallResult,
+    UserThreadData, set_new_stack, syscall::SyscallResult, ucontext_t,
 };
 
 pub fn rt_sigaction(
@@ -192,10 +192,43 @@ pub fn rt_sigprocmask(
             MaskOp::SetMask => {
                 read_mask -= Signal::SIGKILL;
                 read_mask -= Signal::SIGSTOP;
+                log::info!("Setting signal mask to {:b}", u64::from(read_mask));
                 data.replace_signal_mask(read_mask);
             }
         }
     }
+
+    Ok(0)
+}
+
+pub fn rt_sigreturn(context: &mut UserContext) -> SyscallResult {
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
+
+    let Some(signal_context_addr) = *data.signal_context().read() else {
+        return Err(Errno::EINVAL.no_message());
+    };
+
+    // TODO: Handle cases without `SignalActionFlags::SA_RESTORER`
+
+    let ucontext = data
+        .memory_info()
+        .vmar()
+        .read_val::<ucontext_t>(signal_context_addr)?;
+
+    if ucontext.uc_link == 0 {
+        *data.signal_context().write() = None;
+    } else {
+        *data.signal_context().write() = Some(ucontext.uc_link);
+    }
+    ucontext.uc_mcontext.copy_user_regs_to(context);
+
+    let stack = ucontext.uc_stack;
+    let _ = set_new_stack(&data, stack, context.stack_pointer());
+
+    let signal_mask = ucontext.uc_sigmask;
+    let old_mask = data.blocked_signals();
+    data.replace_signal_mask(old_mask - signal_mask);
 
     Ok(0)
 }

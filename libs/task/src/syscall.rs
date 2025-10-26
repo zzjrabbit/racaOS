@@ -61,6 +61,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         11 => munmap(arg1, arg2),
         13 => rt_sigaction(arg1 as u8, arg2 as Vaddr, arg3 as Vaddr, arg4 as u64),
         14 => rt_sigprocmask(arg1 as u32, arg2 as Vaddr, arg3 as Vaddr, arg4 as u64),
+        15 => rt_sigreturn(context),
         16 => ioctl(arg1 as FileDescriptor, arg2 as u32, arg3 as Vaddr),
         17 => pread64(
             arg1 as FileDescriptor,

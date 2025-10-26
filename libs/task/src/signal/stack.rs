@@ -1,5 +1,5 @@
 use bitflags::bitflags;
-use ostd::mm::Vaddr;
+use ostd::{Pod, mm::Vaddr};
 
 #[derive(Debug, Default)]
 pub struct SignalStack {
@@ -85,6 +85,8 @@ impl SignalStack {
     }
 }
 
+#[derive(Debug, Clone, Copy, Pod, Default)]
+#[repr(C)]
 #[allow(non_camel_case_types)]
 pub struct stack_t {
     pub ss_sp: Vaddr,

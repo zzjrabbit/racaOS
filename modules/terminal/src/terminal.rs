@@ -19,6 +19,7 @@ pub fn set_done() {
 impl Terminal for OsTerminal {
     fn read(&self, buffer: &mut [u8]) -> Result<usize> {
         DONE.store(false, Ordering::SeqCst);
+        log::trace!("terminal read");
         WAIT_QUEUE.wait_until(|| DONE.load(Ordering::SeqCst).then_some(()));
         DONE.store(false, Ordering::SeqCst);
         log::trace!("terminal read");

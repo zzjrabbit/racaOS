@@ -7,9 +7,7 @@ use ::filesystem::Path;
 use alloc::{ffi::CString, sync::Arc, vec::Vec};
 use credentials::Uid;
 use memory::Vmar;
-use ostd::{
-    arch::cpu::context::GeneralRegs, mm::Vaddr, sync::Waiter, task::Task, user::UserContextApi,
-};
+use ostd::{arch::cpu::context::GeneralRegs, mm::Vaddr, task::Task, user::UserContextApi};
 
 pub fn get_tid() -> SyscallResult {
     let thread = Task::current().unwrap();
@@ -156,6 +154,8 @@ pub fn wait4(_pid: u64, status: Vaddr, _options: u32, _rusage: Vaddr) -> Syscall
     };
 
     let process = Process::current();
+    let thread = Task::current().unwrap();
+    let data = thread.direct_downcast::<UserThreadData>().unwrap();
 
     if let Some((child, exit_code)) = process
         .children()
@@ -166,20 +166,20 @@ pub fn wait4(_pid: u64, status: Vaddr, _options: u32, _rusage: Vaddr) -> Syscall
         done(child, exit_code.unwrap())?;
     };
 
-    let (waiter, waker) = Waiter::new_pair();
-
-    for child in process.children() {
-        child.add_zombie_waker(waker.clone());
-    }
-
-    waiter.wait();
-
-    let (child, exit_code) = process
-        .children()
-        .iter()
-        .map(|child| (child.clone(), child.status().exit_code()))
-        .find(|(_, exit_code)| exit_code.is_some())
-        .unwrap();
+    let (child, exit_code) = data.wait_with_waker(
+        || {
+            process
+                .children()
+                .iter()
+                .map(|child| (child.clone(), child.status().exit_code()))
+                .find(|(_, exit_code)| exit_code.is_some())
+        },
+        |waker| {
+            for child in process.children() {
+                child.add_zombie_waker(waker.clone());
+            }
+        },
+    )?;
     let exit_code = exit_code.unwrap();
 
     done(child.clone(), exit_code)?;

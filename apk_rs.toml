@@ -3,7 +3,13 @@ path = "target/apk/rootfs.img"
 
 [package]
 list = [
+    "musl",
+    "musl-dev",
     "busybox",
+    "bash",
+    "readline",
+    "libncursesw",
+    "coreutils",
 ]
 
 [[files]]

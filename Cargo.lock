@@ -288,6 +288,9 @@ checksum = "19d374276b40fb8bbdee95aef7c7fa6b5316ec764510eb64b8dd0e2ed0d7e7f5"
 [[package]]
 name = "credentials"
 version = "0.1.0"
+dependencies = [
+ "ostd",
+]
 
 [[package]]
 name = "critical-section"
@@ -1474,6 +1477,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 name = "task"
 version = "0.1.0"
 dependencies = [
+ "align_ext",
  "bitflags 2.9.4",
  "component",
  "credentials",
@@ -1482,6 +1486,7 @@ dependencies = [
  "errors",
  "events",
  "filesystem",
+ "inherit-methods-macro",
  "log",
  "memory",
  "ostd",

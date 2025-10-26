@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(result_flattening)]
 #![feature(int_roundings)]
+#![feature(let_chains)]
 
 extern crate alloc;
 

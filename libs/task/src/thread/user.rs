@@ -17,6 +17,7 @@ use ostd::{
 
 use crate::{
     Signal, SignalEvent, SignalEventFilter, SignalKind, SignalMask, SignalQueue, SignalStack,
+    handle_pending_signal,
 };
 
 use {
@@ -29,6 +30,7 @@ use {
 
 mod filesystem;
 mod fs_resolver;
+mod wait;
 
 pub use filesystem::*;
 pub use fs_resolver::*;
@@ -86,8 +88,10 @@ pub fn spawn_user_thread(
 
             let return_reason = user_mode.execute(|| false);
 
+            let mut pre_syscall_ret = None;
             match return_reason {
                 ReturnReason::UserSyscall => {
+                    pre_syscall_ret = Some(user_mode.context().rax());
                     syscall_handler(user_mode.context_mut());
                 }
                 ReturnReason::UserException => {
@@ -112,6 +116,13 @@ pub fn spawn_user_thread(
                     }
                 }
                 _ => panic!("Thread error: {:x?}", return_reason),
+            }
+
+            {
+                let current = Task::current().unwrap();
+                let data = current.direct_downcast::<UserThreadData>().unwrap();
+
+                handle_pending_signal(user_mode.context_mut(), &data, pre_syscall_ret).unwrap();
             }
 
             Task::yield_now();
@@ -237,6 +248,14 @@ impl UserThreadData {
 }
 
 impl UserThreadData {
+    pub fn signal_stack(&self) -> &RwLock<SignalStack> {
+        &self.signal_stack
+    }
+
+    pub fn signal_context(&self) -> &RwLock<Option<Vaddr>> {
+        &self.signal_context
+    }
+
     pub fn block_signal(&self, signal: Signal) {
         *self.signal_mask.write() += signal;
     }

@@ -1,4 +1,4 @@
-use ::filesystem::{File, open_file};
+use ::filesystem::File;
 use alloc::sync::Arc;
 use ostd::{Pod, task::Task};
 
@@ -92,7 +92,7 @@ pub fn fstatat(
             .unwrap_or(Ok(data.cwd()))?;
         path.join(&file_name)
     };
-    let file = open_file(&path).ok_or(Errno::ENOENT.no_message())?;
+    let file = data.open_file(&path).ok_or(Errno::ENOENT.no_message())?;
 
     let stat = get_stat(file);
     data.memory_info().vmar().write_val(stat_address, &stat)?;

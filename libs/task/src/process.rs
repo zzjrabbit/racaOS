@@ -267,15 +267,14 @@ impl Process {
 
         let signal_disposition = self.signal_disposition.lock();
 
-        // Drop the signal if it's ignored. See explanation at `enqueue_signal_locked`.
         let signal = signal_kind.signal();
         if signal_disposition.get(signal).will_ignore(signal) {
+            log::info!("ignoring signal {}!", signal);
             return;
         }
 
         let threads = self.threads.read();
 
-        // Enqueue the signal to the first thread that does not block the signal.
         for thread in threads.as_slice() {
             let data = thread.direct_downcast::<UserThreadData>().unwrap();
             if !data.blocked_signals().contains(signal) {
@@ -283,7 +282,6 @@ impl Process {
             }
         }
 
-        // If all threads block the signal, enqueue the signal to the main thread.
         let thread = threads[0].clone();
         let data = thread.direct_downcast::<UserThreadData>().unwrap();
         data.enqueue_signal_locked(signal_kind);

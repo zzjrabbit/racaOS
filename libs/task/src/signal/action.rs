@@ -19,9 +19,12 @@ pub enum SignalAction {
 impl SignalAction {
     pub fn will_ignore(&self, signal: Signal) -> bool {
         match self {
-            SignalAction::Default => false,
+            SignalAction::Default => {
+                let default_action = SignalDefaultAction::from_signal(signal);
+                matches!(default_action, SignalDefaultAction::Ignore)
+            }
             SignalAction::Ignore => true,
-            SignalAction::User { mask, .. } => mask.contains(signal),
+            SignalAction::User { .. } => false,
         }
     }
 }
