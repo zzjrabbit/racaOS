@@ -40,8 +40,7 @@ pub fn fstat(fd: FileDescriptor, address: Vaddr) -> SyscallResult {
 
     let stat = data
         .fs_info()
-        .with_file(fd, |_, _, _, file| get_stat(file))
-        .ok_or(Errno::EBADFD.no_message())?;
+        .with_file(fd, |_, _, _, file| get_stat(file))?;
     data.memory_info().vmar().write_val(address, &stat)?;
 
     Ok(0)
@@ -84,11 +83,7 @@ pub fn fstatat(
     let path = {
         let file_name = file_name.to_string_lossy().into_owned();
         let path = fd
-            .map(|fd| {
-                data.fs_info()
-                    .with_file(fd, |_, _, _, file| file.path())
-                    .ok_or(Errno::EBADFD.no_message())
-            })
+            .map(|fd| data.fs_info().with_file(fd, |_, _, _, file| file.path()))
             .unwrap_or(Ok(data.cwd()))?;
         path.join(&file_name)
     };

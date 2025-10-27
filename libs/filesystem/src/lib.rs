@@ -13,7 +13,7 @@ mod probe;
 mod ramfs;
 mod vfs;
 
-pub use dev::{Terminal, init_terminal};
+pub use dev::terminal::*;
 pub use probe::{add_block_device, register_probe};
 pub use vfs::*;
 

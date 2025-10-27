@@ -27,7 +27,7 @@ impl SignalEventFilter {
 }
 
 impl EventFilter<SignalEvent> for SignalEventFilter {
-    fn filter(&self, event: SignalEvent) -> bool {
+    fn filter(&self, event: &SignalEvent) -> bool {
         !self.0.contains(event.0)
     }
 }

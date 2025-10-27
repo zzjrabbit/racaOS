@@ -20,3 +20,4 @@ credentials.workspace = true
 time.workspace = true
 align_ext = "0.1.0"
 inherit-methods-macro = "0.1.0"
+int-to-c-enum = "0.1.0"

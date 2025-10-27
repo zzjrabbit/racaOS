@@ -1,12 +1,10 @@
 mod fs;
 mod null;
-mod terminal;
+pub mod terminal;
 mod zero;
 
 use alloc::sync::Arc;
 use spin::Lazy;
-
-pub use terminal::{Terminal, init_terminal};
 
 use crate::{ROOT_FS, dev::fs::DevFs};
 

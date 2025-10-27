@@ -4,10 +4,14 @@ use alloc::{
     sync::Arc,
 };
 use errors::Result;
-use ostd::mm::Vaddr;
+use memory::Vmar;
+use ostd::{
+    mm::Vaddr,
+    sync::{RwArc, Waker},
+};
 use spin::RwLock;
 
-use crate::{InodeData, InodeOperation, Metadata, Path};
+use crate::{InodeData, InodeOperation, IoEvent, IoctlCmd, Metadata, Path};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -234,11 +238,19 @@ impl File {
         }
     }
 
-    pub fn ioctl(&self, cmd: u32, arg: Vaddr) -> Result<usize> {
+    pub fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, waker: Arc<Waker>) {
         if let Some(mount) = self.mount.read().as_ref() {
-            mount.ioctl(cmd, arg)
+            mount.register_waker(required, event, waker)
         } else {
-            self.data.ioctl(cmd, arg)
+            self.data.register_waker(required, event, waker)
+        }
+    }
+
+    pub fn ioctl(&self, vmar: Arc<Vmar>, cmd: IoctlCmd, arg: Vaddr) -> Result<usize> {
+        if let Some(mount) = self.mount.read().as_ref() {
+            mount.ioctl(vmar, cmd, arg)
+        } else {
+            self.data.ioctl(vmar, cmd, arg)
         }
     }
 

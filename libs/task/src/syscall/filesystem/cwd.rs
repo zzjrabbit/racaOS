@@ -55,8 +55,7 @@ pub fn fchdir(fd: FileDescriptor) -> SyscallResult {
 
     let path = data
         .fs_info()
-        .with_file_mut(fd, |_, _access_mode, _open_flags, file| file.path())
-        .ok_or(Errno::EBADFD.no_message())?;
+        .with_file_mut(fd, |_, _access_mode, _open_flags, file| file.path())?;
 
     data.set_cwd(path);
 

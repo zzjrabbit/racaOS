@@ -43,6 +43,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         4 => stat(arg1 as Vaddr, arg2 as Vaddr),
         5 => fstat(arg1 as FileDescriptor, arg2 as Vaddr),
         6 => lstat(arg1 as Vaddr, arg2 as Vaddr),
+        7 => poll(arg1 as Vaddr, arg2 as u32, arg3 as i32),
         8 => lseek(
             arg1 as FileDescriptor,
             arg2 as isize,
@@ -86,9 +87,9 @@ pub fn syscall_handler(context: &mut UserContext) {
         63 => uname(arg1 as Vaddr),
         72 => fcntl(
             arg1 as FileDescriptor,
-            FcntlCommand::from_i32(arg2 as i32)
-                .ok_or(Errno::EINVAL.with_message("Invalid command."))?,
-            arg3 as u32,
+            FcntlCmd::try_from(arg2 as i32)
+                .map_err(|_| Errno::EINVAL.with_message("Invalid command."))?,
+            arg3 as u64,
         ),
         79 => getcwd(arg1 as Vaddr, arg2),
         80 => chdir(arg1 as Vaddr),

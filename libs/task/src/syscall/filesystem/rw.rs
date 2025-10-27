@@ -26,8 +26,7 @@ pub fn read(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             *offset += len as u64;
 
             Ok(len as isize)
-        })
-        .ok_or(Errno::EBADFD.no_message())?
+        })?
 }
 
 pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
@@ -47,8 +46,7 @@ pub fn write(fd: FileDescriptor, address: Vaddr, len: usize) -> SyscallResult {
             *offset += len as u64;
 
             Ok(len as isize)
-        })
-        .ok_or(Errno::EBADFD.no_message())?
+        })?
 }
 
 #[derive(Default, Clone, Copy, Pod)]
@@ -89,8 +87,7 @@ pub fn readv(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRes
             }
 
             Ok(total_len as isize)
-        })
-        .ok_or(Errno::ENOENT.no_message())?
+        })?
 }
 
 pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallResult {
@@ -124,8 +121,7 @@ pub fn writev(fd: FileDescriptor, iov_address: Vaddr, count: usize) -> SyscallRe
             }
 
             Ok(total_len as isize)
-        })
-        .ok_or(Errno::ENOENT.no_message())?
+        })?
 }
 
 pub fn pread64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> SyscallResult {
@@ -144,8 +140,7 @@ pub fn pread64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> S
             data.memory_info().vmar().write(address, &buf)?;
 
             Ok(len as isize)
-        })
-        .ok_or(Errno::EBADFD.no_message())?
+        })?
 }
 
 pub fn pwrite64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> SyscallResult {
@@ -164,6 +159,5 @@ pub fn pwrite64(fd: FileDescriptor, address: Vaddr, len: usize, offset: u64) -> 
             let len = file.write_at(offset, &buf)?;
 
             Ok(len as isize)
-        })
-        .ok_or(Errno::EBADFD.no_message())?
+        })?
 }

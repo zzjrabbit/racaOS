@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicBool, Ordering};
+
 use alloc::sync::Arc;
 use errors::{Errno, Result};
 use ostd::sync::{Waiter, Waker};
@@ -13,9 +15,17 @@ impl UserThreadData {
         let (waiter, waker) = Waiter::new_pair();
 
         self.set_signalled_waker(waker.clone());
-        waker_fn(waker);
-        waiter.wait();
+        waker_fn(waker.clone());
 
-        cond().ok_or(Errno::EINTR.with_message("Interrupted by signal."))
+        let first = AtomicBool::new(true);
+        let res = waiter.wait_until_or_cancelled(&cond, || {
+            if !first.swap(false, Ordering::SeqCst) {
+                Err(Errno::EINTR.no_message())
+            } else {
+                Ok(())
+            }
+        });
+        log::debug!("waiting done");
+        res
     }
 }

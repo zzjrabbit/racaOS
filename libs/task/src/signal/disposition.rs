@@ -26,7 +26,7 @@ impl SignalDisposition {
     }
 
     pub fn set(&mut self, signal: Signal, action: SignalAction) -> SignalAction {
-        log::debug!("Setting action {:?} for signal {}!", action, signal);
+        log::debug!("Setting action {:?} for signal{}!", action, signal);
         let id = Self::signal_to_id(signal);
         core::mem::replace(&mut self.map[id], action)
     }

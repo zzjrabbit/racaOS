@@ -55,7 +55,7 @@ impl<E: Event, F: EventFilter<E>> Subject<E, F> {
         let mut observers = self.observers.lock();
         observers.retain(|observer, filter| {
             if let Some(observer) = observer.0.upgrade() {
-                if filter.filter(event) {
+                if filter.filter(&event) {
                     active_observers.push(observer.clone());
                 }
                 true

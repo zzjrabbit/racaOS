@@ -1,9 +1,13 @@
 use alloc::{string::String, sync::Arc};
 use bitflags::bitflags;
 use errors::{Errno, Result};
-use ostd::mm::Vaddr;
+use memory::Vmar;
+use ostd::{
+    mm::Vaddr,
+    sync::{RwArc, Waker},
+};
 
-use crate::{FileSystem, FileType, Metadata};
+use crate::{FileSystem, FileType, IoEvent, IoctlCmd, Metadata};
 
 pub type InodeData = Arc<dyn InodeOperation>;
 
@@ -42,10 +46,12 @@ pub trait InodeOperation: Sync + Send + 'static {
         None
     }
 
-    fn ioctl(&self, _cmd: u32, _arg: Vaddr) -> Result<usize> {
+    fn ioctl(&self, _vmar: Arc<Vmar>, _cmd: IoctlCmd, _arg: Vaddr) -> Result<usize> {
         log::warn!("This inode does not support ioctl.");
         Err(Errno::EACCES.no_message())
     }
+
+    fn register_waker(&self, _required: IoEvent, _event: RwArc<IoEvent>, _waker: Arc<Waker>) {}
 
     fn inode_id(&self) -> u64;
     fn file_system(&self) -> Arc<dyn FileSystem>;

@@ -1,6 +1,7 @@
 use core::sync::atomic::{AtomicI32, Ordering};
 
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
+use errors::{Errno, Result};
 use spin::RwLock;
 
 use filesystem::{AccessMode, File, FileDescriptor, OpenFlags};
@@ -63,6 +64,33 @@ impl FileSystemInfo {
         self.fd_table.write().remove(&descriptor).map(|_| ())
     }
 
+    pub fn duplicate(
+        &self,
+        descriptor: FileDescriptor,
+        new_descriptor: FileDescriptor,
+        flags: OpenFlags,
+    ) -> Result<FileDescriptor> {
+        let mut fd_table = self.fd_table.write();
+
+        let description = fd_table
+            .get(&descriptor)
+            .ok_or(Errno::ENOENT.no_message())?
+            .clone();
+
+        let fd = if let None = fd_table.get(&new_descriptor) {
+            new_descriptor
+        } else {
+            self.next_fd.fetch_add(1, Ordering::SeqCst)
+        };
+
+        fd_table.insert(
+            fd,
+            (description.0, description.1, flags, description.3.clone()),
+        );
+
+        Ok(fd)
+    }
+
     pub fn close_on_execve(&self) {
         self.fd_table
             .write()
@@ -73,19 +101,43 @@ impl FileSystemInfo {
         &self,
         descriptor: FileDescriptor,
         f: impl Fn(u64, AccessMode, OpenFlags, Arc<File>) -> R,
-    ) -> Option<R> {
+    ) -> Result<R> {
         let fd_table = self.fd_table.read();
-        let (offset, access_mode, open_flags, file) = fd_table.get(&descriptor)?.clone();
-        Some(f(offset, access_mode, open_flags, file))
+        let (offset, access_mode, open_flags, file) = fd_table
+            .get(&descriptor)
+            .ok_or(Errno::ENOENT.no_message())?;
+        Ok(f(*offset, *access_mode, *open_flags, file.clone()))
     }
 
     pub fn with_file_mut<R>(
         &self,
         descriptor: FileDescriptor,
         f: impl Fn(&mut u64, &mut AccessMode, &mut OpenFlags, Arc<File>) -> R,
-    ) -> Option<R> {
+    ) -> Result<R> {
         let mut fd_table = self.fd_table.write();
-        let (offset, access_mode, open_flags, file) = fd_table.get_mut(&descriptor)?;
-        Some(f(offset, access_mode, open_flags, file.clone()))
+        let (offset, access_mode, open_flags, file) = fd_table
+            .get_mut(&descriptor)
+            .ok_or(Errno::ENOENT.no_message())?;
+        Ok(f(offset, access_mode, open_flags, file.clone()))
+    }
+
+    pub fn with_open_flags_mut<R>(
+        &self,
+        descriptor: FileDescriptor,
+        f: impl Fn(&mut OpenFlags) -> R,
+    ) -> Result<R> {
+        let mut fd_table = self.fd_table.write();
+        let (_, _, open_flags, _) = fd_table
+            .get_mut(&descriptor)
+            .ok_or(Errno::ENOENT.no_message())?;
+        Ok(f(open_flags))
+    }
+
+    pub fn get_open_flags(&self, descriptor: FileDescriptor) -> Result<OpenFlags> {
+        let fd_table = self.fd_table.read();
+        fd_table
+            .get(&descriptor)
+            .map(|(_, _, flags, _)| *flags)
+            .ok_or(Errno::ENOENT.no_message())
     }
 }

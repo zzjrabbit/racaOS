@@ -5,13 +5,13 @@ use core::{
     fmt::{self, Arguments, Write},
     sync::atomic::{AtomicBool, Ordering},
 };
-use filesystem::{Path, init_terminal, open_file};
-use spin::Lazy;
+use filesystem::{IoEvent, Path, init_terminal, open_file};
+use spin::{Lazy, Once};
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
-use os_terminal::{Terminal, font::TrueTypeFont};
+use os_terminal::{DrawTarget, Terminal, font::TrueTypeFont};
 use ostd::{
-    sync::RwLock,
+    sync::{RwArc, RwLock, Waker},
     task::{Task, TaskOptions},
 };
 
@@ -39,6 +39,9 @@ pub fn terminal_init() -> Result<(), ComponentInitError> {
 static TERMINAL_BUFFER: RwLock<VecDeque<Vec<u8>>> = RwLock::new(VecDeque::new());
 static INPUT_BUFFER: RwLock<VecDeque<u8>> = RwLock::new(VecDeque::new());
 static NEED_FLUSH: AtomicBool = AtomicBool::new(false);
+
+static SIZE_IN_CHARS: Once<(usize, usize)> = Once::new();
+static SIZE_IN_PIXELS: Once<(usize, usize)> = Once::new();
 
 pub struct TerminalWriter;
 
@@ -80,21 +83,28 @@ fn terminal_thread() {
         Box::leak(Box::new(data))
     };
 
-    let mut terminal = Terminal::new(Display::default());
+    let display = Display::default();
+
+    SIZE_IN_PIXELS.call_once(|| display.size());
+
+    let mut terminal = Terminal::new(display);
     terminal.set_auto_flush(false);
     terminal.set_crnl_mapping(true);
     terminal.set_scroll_speed(5);
     terminal.set_font_manager(Box::new(TrueTypeFont::new(12.0, data)));
     terminal.set_logger(logger);
 
+    SIZE_IN_CHARS.call_once(|| (terminal.rows(), terminal.columns()));
+
     terminal.set_pty_writer(Box::new(|s: String| {
-        if s.contains("\n") {
-            set_done();
-        }
+        TerminalWriter.write_str(&s).unwrap();
+
         for byte in s.bytes() {
+            if byte == b'\n' {
+                set_done();
+            }
             INPUT_BUFFER.write().push_back(byte);
         }
-        TerminalWriter.write_str(&s).unwrap()
     }));
 
     loop {
