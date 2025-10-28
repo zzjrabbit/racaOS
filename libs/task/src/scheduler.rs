@@ -3,7 +3,7 @@ use ostd::{
     cpu::{CpuId, PinCurrentCpu, num_cpus},
     sync::SpinLock,
     task::{
-        Task, disable_preempt, inject_post_schedule_handler,
+        Task, disable_preempt, inject_post_schedule_handler, inject_pre_schedule_handler,
         scheduler::{
             EnqueueFlags, LocalRunQueue, Scheduler, UpdateFlags, info::CommonSchedInfo,
             inject_scheduler,
@@ -11,17 +11,28 @@ use ostd::{
     },
 };
 
-use crate::AsThread;
+use crate::{AsThread, UserThreadData};
+
+fn pre_schedule_handler() {
+    let Some(task) = Task::current() else {
+        return;
+    };
+    if let Some(data) = task.direct_downcast::<UserThreadData>() {
+        data.fpu().before_schedule();
+    }
+}
 
 fn post_schedule_handler() {
     let task = Task::current().unwrap();
-    if let Some(thread) = task.as_thread() {
-        thread.pre_execute();
+    if let Some(data) = task.direct_downcast::<UserThreadData>() {
+        data.memory_info().vmar().activate();
+        data.fpu().after_schedule();
     }
 }
 
 pub fn init() {
     inject_scheduler(Box::leak(Box::new(FifoScheduler::default())));
+    inject_pre_schedule_handler(pre_schedule_handler);
     inject_post_schedule_handler(post_schedule_handler);
 }
 

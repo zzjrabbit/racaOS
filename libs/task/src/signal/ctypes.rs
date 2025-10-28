@@ -194,6 +194,8 @@ pub struct mcontext_t {
 impl mcontext_t {
     pub fn copy_user_regs_to(&self, context: &mut UserContext);
     pub fn copy_user_regs_from(&mut self, context: &UserContext);
+    pub fn fpu_context_addr(&self) -> Vaddr;
+    pub fn set_fpu_context_addr(&mut self, addr: Vaddr);
 }
 
 #[derive(Clone, Copy, Pod)]
@@ -293,6 +295,7 @@ pub struct SignalContext {
     trap_num: usize,
     old_mask: u64,
     page_fault_addr: usize,
+    fpu_context_addr: Vaddr,
     reserved: [u64; 8],
 }
 
@@ -330,5 +333,13 @@ impl SignalContext {
         copy_gp_regs!(gp_regs, self);
 
         // TODO: Fill exception information in `SigContext`.
+    }
+
+    pub fn fpu_context_addr(&self) -> Vaddr {
+        self.fpu_context_addr
+    }
+
+    pub fn set_fpu_context_addr(&mut self, addr: Vaddr) {
+        self.fpu_context_addr = addr;
     }
 }

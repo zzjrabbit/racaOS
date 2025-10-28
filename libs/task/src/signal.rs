@@ -17,7 +17,11 @@ use errors::{Errno, Result};
 pub use event::*;
 pub use mask::*;
 use memory::Vmar;
-use ostd::{arch::cpu::context::UserContext, mm::Vaddr, user::UserContextApi};
+use ostd::{
+    arch::cpu::context::{FpuContext, UserContext},
+    mm::Vaddr,
+    user::UserContextApi,
+};
 pub use queues::*;
 pub use signal::*;
 pub use stack::*;
@@ -221,6 +225,7 @@ fn handle_user_signal(
         } else {
             context.stack_pointer() as u64
         };
+    log::trace!("stack pointer: {:x}!", stack_pointer);
 
     stack_pointer -= 128;
 
@@ -260,17 +265,31 @@ fn handle_user_signal(
         ucontext.uc_link = 0;
     }
 
+    let fpu_context = data.fpu().clone_context();
+    let fpu_context_bytes = fpu_context.as_bytes();
+    data.fpu().set_context(FpuContext::new());
+
+    let fpu_context_addr = alloc_aligned_in_user_stack(stack_pointer, fpu_context_bytes.len(), 64)?;
     let ucontext_addr = alloc_aligned_in_user_stack(
-        stack_pointer,
+        fpu_context_addr,
         size_of::<ucontext_t>(),
         align_of::<ucontext_t>(),
     )?;
+    ucontext
+        .uc_mcontext
+        .set_fpu_context_addr(fpu_context_addr as _);
+
+    const UC_FP_XSTATE: u64 = 1 << 0;
+    ucontext.uc_flags = UC_FP_XSTATE;
+
+    vmar.write(fpu_context_addr as Vaddr, fpu_context_bytes)?;
 
     vmar.write_val(ucontext_addr as Vaddr, &ucontext)?;
     *signal_context = Some(ucontext_addr as Vaddr);
 
     stack_pointer = ucontext_addr;
     if flags.contains(SignalActionFlags::SA_RESTORER) {
+        log::trace!("signal restorer: {:x}", restorer);
         stack_pointer = write_u64_to_user_stack(&vmar, stack_pointer, restorer as u64)?;
     }
 
