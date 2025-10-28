@@ -1,33 +1,28 @@
-use core::{
-    hint::spin_loop,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::hint::spin_loop;
 
-use alloc::sync::Arc;
+use alloc::{sync::Arc, vec::Vec};
 use errors::Result;
 use filesystem::{CInputFlags, CLocalFlags, COutputFlags, CTermios, IoEvent, Terminal};
-use ostd::sync::{RwArc, WaitQueue, Waker};
+use ostd::sync::{RwArc, RwLock, Waiter, Waker};
 
-use crate::{INPUT_BUFFER, SIZE_IN_CHARS, SIZE_IN_PIXELS, TERMINAL_BUFFER};
+use crate::{INPUT_BUFFER, SIZE_IN_CHARS, SIZE_IN_PIXELS, TERMINAL_BUFFER, wake_up};
 
 pub struct OsTerminal;
 
-static WAIT_QUEUE: WaitQueue = WaitQueue::new();
-static DONE: AtomicBool = AtomicBool::new(false);
+static READ_WAKERS: RwLock<Vec<Arc<Waker>>> = RwLock::new(Vec::new());
 
 pub fn set_done() {
-    DONE.store(true, Ordering::SeqCst);
-    WAIT_QUEUE.wake_all();
+    READ_WAKERS.write().drain(..).for_each(|waker| {
+        waker.wake_up();
+    });
 }
 
 impl Terminal for OsTerminal {
     fn read(&self, buffer: &mut [u8]) -> Result<usize> {
-        log::debug!("reading terminal.");
-
         if INPUT_BUFFER.read().is_empty() {
-            DONE.store(false, Ordering::SeqCst);
-            WAIT_QUEUE.wait_until(|| DONE.load(Ordering::SeqCst).then_some(()));
-            DONE.store(false, Ordering::SeqCst);
+            let (waiter, waker) = Waiter::new_pair();
+            READ_WAKERS.write().push(waker);
+            waiter.wait();
         }
 
         let mut read = 0;
@@ -44,6 +39,7 @@ impl Terminal for OsTerminal {
 
     fn write(&self, buffer: &[u8]) -> Result<usize> {
         TERMINAL_BUFFER.write().push_back(buffer.to_vec());
+        wake_up();
         Ok(buffer.len())
     }
 
@@ -65,7 +61,8 @@ impl Terminal for OsTerminal {
         CTermios {
             c_iflags: CInputFlags::ICRNL | CInputFlags::IXON | CInputFlags::IUTF8,
             c_oflags: COutputFlags::OPOST | COutputFlags::ONLCR,
-            c_lflags: CLocalFlags::ECHOE
+            c_lflags: CLocalFlags::ECHO
+                | CLocalFlags::ECHOE
                 | CLocalFlags::ECHOK
                 | CLocalFlags::IEXTEN
                 | CLocalFlags::ECHOKE
@@ -74,9 +71,8 @@ impl Terminal for OsTerminal {
         }
     }
 
-    fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, waker: Arc<Waker>) {
+    fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, _waker: Arc<Waker>) {
         event.write().insert(required);
-        waker.wake_up();
         return;
     }
 }

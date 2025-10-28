@@ -1,17 +1,14 @@
 #![no_std]
 
 use component::{ComponentInitError, init_component};
-use core::{
-    fmt::{self, Arguments, Write},
-    sync::atomic::{AtomicBool, Ordering},
-};
-use filesystem::{IoEvent, Path, init_terminal, open_file};
+use core::fmt::{self, Arguments, Write};
+use filesystem::{Path, init_terminal, open_file};
 use spin::{Lazy, Once};
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
 use os_terminal::{DrawTarget, Terminal, font::TrueTypeFont};
 use ostd::{
-    sync::{RwArc, RwLock, Waker},
+    sync::{RwLock, WaitQueue},
     task::{Task, TaskOptions},
 };
 
@@ -36,9 +33,13 @@ pub fn terminal_init() -> Result<(), ComponentInitError> {
     Ok(())
 }
 
+fn wake_up() {
+    WAIT_QUEUE.wake_all();
+}
+
 static TERMINAL_BUFFER: RwLock<VecDeque<Vec<u8>>> = RwLock::new(VecDeque::new());
 static INPUT_BUFFER: RwLock<VecDeque<u8>> = RwLock::new(VecDeque::new());
-static NEED_FLUSH: AtomicBool = AtomicBool::new(false);
+static WAIT_QUEUE: WaitQueue = WaitQueue::new();
 
 static SIZE_IN_CHARS: Once<(usize, usize)> = Once::new();
 static SIZE_IN_PIXELS: Once<(usize, usize)> = Once::new();
@@ -55,18 +56,12 @@ impl Write for TerminalWriter {
 fn terminal_flush(terminal: &mut Terminal<Display>) {
     while let Some(s) = TERMINAL_BUFFER.write().pop_front() {
         terminal.process(&s);
-        NEED_FLUSH.store(true, Ordering::Relaxed);
-    }
-
-    if NEED_FLUSH.swap(false, Ordering::Relaxed) {
-        terminal.flush();
     }
 }
 
 fn terminal_event(terminal: &mut Terminal<Display>) {
     while let Some(scancode) = SCANCODE_QUEUE.pop() {
         terminal.handle_keyboard(scancode);
-        NEED_FLUSH.store(true, Ordering::Relaxed);
     }
 }
 
@@ -97,20 +92,17 @@ fn terminal_thread() {
     SIZE_IN_CHARS.call_once(|| (terminal.rows(), terminal.columns()));
 
     terminal.set_pty_writer(Box::new(|s: String| {
-        TerminalWriter.write_str(&s).unwrap();
-
         for byte in s.bytes() {
-            if byte == b'\n' {
-                set_done();
-            }
             INPUT_BUFFER.write().push_back(byte);
         }
+        set_done();
     }));
 
     loop {
+        terminal.flush();
         terminal_event(&mut terminal);
         terminal_flush(&mut terminal);
-        Task::yield_now();
+        WAIT_QUEUE.wait_until(|| Some(()));
     }
 }
 

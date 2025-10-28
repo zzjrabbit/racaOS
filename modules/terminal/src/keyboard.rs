@@ -10,6 +10,8 @@ use ostd::{
 };
 use spin::{Lazy, Once};
 
+use crate::wake_up;
+
 static IRQ_LINE: Once<MappedIrqLine> = Once::new();
 static IO_PORT: Lazy<IoPort<u8, ReadWriteAccess>> = Lazy::new(|| IoPort::acquire(0x60).unwrap());
 pub static SCANCODE_QUEUE: Lazy<ArrayQueue<u8>> = Lazy::new(|| ArrayQueue::new(128));
@@ -29,4 +31,6 @@ fn keyboard_callback(_frame: &TrapFrame) {
     if SCANCODE_QUEUE.push(scan_code).is_err() {
         log::warn!("Scan code queue full. Dropping data.");
     }
+
+    wake_up();
 }

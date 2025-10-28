@@ -25,7 +25,7 @@ impl UserThreadData {
                 Ok(())
             }
         });
-        log::debug!("waiting done");
+
         res
     }
 }
