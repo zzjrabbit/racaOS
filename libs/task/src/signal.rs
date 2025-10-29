@@ -20,13 +20,14 @@ use memory::Vmar;
 use ostd::{
     arch::cpu::context::{FpuContext, UserContext},
     mm::Vaddr,
+    task::Task,
     user::UserContextApi,
 };
 pub use queues::*;
 pub use signal::*;
 pub use stack::*;
 
-use crate::{Process, UserThreadData};
+use crate::{AsThreadLocal, Process, UserThreadData};
 
 pub(crate) fn set_new_stack(data: &UserThreadData, stack: stack_t, sp: usize) -> Result<()> {
     fn check_new_ss_flags(ss_flags: u32) -> Result<SignalStackFlags> {
@@ -265,9 +266,11 @@ fn handle_user_signal(
         ucontext.uc_link = 0;
     }
 
-    let fpu_context = data.fpu().clone_context();
+    let current = Task::current().unwrap();
+    let thread_local = current.as_thread_local().unwrap();
+    let fpu_context = thread_local.fpu().clone_context();
     let fpu_context_bytes = fpu_context.as_bytes();
-    data.fpu().set_context(FpuContext::new());
+    thread_local.fpu().set_context(FpuContext::new());
 
     let fpu_context_addr = alloc_aligned_in_user_stack(stack_pointer, fpu_context_bytes.len(), 64)?;
     let ucontext_addr = alloc_aligned_in_user_stack(

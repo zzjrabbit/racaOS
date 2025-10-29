@@ -11,14 +11,14 @@ use ostd::{
     },
 };
 
-use crate::{AsThread, UserThreadData};
+use crate::{AsThread, AsThreadLocal, UserThreadData};
 
 fn pre_schedule_handler() {
     let Some(task) = Task::current() else {
         return;
     };
-    if let Some(data) = task.direct_downcast::<UserThreadData>() {
-        data.fpu().before_schedule();
+    if let Some(thread_local) = task.as_thread_local() {
+        thread_local.fpu().before_schedule();
     }
 }
 
@@ -26,7 +26,9 @@ fn post_schedule_handler() {
     let task = Task::current().unwrap();
     if let Some(data) = task.direct_downcast::<UserThreadData>() {
         data.memory_info().vmar().activate();
-        data.fpu().after_schedule();
+    }
+    if let Some(thread_local) = task.as_thread_local() {
+        thread_local.fpu().after_schedule();
     }
 }
 

@@ -1,6 +1,6 @@
 use ostd::arch::cpu::context::FpuContext;
 
-use crate::UserThreadData;
+use crate::ThreadLocal;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub(super) enum FpuState {
@@ -10,63 +10,64 @@ pub(super) enum FpuState {
     Unloaded,
 }
 
-pub struct Fpu<'a>(&'a UserThreadData);
+pub struct Fpu<'a>(&'a ThreadLocal);
 
 impl<'a> Fpu<'a> {
-    pub(super) fn new(data: &'a UserThreadData) -> Self {
+    pub(super) fn new(data: &'a ThreadLocal) -> Self {
         Fpu(data)
     }
 }
 
 impl<'a> Fpu<'a> {
     pub fn activate(&self) {
-        match *self.0.fpu_state.read() {
+        match *self.0.fpu_state().borrow() {
             FpuState::Activated => return,
             FpuState::Loaded => {}
-            FpuState::Unloaded => self.0.fpu_context.write().load(),
+            FpuState::Unloaded => self.0.fpu_context().borrow_mut().load(),
         }
-        *self.0.fpu_state.write() = FpuState::Activated;
+        self.0.fpu_state().replace(FpuState::Activated);
     }
 
     pub fn deactivate(&self) {
-        let mut fpu_state = self.0.fpu_state.write();
+        let mut fpu_state = self.0.fpu_state().borrow_mut();
         if matches!(*fpu_state, FpuState::Activated) {
             *fpu_state = FpuState::Loaded;
         }
     }
 
     pub fn clone_context(&self) -> FpuContext {
-        match *self.0.fpu_state.read() {
+        match *self.0.fpu_state().borrow() {
             FpuState::Activated | FpuState::Loaded => {
-                let mut fpu_context = self.0.fpu_context.write();
+                let mut fpu_context = self.0.fpu_context().borrow_mut();
                 fpu_context.save();
                 fpu_context.clone()
             }
-            FpuState::Unloaded => self.0.fpu_context.read().clone(),
+            FpuState::Unloaded => self.0.fpu_context().borrow().clone(),
         }
     }
 
     pub fn set_context(&self, context: FpuContext) {
-        *self.0.fpu_context.write() = context;
-        *self.0.fpu_state.write() = FpuState::Unloaded;
+        *self.0.fpu_context().borrow_mut() = context;
+        *self.0.fpu_state().borrow_mut() = FpuState::Unloaded;
     }
 
     pub fn before_schedule(&self) {
-        match *self.0.fpu_state.read() {
+        let fpu_state = *self.0.fpu_state().borrow();
+        match fpu_state {
             FpuState::Activated => {
-                self.0.fpu_context.write().save();
+                self.0.fpu_context().borrow_mut().save();
             }
             FpuState::Loaded => {
-                self.0.fpu_context.write().save();
-                *self.0.fpu_state.write() = FpuState::Unloaded;
+                self.0.fpu_context().borrow_mut().save();
+                *self.0.fpu_state().borrow_mut() = FpuState::Unloaded;
             }
             FpuState::Unloaded => {}
         }
     }
 
     pub fn after_schedule(&self) {
-        if matches!(*self.0.fpu_state.read(), FpuState::Activated) {
-            self.0.fpu_context.write().load();
+        if matches!(*self.0.fpu_state().borrow(), FpuState::Activated) {
+            self.0.fpu_context().borrow_mut().load();
         }
     }
 }

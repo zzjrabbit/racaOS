@@ -8,10 +8,10 @@ use alloc::{
 };
 use events::Observer;
 use ostd::{
-    arch::cpu::context::{CpuException, FpuContext, UserContext},
+    arch::cpu::context::{CpuException, UserContext},
     mm::Vaddr,
     sync::{RwLock, SpinLock, Waker},
-    task::{Task, TaskOptions},
+    task::{Task, TaskOptions, disable_preempt},
     user::{ReturnReason, UserMode},
 };
 
@@ -31,11 +31,13 @@ use {
 mod filesystem;
 mod fpu;
 mod fs_resolver;
+mod local;
 mod wait;
 
 pub use filesystem::*;
 pub use fpu::*;
 pub use fs_resolver::*;
+pub use local::*;
 
 static THREADS: RwLock<Vec<Arc<Task>>> = RwLock::new(Vec::new());
 
@@ -69,6 +71,7 @@ pub fn spawn_user_thread(
         let current = Task::current().unwrap();
         let data = current.direct_downcast::<UserThreadData>().unwrap();
         data.memory_info().vmar().activate();
+        let thread_local = current.as_thread_local().unwrap();
 
         let mut user_mode = UserMode::new(user_context);
         user_mode.context().activate_tls_pointer();
@@ -80,9 +83,15 @@ pub fn spawn_user_thread(
 
             data.memory_info().vmar().activate();
 
-            data.fpu().activate();
+            {
+                let _guard = disable_preempt();
+                thread_local.fpu().activate();
+            }
             let return_reason = user_mode.execute(|| false);
-            //data.fpu().deactivate();
+            {
+                let _guard = disable_preempt();
+                thread_local.fpu().deactivate();
+            }
 
             let mut pre_syscall_ret = None;
             match return_reason {
@@ -149,6 +158,7 @@ pub fn spawn_user_thread(
 
         TaskOptions::new(user_entry)
             .data(Arc::new(thread))
+            .local_data(ThreadLocal::new())
             .build()
             .unwrap()
     });
@@ -173,9 +183,6 @@ pub struct UserThreadData {
     signalled_waker: SpinLock<Option<Arc<Waker>>>,
     signal_context: RwLock<Option<Vaddr>>,
     signal_stack: RwLock<SignalStack>,
-
-    fpu_context: RwLock<FpuContext>,
-    fpu_state: RwLock<FpuState>,
 }
 
 static TID: AtomicUsize = AtomicUsize::new(0);
@@ -200,8 +207,6 @@ impl UserThreadData {
             signalled_waker: SpinLock::new(None),
             signal_context: RwLock::new(None),
             signal_stack: RwLock::new(SignalStack::default()),
-            fpu_context: RwLock::new(FpuContext::default()),
-            fpu_state: RwLock::new(FpuState::default()),
         }
     }
 
@@ -224,8 +229,6 @@ impl UserThreadData {
             signalled_waker: SpinLock::new(None),
             signal_context: RwLock::new(None),
             signal_stack: RwLock::new(SignalStack::default()),
-            fpu_context: RwLock::new(FpuContext::default()),
-            fpu_state: RwLock::new(FpuState::default()),
         }
     }
 }
@@ -356,11 +359,5 @@ impl UserThreadData {
 
     pub fn clone_fs_resolver(&self) -> FsResolver {
         self.fs_resolver.read().clone()
-    }
-}
-
-impl UserThreadData {
-    pub fn fpu(&self) -> Fpu {
-        Fpu::new(self)
     }
 }
