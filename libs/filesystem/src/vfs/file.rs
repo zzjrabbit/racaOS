@@ -5,13 +5,10 @@ use alloc::{
 };
 use errors::Result;
 use memory::Vmar;
-use ostd::{
-    mm::Vaddr,
-    sync::{RwArc, Waker},
-};
+use ostd::mm::Vaddr;
 use spin::RwLock;
 
-use crate::{InodeData, InodeOperation, IoEvent, IoctlCmd, Metadata, Path};
+use crate::{InodeData, InodeOperation, IoctlCmd, Metadata, Path, Poller};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -238,11 +235,11 @@ impl File {
         }
     }
 
-    pub fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, waker: Arc<Waker>) {
+    pub fn register_poller(&self, poller: Arc<Poller>) {
         if let Some(mount) = self.mount.read().as_ref() {
-            mount.register_waker(required, event, waker)
+            mount.register_poller(poller)
         } else {
-            self.data.register_waker(required, event, waker)
+            self.data.register_poller(poller)
         }
     }
 

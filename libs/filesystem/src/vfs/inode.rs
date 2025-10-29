@@ -2,12 +2,9 @@ use alloc::{string::String, sync::Arc};
 use bitflags::bitflags;
 use errors::{Errno, Result};
 use memory::Vmar;
-use ostd::{
-    mm::Vaddr,
-    sync::{RwArc, Waker},
-};
+use ostd::mm::Vaddr;
 
-use crate::{FileSystem, FileType, IoEvent, IoctlCmd, Metadata};
+use crate::{FileSystem, FileType, IoctlCmd, Metadata, Poller};
 
 pub type InodeData = Arc<dyn InodeOperation>;
 
@@ -51,7 +48,9 @@ pub trait InodeOperation: Sync + Send + 'static {
         Err(Errno::EACCES.no_message())
     }
 
-    fn register_waker(&self, _required: IoEvent, _event: RwArc<IoEvent>, _waker: Arc<Waker>) {}
+    fn register_poller(&self, poller: Arc<Poller>) {
+        poller.short_path(poller.required());
+    }
 
     fn inode_id(&self) -> u64;
     fn file_system(&self) -> Arc<dyn FileSystem>;

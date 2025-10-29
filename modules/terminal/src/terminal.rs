@@ -2,16 +2,21 @@ use core::hint::spin_loop;
 
 use alloc::{sync::Arc, vec::Vec};
 use errors::Result;
-use filesystem::{CInputFlags, CLocalFlags, COutputFlags, CTermios, IoEvent, Terminal};
-use ostd::sync::{RwArc, RwLock, Waiter, Waker};
+use filesystem::{CInputFlags, CLocalFlags, COutputFlags, CTermios, IoEvent, Pollee, Terminal};
+use ostd::sync::{RwLock, Waiter, Waker};
 
 use crate::{INPUT_BUFFER, SIZE_IN_CHARS, SIZE_IN_PIXELS, TERMINAL_BUFFER, wake_up};
 
 pub struct OsTerminal;
 
 static READ_WAKERS: RwLock<Vec<Arc<Waker>>> = RwLock::new(Vec::new());
+static POLLEE: Pollee = Pollee::new();
 
-pub fn set_done() {
+pub fn on_read() {
+    POLLEE.update_event(|event| *event |= IoEvent::IN);
+}
+
+pub fn on_newline() {
     READ_WAKERS.write().drain(..).for_each(|waker| {
         waker.wake_up();
     });
@@ -34,6 +39,11 @@ impl Terminal for OsTerminal {
             buffer[read] = input_buffer.pop_front().unwrap();
             read += 1;
         }
+
+        if input_buffer.is_empty() {
+            POLLEE.update_event(|event| event.remove(IoEvent::IN));
+        }
+
         Ok(read)
     }
 
@@ -71,8 +81,7 @@ impl Terminal for OsTerminal {
         }
     }
 
-    fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, _waker: Arc<Waker>) {
-        event.write().insert(required);
-        return;
+    fn register_poller(&self, poller: Arc<filesystem::Poller>) {
+        POLLEE.register_poller(poller);
     }
 }

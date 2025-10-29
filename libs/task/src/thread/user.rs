@@ -66,29 +66,23 @@ pub fn spawn_user_thread(
     user_data: Option<UserThreadData>,
 ) -> Arc<Task> {
     let user_entry = || {
-        {
-            let current = Task::current().unwrap();
-            let data = current.direct_downcast::<UserThreadData>().unwrap();
-            data.memory_info().vmar().activate();
-        }
+        let current = Task::current().unwrap();
+        let data = current.direct_downcast::<UserThreadData>().unwrap();
+        data.memory_info().vmar().activate();
 
         let mut user_mode = UserMode::new(user_context);
         user_mode.context().activate_tls_pointer();
 
         loop {
-            {
-                let current = Task::current().unwrap();
-                let data = current.as_thread().unwrap();
-
-                if data.is_dead() {
-                    break;
-                }
-
-                let data = current.direct_downcast::<UserThreadData>().unwrap();
-                data.memory_info().vmar().activate();
+            if current.as_thread().unwrap().is_dead() {
+                break;
             }
 
+            data.memory_info().vmar().activate();
+
+            data.fpu().activate();
             let return_reason = user_mode.execute(|| false);
+            //data.fpu().deactivate();
 
             let mut pre_syscall_ret = None;
             match return_reason {

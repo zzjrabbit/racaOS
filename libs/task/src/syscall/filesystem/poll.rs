@@ -1,6 +1,7 @@
-use alloc::vec::Vec;
-use filesystem::{FileDescriptor, IoEvent};
-use ostd::{Pod, mm::Vaddr, sync::RwArc, task::Task};
+use alloc::{sync::Arc, vec::Vec};
+use filesystem::{IoEvent, Poller};
+use ostd::{Pod, mm::Vaddr, task::Task};
+use spin::RwLock;
 
 use crate::{AsThread, Process, UserThreadData, syscall::SyscallResult};
 
@@ -14,44 +15,44 @@ pub fn poll(fds: Vaddr, nfds: u32, _time_out: i32) -> SyscallResult {
     }
 
     let mut read_addr = fds;
-    let mut poll_fds = Vec::with_capacity(nfds as usize);
+    let pollers = RwLock::new(Vec::<Arc<Poller>>::with_capacity(nfds as usize));
+    let mut c_poll_fds = Vec::with_capacity(nfds as usize);
 
     for _ in 0..nfds {
         let c_poll_fd = vmar.read_val::<CPollFd>(read_addr)?;
-        poll_fds.push(PollFd::from(c_poll_fd));
+        c_poll_fds.push(c_poll_fd);
         read_addr += core::mem::size_of::<CPollFd>();
     }
 
     let result = data.wait_with_waker(
         || {
-            let good = poll_fds
+            let good = pollers
+                .read()
                 .iter()
-                .filter(|poll_fd| poll_fd.revents().get_cloned().contains(poll_fd.events()))
+                .filter(|poller| poller.finished())
                 .count();
             if good == 0 { None } else { Some(good) }
         },
         |waker| {
-            for poll_fd in &poll_fds {
-                if let Some(fd) = poll_fd.fd() {
-                    let _ = data.fs_info().with_file(fd, |_, _, _, file| {
-                        file.register_waker(
-                            poll_fd.events,
-                            poll_fd.revents().clone(),
-                            waker.clone(),
-                        );
-                    });
-                }
+            for c_poll_fd in &c_poll_fds {
+                let poller = Poller::new(
+                    IoEvent::from_bits_truncate(c_poll_fd.events as u32),
+                    waker.clone(),
+                );
+                pollers.write().push(poller.clone());
+                let _ = data.fs_info().with_file(c_poll_fd.fd, |_, _, _, file| {
+                    file.register_poller(poller.clone());
+                });
             }
         },
     )?;
 
     let mut write_addr = fds;
-    for poll_fd in &poll_fds {
-        let c_poll_fd = CPollFd {
-            fd: poll_fd.fd().unwrap_or(-1),
-            events: poll_fd.events().bits() as i16,
-            revents: poll_fd.revents().get_cloned().bits() as i16,
-        };
+    for (poller, c_poll_fd) in pollers.read().iter().zip(c_poll_fds.iter()) {
+        let mut c_poll_fd = *c_poll_fd;
+
+        c_poll_fd.revents = poller.event().bits() as i16;
+
         vmar.write_val(write_addr, &c_poll_fd)?;
         write_addr += core::mem::size_of::<CPollFd>();
     }
@@ -65,55 +66,4 @@ struct CPollFd {
     fd: i32,
     events: i16,
     revents: i16,
-}
-
-#[derive(Clone)]
-pub struct PollFd {
-    fd: Option<FileDescriptor>,
-    events: IoEvent,
-    revents: RwArc<IoEvent>,
-}
-
-impl PollFd {
-    pub fn fd(&self) -> Option<FileDescriptor> {
-        self.fd
-    }
-
-    pub fn events(&self) -> IoEvent {
-        self.events
-    }
-
-    pub fn revents(&self) -> &RwArc<IoEvent> {
-        &self.revents
-    }
-}
-
-impl From<CPollFd> for PollFd {
-    fn from(raw: CPollFd) -> Self {
-        let fd = if raw.fd >= 0 {
-            Some(raw.fd as FileDescriptor)
-        } else {
-            None
-        };
-        let events = IoEvent::from_bits_truncate(raw.events as _);
-        let revents = RwArc::new(IoEvent::empty());
-        Self {
-            fd,
-            events,
-            revents,
-        }
-    }
-}
-
-impl From<PollFd> for CPollFd {
-    fn from(raw: PollFd) -> Self {
-        let fd = raw.fd().unwrap_or(-1);
-        let events = raw.events().bits() as i16;
-        let revents = raw.revents().get_cloned().bits() as i16;
-        Self {
-            fd,
-            events,
-            revents,
-        }
-    }
 }

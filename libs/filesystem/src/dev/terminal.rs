@@ -3,14 +3,10 @@ use bitflags::bitflags;
 use errors::{Errno, Result};
 use int_to_c_enum::TryFromInt;
 use memory::Vmar;
-use ostd::{
-    Pod,
-    mm::Vaddr,
-    sync::{RwArc, Waker},
-};
+use ostd::{Pod, mm::Vaddr};
 use spin::Once;
 
-use crate::{InodeOperation, IoEvent, IoctlCmd, Metadata, dev::fs::DevFs, vfs::InodeMode};
+use crate::{InodeOperation, IoctlCmd, Metadata, dev::fs::DevFs, vfs::InodeMode};
 
 static TERMINAL: Once<Arc<dyn Terminal>> = Once::new();
 
@@ -56,11 +52,8 @@ impl InodeOperation for TerminalInode {
         Metadata::new(InodeMode::full())
     }
 
-    fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, waker: Arc<Waker>) {
-        TERMINAL
-            .get()
-            .unwrap()
-            .register_waker(required, event, waker);
+    fn register_poller(&self, poller: Arc<crate::Poller>) {
+        TERMINAL.get().unwrap().register_poller(poller)
     }
 
     fn ioctl(&self, vmar: Arc<Vmar>, cmd: IoctlCmd, arg: Vaddr) -> Result<usize> {
@@ -111,7 +104,7 @@ pub trait Terminal: Sync + Send {
     fn size_in_pixels(&self) -> (usize, usize);
     fn termios(&self) -> CTermios;
 
-    fn register_waker(&self, required: IoEvent, event: RwArc<IoEvent>, waker: Arc<Waker>);
+    fn register_poller(&self, poller: Arc<crate::Poller>);
 }
 
 type CCtrlChar = u8;

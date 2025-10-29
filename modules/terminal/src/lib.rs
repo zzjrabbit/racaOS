@@ -15,7 +15,7 @@ use ostd::{
 use crate::{
     display::Display,
     keyboard::SCANCODE_QUEUE,
-    terminal::{OsTerminal, set_done},
+    terminal::{OsTerminal, on_newline, on_read},
 };
 
 extern crate alloc;
@@ -92,10 +92,17 @@ fn terminal_thread() {
     SIZE_IN_CHARS.call_once(|| (terminal.rows(), terminal.columns()));
 
     terminal.set_pty_writer(Box::new(|s: String| {
+        let mut new_line = false;
         for byte in s.bytes() {
             INPUT_BUFFER.write().push_back(byte);
+            if byte == b'\n' {
+                new_line = true;
+            }
         }
-        set_done();
+        if new_line {
+            on_newline();
+        }
+        on_read();
     }));
 
     loop {

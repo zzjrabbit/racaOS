@@ -10,7 +10,7 @@ impl UserThreadData {
     pub fn wait_with_waker<R>(
         &self,
         cond: impl Fn() -> Option<R>,
-        waker_fn: impl Fn(Arc<Waker>),
+        mut waker_fn: impl FnMut(Arc<Waker>),
     ) -> Result<R> {
         let (waiter, waker) = Waiter::new_pair();
 
