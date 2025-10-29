@@ -95,6 +95,7 @@ pub fn syscall_handler(context: &mut UserContext) {
         80 => chdir(arg1 as Vaddr),
         81 => fchdir(arg1 as FileDescriptor),
         102 => getuid(),
+        107 => geteuid(),
         110 => getppid(),
         158 => arch_prctl(ArchPrctlOptions::try_from(arg1)?, arg2, context),
         161 => chroot(arg1 as Vaddr),

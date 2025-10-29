@@ -200,3 +200,7 @@ pub fn getppid() -> SyscallResult {
     let process = Process::current();
     Ok(process.parent().unwrap().id() as isize)
 }
+
+pub fn geteuid() -> SyscallResult {
+    Ok(u32::from(Uid::new_root()) as isize)
+}

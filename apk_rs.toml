@@ -25,5 +25,9 @@ source = "out.txt"
 dest = "input.txt"
 
 [[files]]
+source = "assets/passwd"
+dest = "etc/passwd"
+
+[[files]]
 source = "assets/SourceCodePro.otf"
 dest = "SourceCodePro.otf"
