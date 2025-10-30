@@ -91,6 +91,12 @@ impl InodeOperation for TerminalInode {
 
                 Ok(0)
             }
+            IoctlCmd::TCSETS => {
+                let termios = vmar.read_val::<CTermios>(arg)?;
+                terminal.set_termios(&termios);
+
+                Ok(0)
+            }
             _ => Err(Errno::EINVAL.no_message()),
         }
     }
@@ -102,7 +108,9 @@ pub trait Terminal: Sync + Send {
 
     fn size_in_chars(&self) -> (usize, usize);
     fn size_in_pixels(&self) -> (usize, usize);
+
     fn termios(&self) -> CTermios;
+    fn set_termios(&self, termios: &CTermios);
 
     fn register_poller(&self, poller: Arc<crate::Poller>);
 }

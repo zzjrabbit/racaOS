@@ -6,11 +6,10 @@ mod zero;
 use alloc::sync::Arc;
 use spin::Lazy;
 
-use crate::{ROOT_FS, dev::fs::DevFs};
+use crate::{File, ROOT_FS, dev::fs::DevFs};
 
 static DEV_FS: Lazy<Arc<DevFs>> = Lazy::new(|| DevFs::new());
-
-pub fn init() {
+static DEV_DIR: Lazy<Arc<File>> = Lazy::new(|| {
     let root_fs = ROOT_FS.clone();
     let dev_fs = root_fs
         .create("dev".into(), super::FileType::Directory)
@@ -33,4 +32,14 @@ pub fn init() {
     null_device.mount(null);
     zero_device.mount(zero);
     terminal_device.mount(terminal);
+    
+    dev_fs
+});
+
+pub fn init() {
+    Lazy::force(&DEV_DIR);
+}
+
+pub fn dev_dir() -> Arc<File> {
+    DEV_DIR.clone()
 }

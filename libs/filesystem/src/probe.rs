@@ -4,7 +4,7 @@ use alloc::{format, string::String, sync::Arc, vec::Vec};
 use errors::{Errno, Result};
 use spin::RwLock;
 
-use crate::{File, FileType, InodeOperation, Path, open_file, part::parse_partitions};
+use crate::{File, FileType, InodeOperation, Path, dev::dev_dir, open_file, part::parse_partitions};
 
 type FileSystemProbe = fn(Arc<File>) -> Result<Arc<File>>;
 
@@ -30,6 +30,11 @@ pub fn add_block_device(
             let root = open_file(&Path::from("/")).unwrap();
             let part_dir = root.create(format!("part{}", id), FileType::File).unwrap();
             part.mount(part_dir.clone());
+            
+            if id == 0 {
+                let target_dev_dir = part_dir.lookup("dev".into()).unwrap();
+                dev_dir().mount(target_dev_dir);
+            }
         }
     };
 

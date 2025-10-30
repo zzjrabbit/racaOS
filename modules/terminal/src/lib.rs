@@ -2,7 +2,9 @@
 
 use component::{ComponentInitError, init_component};
 use core::fmt::{self, Arguments, Write};
-use filesystem::{Path, init_terminal, open_file};
+use filesystem::{
+    CInputFlags, CLocalFlags, COutputFlags, CTermios, Path, init_terminal, open_file,
+};
 use spin::{Lazy, Once};
 
 use alloc::{boxed::Box, collections::vec_deque::VecDeque, string::String, sync::Arc, vec::Vec};
@@ -43,6 +45,20 @@ static WAIT_QUEUE: WaitQueue = WaitQueue::new();
 
 static SIZE_IN_CHARS: Once<(usize, usize)> = Once::new();
 static SIZE_IN_PIXELS: Once<(usize, usize)> = Once::new();
+
+static TERMIOS: Lazy<RwLock<CTermios>> = Lazy::new(|| {
+    RwLock::new(CTermios {
+        c_iflags: CInputFlags::ICRNL | CInputFlags::IXON | CInputFlags::IUTF8,
+        c_oflags: COutputFlags::OPOST | COutputFlags::ONLCR,
+        c_lflags: CLocalFlags::ECHO
+            | CLocalFlags::ECHOE
+            | CLocalFlags::ECHOK
+            | CLocalFlags::IEXTEN
+            | CLocalFlags::ECHOKE
+            | CLocalFlags::ICANON,
+        ..Default::default()
+    })
+});
 
 pub struct TerminalWriter;
 
@@ -92,6 +108,10 @@ fn terminal_thread() {
     SIZE_IN_CHARS.call_once(|| (terminal.rows(), terminal.columns()));
 
     terminal.set_pty_writer(Box::new(|s: String| {
+        if TERMIOS.read().c_lflags.contains(CLocalFlags::ECHO) {
+            let _ = TerminalWriter.write_str(&s);
+        }
+
         let mut new_line = false;
         for byte in s.bytes() {
             INPUT_BUFFER.write().push_back(byte);

@@ -31,3 +31,7 @@ dest = "etc/passwd"
 [[files]]
 source = "assets/SourceCodePro.otf"
 dest = "SourceCodePro.otf"
+
+[[files]]
+source = "assets/keep"
+dest = "dev/keep"

@@ -2,10 +2,10 @@ use core::hint::spin_loop;
 
 use alloc::{sync::Arc, vec::Vec};
 use errors::Result;
-use filesystem::{CInputFlags, CLocalFlags, COutputFlags, CTermios, IoEvent, Pollee, Terminal};
+use filesystem::{CTermios, IoEvent, Pollee, Terminal};
 use ostd::sync::{RwLock, Waiter, Waker};
 
-use crate::{INPUT_BUFFER, SIZE_IN_CHARS, SIZE_IN_PIXELS, TERMINAL_BUFFER, wake_up};
+use crate::{INPUT_BUFFER, SIZE_IN_CHARS, SIZE_IN_PIXELS, TERMINAL_BUFFER, TERMIOS, wake_up};
 
 pub struct OsTerminal;
 
@@ -68,17 +68,11 @@ impl Terminal for OsTerminal {
     }
 
     fn termios(&self) -> CTermios {
-        CTermios {
-            c_iflags: CInputFlags::ICRNL | CInputFlags::IXON | CInputFlags::IUTF8,
-            c_oflags: COutputFlags::OPOST | COutputFlags::ONLCR,
-            c_lflags: CLocalFlags::ECHO
-                | CLocalFlags::ECHOE
-                | CLocalFlags::ECHOK
-                | CLocalFlags::IEXTEN
-                | CLocalFlags::ECHOKE
-                | CLocalFlags::ICANON,
-            ..Default::default()
-        }
+        TERMIOS.read().clone()
+    }
+
+    fn set_termios(&self, termios: &CTermios) {
+        *TERMIOS.write() = *termios;
     }
 
     fn register_poller(&self, poller: Arc<filesystem::Poller>) {
