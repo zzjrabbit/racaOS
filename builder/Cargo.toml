@@ -1,0 +1,20 @@
+[package]
+name = "builder"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+argh = "0.1.13"
+anyhow = "1.0.99"
+ovmf-prebuilt = "0.2.3"
+
+[build-dependencies]
+anyhow = "1.0.99"
+tempfile = "3.21.0"
+gpt = "4.1.0"
+fatfs = "0.3.6"
+
+[build-dependencies.init]
+path = "../init"
+artifact = "bin"
+target = "loongarch64-unknown-none"

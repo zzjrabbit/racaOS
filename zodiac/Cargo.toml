@@ -1,0 +1,16 @@
+[package]
+name = "zodiac"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+loongarch64 = { version = "0.1.0", path = "../loongarch64" }
+acpi = { version = "6.0.1", default-features = false, features = ["aml"] }
+bitflags = "2.10.0"
+limine = "0.5.0"
+log = "0.4.28"
+pastey = "0.2.0"
+spin = "0.10.0"
+zodiac_macro = { version = "0.1.0", path = "../zodiac_macro" }
+bit_field = "0.10.3"
+humansize = "2.1.3"

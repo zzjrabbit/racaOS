@@ -1,0 +1,9 @@
+[package]
+name = "init"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+good_memory_allocator = "0.1.7"
+log = "0.4.28"
+zodiac = { version = "0.1.0", path = "../zodiac" }
