@@ -1,9 +1,7 @@
 use loongarch64::{
     PhysAddr, VirtAddr,
     registers::{PgdHigh, PgdLow, init_pwc},
-    structures::paging::{
-        FrameAllocator, Mapper, OffsetPageTable, Page, PageProperty, PhysFrame, Size4KiB,
-    },
+    structures::paging::{FrameAllocator, Mapper, OffsetPageTable, Page, PageProperty, Size4KiB},
 };
 
 use crate::mem::{FRAME_ALLOCATOR, PHYSICAL_MEMORY_OFFSET, convert_physical_to_virtual};

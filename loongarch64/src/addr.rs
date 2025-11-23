@@ -3,7 +3,11 @@ use core::{
     ops::{Add, AddAssign, Sub, SubAssign},
 };
 
+use bit_field::BitField;
+
 use crate::structures::paging::{PageOffset, PageTableIndex, PageTableLevel};
+
+const ADDRESS_SPACE_SIZE: u64 = 0x1_0000_0000_0000;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -441,6 +445,35 @@ impl VirtAddr {
     #[inline]
     pub const fn page_table_index(self, level: PageTableLevel) -> PageTableIndex {
         PageTableIndex::new_truncate((self.0 >> 12 >> ((level as u8 - 1) * 9)) as u16)
+    }
+
+    #[inline]
+    pub(crate) fn forward_checked_impl(start: Self, count: usize) -> Option<Self> {
+        Self::forward_checked_u64(start, u64::try_from(count).ok()?)
+    }
+
+    /// An implementation of forward_checked that takes u64 instead of usize.
+    #[inline]
+    pub(crate) fn forward_checked_u64(start: Self, count: u64) -> Option<Self> {
+        if count > ADDRESS_SPACE_SIZE {
+            return None;
+        }
+
+        let mut addr = start.0.checked_add(count)?;
+
+        match addr.get_bits(47..) {
+            0x1 => {
+                // Jump the gap by sign extending the 47th bit.
+                addr.set_bits(47.., 0x1ffff);
+            }
+            0x2 => {
+                // Address overflow
+                return None;
+            }
+            _ => {}
+        }
+
+        Some(Self::new(addr))
     }
 }
 
