@@ -9,7 +9,7 @@ Birthday of the first version: 2023-01-28 \
 Birthday of this version: 2025-11-20
 
 The current version is a practical application of the enhanced version of the framekernel. \
-The general idea is to provide a kernel that runs as fast as a macro kernel, as safe as a micro kernel, and as flexible as a microkernel, which unfortunately is not provided by Asterinas. \
+The general idea is to provide a kernel that runs as fast as a macro kernel, as safe as a micro kernel, and as flexible as a micro kernel. \
 Asterinas provides a compile-time extensible kernel with the component system, but it means that you have
 to recompile everything when adding some new features. However, racaOS's kernel module system allows
 you to dynamically load and unload kernel modules without recompiling the entire kernel.
