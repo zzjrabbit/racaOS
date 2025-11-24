@@ -1,17 +1,21 @@
 use limine::request::{HhdmRequest, MemoryMapRequest};
-use loongarch64::{PhysAddr, VirtAddr};
+use loongarch64::registers::init_pwc;
 use spin::{Lazy, Mutex};
 
+pub(crate) use frame::BitmapFrameAllocator;
 pub use heap::Allocator;
-
-use crate::mem::frame::BitmapFrameAllocator;
+pub(crate) use page_table::GeneralPageTable;
+pub use page_table::{CachePolicy, MMUFlags, Page, PageProperty, PageSize, Privilege};
 
 mod frame;
 mod heap;
-mod paging;
+mod page_table;
+
+pub type PhysicalAddress = usize;
+pub type VirtualAddress = usize;
 
 pub(crate) fn init() {
-    paging::init();
+    init_pwc();
     heap::init();
 }
 
@@ -26,15 +30,15 @@ static MEMORY_MAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 static PHYSICAL_MEMORY_OFFSET: Lazy<usize> =
     Lazy::new(|| HHDM_REQUEST.get_response().unwrap().offset() as usize);
 
-static FRAME_ALLOCATOR: Lazy<Mutex<BitmapFrameAllocator>> = Lazy::new(|| {
+pub(crate) static FRAME_ALLOCATOR: Lazy<Mutex<BitmapFrameAllocator>> = Lazy::new(|| {
     let memory_map = MEMORY_MAP_REQUEST.get_response().unwrap();
     Mutex::new(BitmapFrameAllocator::init(memory_map))
 });
 
-pub fn convert_physical_to_virtual(physical_address: PhysAddr) -> VirtAddr {
-    VirtAddr::new((physical_address + *PHYSICAL_MEMORY_OFFSET as u64).as_u64())
+pub fn convert_physical_to_virtual(physical_address: PhysicalAddress) -> VirtualAddress {
+    physical_address + *PHYSICAL_MEMORY_OFFSET
 }
 
-pub fn convert_virtual_to_physical(virtual_address: VirtAddr) -> PhysAddr {
-    PhysAddr::new(virtual_address.as_u64() - *PHYSICAL_MEMORY_OFFSET as u64)
+pub fn convert_virtual_to_physical(virtual_address: VirtualAddress) -> PhysicalAddress {
+    virtual_address - *PHYSICAL_MEMORY_OFFSET
 }

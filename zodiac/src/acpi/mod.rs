@@ -1,9 +1,11 @@
 use acpi::{AcpiError, AcpiTables, aml::Interpreter, platform::AcpiPlatform, sdt::spcr::Spcr};
 use limine::request::RsdpRequest;
-use loongarch64::VirtAddr;
 use spin::lazy::Lazy;
 
-use crate::{acpi::handler::AcpiHandler, mem::convert_virtual_to_physical};
+use crate::{
+    acpi::handler::AcpiHandler,
+    mem::{VirtualAddress, convert_virtual_to_physical},
+};
 
 mod handler;
 
@@ -22,7 +24,7 @@ fn init_acpi() -> Result<Acpi, AcpiError> {
     let response = RSDP_REQUEST.get_response().unwrap();
 
     let platform_info = unsafe {
-        let rsdp_address = VirtAddr::new(response.address() as u64);
+        let rsdp_address = response.address() as VirtualAddress;
         let tables = AcpiTables::from_rsdp(
             AcpiHandler,
             convert_virtual_to_physical(rsdp_address).into(),

@@ -5,7 +5,10 @@ use core::{
 
 use bitflags::bitflags;
 
-use crate::{PhysAddr, PrivilegeLevel, structures::paging::PhysFrame};
+use crate::{
+    PhysAddr, PrivilegeLevel,
+    structures::paging::{PageProperty, PhysFrame},
+};
 
 /// The error returned by the `PageTableEntry::frame` method.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -118,6 +121,25 @@ impl PageTableEntry {
         self.entry = self.entry & !(0b1 << 63) | (restricted as u64) << 63;
     }
 
+    #[inline]
+    pub fn property(&self) -> PageProperty {
+        PageProperty::new()
+            .add_flags(self.flags())
+            .set_privilege(self.privilege())
+            .set_privilege_restriction(self.privilege_restricted())
+    }
+
+    #[inline]
+    pub fn set_property(&mut self, property: PageProperty) {
+        let flags = property.flags();
+        let privilege = property.privilege();
+        let privilege_restriction = property.privilege_restriction();
+
+        self.set_flags(flags);
+        self.set_privilege(privilege);
+        self.set_privilege_restriction(privilege_restriction);
+    }
+
     #[inline(always)]
     const fn physical_address_mask() -> u64 {
         0x000f_ffff_ffff_f000u64
@@ -164,6 +186,7 @@ bitflags! {
         const DIRTY = 1 << 1;
         const HUGE_PAGE = 1 << 6;
         const PRESENT = 1 << 7;
+        /// This flag is useless, set DIRTY to make it writable.
         const WRITABLE = 1 << 8;
 
         const GLOBAL = 1 << 6;

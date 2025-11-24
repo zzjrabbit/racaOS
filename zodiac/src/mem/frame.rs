@@ -9,7 +9,7 @@ use loongarch64::{
     structures::paging::{FrameAllocator, FrameDeallocator, PhysFrame, Size4KiB},
 };
 
-use crate::mem::convert_physical_to_virtual;
+use crate::mem::{PhysicalAddress, convert_physical_to_virtual};
 
 pub struct Bitmap(&'static mut [usize]);
 
@@ -155,10 +155,10 @@ impl BitmapFrameAllocator {
             .expect("No suitable memory region for bitmap");
 
         let bitmap_buffer = unsafe {
-            let physical_address = PhysAddr::new(bitmap_address);
+            let physical_address = bitmap_address as PhysicalAddress;
             let virtual_address = convert_physical_to_virtual(physical_address);
             let bitmap_inner_size = bitmap_size / size_of::<usize>();
-            core::slice::from_raw_parts_mut(virtual_address.as_mut_ptr(), bitmap_inner_size)
+            core::slice::from_raw_parts_mut(virtual_address as *mut usize, bitmap_inner_size)
         };
 
         let mut bitmap = Bitmap::new(bitmap_buffer);

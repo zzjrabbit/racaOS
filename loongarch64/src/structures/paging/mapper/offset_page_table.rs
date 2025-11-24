@@ -3,10 +3,10 @@ use bit_field::BitField;
 use crate::{
     VirtAddr,
     structures::paging::{
-        CleanUp, FlagUpdateError, FrameAllocator, FrameDeallocator, FrameError, MapToError, Mapper,
-        MapperFlush, Page, PageProperty, PageRangeInclusive, PageTable, PageTableEntry,
-        PageTableFlags, PageTableLevel, PhysFrame, Size1GiB, Size2MiB, Size4KiB, TranslateError,
-        UnmapError,
+        CleanUp, FlagUpdateError, FrameAllocator, FrameDeallocator, FrameError, MapToError,
+        MappedFrame, Mapper, MapperFlush, Page, PageProperty, PageRangeInclusive, PageTable,
+        PageTableEntry, PageTableFlags, PageTableLevel, PhysFrame, Size1GiB, Size2MiB, Size4KiB,
+        Translate, TranslateError, TranslateResult, UnmapError,
     },
 };
 
@@ -66,6 +66,21 @@ macro_rules! get_root_page_table {
     };
     (immut $s: expr, $page: expr) => {
         if $page.start_address().as_u64().get_bit(63) {
+            &$s.higher_half
+        } else {
+            &$s.lower_half
+        }
+    };
+
+    ($s: expr, addr $addr: expr) => {
+        if $addr.get_bit(63) {
+            &mut $s.higher_half
+        } else {
+            &mut $s.lower_half
+        }
+    };
+    (immut $s: expr, addr $addr: expr) => {
+        if $addr.as_u64().get_bit(63) {
             &$s.higher_half
         } else {
             &$s.lower_half
@@ -212,10 +227,10 @@ impl<'a> Mapper<Size1GiB> for OffsetPageTable<'a> {
         Ok((frame, MapperFlush::new(page)))
     }
 
-    unsafe fn update_flags(
+    unsafe fn update_property(
         &mut self,
         page: Page<Size1GiB>,
-        flags: PageTableFlags,
+        mut property: PageProperty,
     ) -> Result<MapperFlush<Size1GiB>, FlagUpdateError> {
         let p4 = get_root_page_table!(self, page);
         let p3 = self
@@ -225,7 +240,10 @@ impl<'a> Mapper<Size1GiB> for OffsetPageTable<'a> {
         if p3[page.p3_index()].is_unused() {
             return Err(FlagUpdateError::PageNotMapped);
         }
-        p3[page.p3_index()].set_flags(flags | PageTableFlags::HUGE_PAGE);
+
+        property.add_flags(PageTableFlags::HUGE_PAGE);
+
+        p3[page.p3_index()].set_property(property);
 
         Ok(MapperFlush::new(page))
     }
@@ -289,10 +307,10 @@ impl Mapper<Size2MiB> for OffsetPageTable<'_> {
         Ok((frame, MapperFlush::new(page)))
     }
 
-    unsafe fn update_flags(
+    unsafe fn update_property(
         &mut self,
         page: Page<Size2MiB>,
-        flags: PageTableFlags,
+        mut property: PageProperty,
     ) -> Result<MapperFlush<Size2MiB>, FlagUpdateError> {
         let p4 = get_root_page_table!(self, page);
         let p3 = self
@@ -306,7 +324,9 @@ impl Mapper<Size2MiB> for OffsetPageTable<'_> {
             return Err(FlagUpdateError::PageNotMapped);
         }
 
-        p2[page.p2_index()].set_flags(flags | PageTableFlags::HUGE_PAGE);
+        property.add_flags(PageTableFlags::HUGE_PAGE);
+
+        p2[page.p2_index()].set_property(property);
 
         Ok(MapperFlush::new(page))
     }
@@ -365,10 +385,10 @@ impl Mapper<Size4KiB> for OffsetPageTable<'_> {
         Ok((frame, MapperFlush::new(page)))
     }
 
-    unsafe fn update_flags(
+    unsafe fn update_property(
         &mut self,
         page: Page<Size4KiB>,
-        flags: PageTableFlags,
+        property: PageProperty,
     ) -> Result<MapperFlush<Size4KiB>, FlagUpdateError> {
         let p4 = get_root_page_table!(self, page);
         let p3 = self
@@ -385,7 +405,7 @@ impl Mapper<Size4KiB> for OffsetPageTable<'_> {
             return Err(FlagUpdateError::PageNotMapped);
         }
 
-        p1[page.p1_index()].set_flags(flags);
+        p1[page.p1_index()].set_property(property);
 
         Ok(MapperFlush::new(page))
     }
@@ -475,6 +495,7 @@ impl PageTableWalker {
         Ok(page_table)
     }
 }
+
 impl CleanUp for OffsetPageTable<'_> {
     #[inline]
     unsafe fn clean_up<D>(&mut self, frame_deallocator: &mut D)
@@ -573,6 +594,72 @@ impl CleanUp for OffsetPageTable<'_> {
                 range,
                 frame_deallocator,
             );
+        }
+    }
+}
+
+impl Translate for OffsetPageTable<'_> {
+    #[allow(clippy::inconsistent_digit_grouping)]
+    fn translate(&self, addr: VirtAddr) -> TranslateResult {
+        let p4 = get_root_page_table!(immut self, addr addr);
+        let p3 = match self.page_table_walker.next_table(&p4[addr.p4_index()]) {
+            Ok(page_table) => page_table,
+            Err(PageTableWalkError::NotMapped) => return TranslateResult::NotMapped,
+            Err(PageTableWalkError::MappedToHugePage) => {
+                panic!("level 4 entry has huge page bit set")
+            }
+        };
+        let p2 = match self.page_table_walker.next_table(&p3[addr.p3_index()]) {
+            Ok(page_table) => page_table,
+            Err(PageTableWalkError::NotMapped) => return TranslateResult::NotMapped,
+            Err(PageTableWalkError::MappedToHugePage) => {
+                let entry = &p3[addr.p3_index()];
+                let frame = PhysFrame::containing_address(entry.addr());
+                #[allow(clippy::unusual_byte_groupings)]
+                let offset = addr.as_u64() & 0o_777_777_7777;
+                let property = entry.property();
+
+                return TranslateResult::Mapped {
+                    frame: MappedFrame::Size1GiB(frame),
+                    offset,
+                    property,
+                };
+            }
+        };
+        let p1 = match self.page_table_walker.next_table(&p2[addr.p2_index()]) {
+            Ok(page_table) => page_table,
+            Err(PageTableWalkError::NotMapped) => return TranslateResult::NotMapped,
+            Err(PageTableWalkError::MappedToHugePage) => {
+                let entry = &p2[addr.p2_index()];
+                let frame = PhysFrame::containing_address(entry.addr());
+                #[allow(clippy::unusual_byte_groupings)]
+                let offset = addr.as_u64() & 0o_777_7777;
+                let property = entry.property();
+
+                return TranslateResult::Mapped {
+                    frame: MappedFrame::Size2MiB(frame),
+                    offset,
+                    property,
+                };
+            }
+        };
+
+        let p1_entry = &p1[addr.p1_index()];
+
+        if p1_entry.is_unused() {
+            return TranslateResult::NotMapped;
+        }
+
+        let frame = match PhysFrame::from_start_address(p1_entry.addr()) {
+            Ok(frame) => frame,
+            Err(()) => return TranslateResult::InvalidFrameAddress(p1_entry.addr()),
+        };
+        let offset = u64::from(addr.page_offset());
+        let property = p1_entry.property();
+        TranslateResult::Mapped {
+            frame: MappedFrame::Size4KiB(frame),
+            offset,
+            property,
         }
     }
 }

@@ -1,23 +1,22 @@
 use acpi::aml::AmlError;
 use acpi::{PciAddress, PhysicalMapping};
 use core::ptr::NonNull;
-use loongarch64::PhysAddr;
 
-use crate::mem::convert_physical_to_virtual;
+use crate::mem::{PhysicalAddress, convert_physical_to_virtual};
 
 #[derive(Clone, Copy)]
 pub struct AcpiHandler;
 
 impl AcpiHandler {
     fn read<T>(&self, address: usize) -> T {
-        let address = PhysAddr::from(address);
-        let address: *const T = convert_physical_to_virtual(address).as_ptr();
+        let address = address as PhysicalAddress;
+        let address: *const T = convert_physical_to_virtual(address) as *const T;
         unsafe { address.read_volatile() }
     }
 
     fn write<T>(&self, address: usize, value: T) {
-        let address = PhysAddr::from(address);
-        let address: *mut T = convert_physical_to_virtual(address).as_mut_ptr();
+        let address = address as PhysicalAddress;
+        let address: *mut T = convert_physical_to_virtual(address) as *mut T;
         unsafe { address.write_volatile(value) }
     }
 
@@ -57,13 +56,13 @@ impl acpi::Handler for AcpiHandler {
         physical_address: usize,
         size: usize,
     ) -> PhysicalMapping<Self, T> {
-        let physical_address = PhysAddr::from(physical_address);
+        let physical_address = physical_address as PhysicalAddress;
         let virtual_address = convert_physical_to_virtual(physical_address);
 
-        let virtual_start = unsafe { NonNull::new_unchecked(virtual_address.as_mut_ptr()) };
+        let virtual_start = unsafe { NonNull::new_unchecked(virtual_address as *mut T) };
 
         PhysicalMapping {
-            physical_start: physical_address.as_u64() as usize,
+            physical_start: physical_address,
             virtual_start,
             region_length: size,
             mapped_length: size,

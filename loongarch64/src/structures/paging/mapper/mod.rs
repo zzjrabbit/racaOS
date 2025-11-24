@@ -10,6 +10,32 @@ use crate::{
 
 mod offset_page_table;
 
+/// Provides methods for translating virtual addresses.
+pub trait Translate {
+    /// Return the frame that the given virtual address is mapped to and the offset within that
+    /// frame.
+    ///
+    /// If the given address has a valid mapping, the mapped frame and the offset within that
+    /// frame is returned. Otherwise an error value is returned.
+    ///
+    /// This function works with huge pages of all sizes.
+    fn translate(&self, addr: VirtAddr) -> TranslateResult;
+
+    /// Translates the given virtual address to the physical address that it maps to.
+    ///
+    /// Returns `None` if there is no valid mapping for the given address.
+    ///
+    /// This is a convenience method. For more information about a mapping see the
+    /// [`translate`](Translate::translate) method.
+    #[inline]
+    fn translate_addr(&self, addr: VirtAddr) -> Option<PhysAddr> {
+        match self.translate(addr) {
+            TranslateResult::NotMapped | TranslateResult::InvalidFrameAddress(_) => None,
+            TranslateResult::Mapped { frame, offset, .. } => Some(frame.start_address() + offset),
+        }
+    }
+}
+
 /// A trait for common page table operations on pages of size `S`.
 pub trait Mapper<S: PageSize> {
     /// Creates a new mapping in the page table.
@@ -104,10 +130,10 @@ pub trait Mapper<S: PageSize> {
     /// `GLOBAL` and `WRITABLE` flags for a page might result in the corruption
     /// of values stored in that page from processes running in other address
     /// spaces.
-    unsafe fn update_flags(
+    unsafe fn update_property(
         &mut self,
         page: Page<S>,
-        flags: PageTableFlags,
+        property: PageProperty,
     ) -> Result<MapperFlush<S>, FlagUpdateError>;
 
     /// Return the frame that the specified page is mapped to.
@@ -140,7 +166,7 @@ pub trait Mapper<S: PageSize> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct PageProperty {
     flags: PageTableFlags,
     privilege: PrivilegeLevel,
@@ -183,24 +209,24 @@ impl PageProperty {
         self.cache_policy
     }
 
-    pub fn add_flags(mut self, flags: PageTableFlags) -> Self {
+    pub fn add_flags(&mut self, flags: PageTableFlags) -> Self {
         self.flags |= flags;
-        self
+        *self
     }
 
-    pub fn set_cache_policy(mut self, policy: CachePolicy) -> Self {
+    pub fn set_cache_policy(&mut self, policy: CachePolicy) -> Self {
         self.cache_policy = policy;
-        self
+        *self
     }
 
-    pub fn set_privilege(mut self, privilege: PrivilegeLevel) -> Self {
+    pub fn set_privilege(&mut self, privilege: PrivilegeLevel) -> Self {
         self.privilege = privilege;
-        self
+        *self
     }
 
-    pub fn set_privilege_restriction(mut self, restriction: bool) -> Self {
+    pub fn set_privilege_restriction(&mut self, restriction: bool) -> Self {
         self.privilege_restriction = restriction;
-        self
+        *self
     }
 }
 
@@ -216,12 +242,7 @@ pub enum TranslateResult {
         frame: MappedFrame,
         /// The offset within the mapped frame.
         offset: u64,
-        /// The entry flags in the lowest-level page table.
-        ///
-        /// Flags of higher-level page table entries are not included here, but they can still
-        /// affect the effective flags for an address, for example when the WRITABLE flag is not
-        /// set for a level 3 entry.
-        flags: PageTableFlags,
+        property: PageProperty,
     },
     /// The given virtual address is not mapped to a physical frame.
     NotMapped,

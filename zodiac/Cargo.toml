@@ -14,3 +14,4 @@ spin = "0.10.0"
 zodiac_macro = { version = "0.1.0", path = "../zodiac_macro" }
 bit_field = "0.10.3"
 humansize = "2.1.3"
+thiserror = { version = "2.0.17", default-features = false }

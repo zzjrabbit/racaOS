@@ -2,11 +2,13 @@
 
 extern crate alloc;
 
+pub use error::*;
 pub use zodiac_macro::*;
 
 mod acpi;
 pub mod arch;
 mod boot;
+mod error;
 pub mod framebuffer;
 pub mod logger;
 pub mod mem;
