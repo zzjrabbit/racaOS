@@ -6,10 +6,14 @@ pub(crate) use frame::BitmapFrameAllocator;
 pub use heap::Allocator;
 pub(crate) use page_table::GeneralPageTable;
 pub use page_table::{CachePolicy, MMUFlags, Page, PageProperty, PageSize, Privilege};
+pub use physical::{PhysicalMemory, PhysicalMemoryAllocOptions};
+pub use vm_space::VmSpace;
 
 mod frame;
 mod heap;
 mod page_table;
+mod physical;
+mod vm_space;
 
 pub type PhysicalAddress = usize;
 pub type VirtualAddress = usize;

@@ -118,7 +118,7 @@ pub trait GeneralPageTable: Sync + Send {
     fn update(
         &mut self,
         vaddr: VirtualAddress,
-        updater: fn(&mut PageProperty),
+        property: PageProperty,
     ) -> Result<PageSize, ZodiacError>;
 
     /// Note that the returned physical address is not necessarily aligned by page size.
@@ -127,7 +127,7 @@ pub trait GeneralPageTable: Sync + Send {
         &mut self,
         vaddr: VirtualAddress,
     ) -> Result<(PhysicalAddress, PageProperty, PageSize), ZodiacError>;
-    fn deep_copy(&self, remove_write: bool) -> Arc<RwLock<dyn GeneralPageTable>>;
+    fn deep_copy(&self) -> Arc<RwLock<dyn GeneralPageTable>>;
     fn activate(&self);
 
     /// Note that start_vaddr and size must be aligned by page size

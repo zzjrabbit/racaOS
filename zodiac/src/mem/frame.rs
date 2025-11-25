@@ -4,10 +4,6 @@ use alloc::fmt;
 use bit_field::BitField;
 use humansize::{BINARY, format_size};
 use limine::{memory_map::EntryType, response::MemoryMapResponse};
-use loongarch64::{
-    PhysAddr,
-    structures::paging::{FrameAllocator, FrameDeallocator, PhysFrame, Size4KiB},
-};
 
 use crate::mem::{PhysicalAddress, convert_physical_to_virtual};
 
@@ -186,7 +182,7 @@ impl BitmapFrameAllocator {
         }
     }
 
-    pub fn allocate_frames(&mut self, count: usize) -> Option<PhysFrame> {
+    pub fn allocate_frames(&mut self, count: usize) -> Option<PhysicalAddress> {
         let index = self
             .bitmap
             .find_range(count, true)
@@ -195,21 +191,13 @@ impl BitmapFrameAllocator {
         self.bitmap.set_range(index, index + count, false);
         self.usable_frames -= count;
 
-        let address = PhysAddr::new(index as u64 * 4096);
-        Some(PhysFrame::containing_address(address))
+        let address = index * 4096;
+        Some(address)
     }
-}
 
-unsafe impl FrameAllocator<Size4KiB> for BitmapFrameAllocator {
-    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
-        self.allocate_frames(1)
-    }
-}
-
-impl FrameDeallocator<Size4KiB> for BitmapFrameAllocator {
-    unsafe fn deallocate_frame(&mut self, frame: PhysFrame<Size4KiB>) {
-        let index = frame.start_address().as_u64() / 4096;
-        self.bitmap.set(index as usize, true);
-        self.usable_frames += 1;
+    pub fn deallocate_frames(&mut self, address: PhysicalAddress, count: usize) {
+        let index = address / 4096;
+        self.bitmap.set_range(index, index + count, true);
+        self.usable_frames += count;
     }
 }

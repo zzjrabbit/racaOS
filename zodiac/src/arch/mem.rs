@@ -3,12 +3,12 @@ use loongarch64::{
     PhysAddr, PrivilegeLevel, VirtAddr,
     registers::{PgdHigh, PgdLow},
     structures::paging::{
-        CachePolicy, FrameAllocator, Mapper, OffsetPageTable, Page, PageProperty, PageSize,
-        PageTable, PageTableFlags, PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate,
+        CachePolicy, FrameAllocator, FrameDeallocator, Mapper, OffsetPageTable, Page, PageProperty,
+        PageSize, PageTable, PageTableFlags, PhysFrame, Size1GiB, Size2MiB, Size4KiB, Translate,
         TranslateResult,
     },
 };
-use spin::RwLock;
+use spin::{Lazy, RwLock};
 
 use crate::{
     MapError, QueryError, UnmapError, UpdateError, ZodiacError,
@@ -17,6 +17,27 @@ use crate::{
         Privilege, VirtualAddress, convert_physical_to_virtual, convert_virtual_to_physical,
     },
 };
+
+static KERNEL_PAGE_TABLE: Lazy<Arc<RwLock<dyn GeneralPageTable>>> =
+    Lazy::new(|| current_page_table());
+
+fn current_page_table() -> Arc<RwLock<dyn GeneralPageTable>> {
+    let lower_half = PgdLow.read();
+    let lower_half = convert_physical_to_virtual(lower_half as PhysicalAddress) as *mut PageTable;
+
+    let higher_half = PgdHigh.read();
+    let higher_half = convert_physical_to_virtual(higher_half as PhysicalAddress) as *mut PageTable;
+
+    let physical_memory_offset = convert_physical_to_virtual(0) as u64;
+    let page_table = unsafe {
+        OffsetPageTable::new(&mut *lower_half, &mut *higher_half, physical_memory_offset)
+    };
+    Arc::new(RwLock::new(page_table))
+}
+
+pub fn kernel_page_table() -> Arc<RwLock<dyn GeneralPageTable>> {
+    KERNEL_PAGE_TABLE.clone()
+}
 
 fn zodiac_property_converter(property: crate::mem::PageProperty) -> PageProperty {
     let mut result = PageProperty::new();
@@ -228,24 +249,14 @@ impl GeneralPageTable for OffsetPageTable<'_> {
     fn update(
         &mut self,
         vaddr: VirtualAddress,
-        updater: fn(&mut crate::mem::PageProperty),
+        property: crate::mem::PageProperty,
     ) -> Result<crate::mem::PageSize, ZodiacError> {
         let Ok((_, _, page_size)) = self.query(vaddr) else {
             return Err(UpdateError::NotMappedYet.into());
         };
 
         let vaddr = VirtAddr::new(page_size.align_down(vaddr) as u64);
-        let property = {
-            let mut property = match self.translate(vaddr) {
-                TranslateResult::Mapped {
-                    property, frame, ..
-                } => loongarch64_property_converter(property, frame.size() != Size4KiB::SIZE),
-                _ => return Err(UpdateError::NotMappedYet.into()),
-            };
-
-            updater(&mut property);
-            zodiac_property_converter(property)
-        };
+        let property = zodiac_property_converter(property);
 
         unsafe {
             match page_size {
@@ -266,7 +277,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
         Ok(page_size)
     }
 
-    fn deep_copy(&self, remove_write: bool) -> Arc<RwLock<dyn GeneralPageTable>> {
+    fn deep_copy(&self) -> Arc<RwLock<dyn GeneralPageTable>> {
         let frame_allocator = &mut FRAME_ALLOCATOR.lock();
 
         let root_table_frame =
@@ -293,11 +304,7 @@ impl GeneralPageTable for OffsetPageTable<'_> {
                 .filter(|(_, entry)| !entry.is_unused())
             {
                 if level == 1 || entry.flags().contains(PageTableFlags::HUGE_PAGE) {
-                    let mut flags = entry.flags();
-                    if remove_write {
-                        flags.remove(PageTableFlags::WRITABLE);
-                    }
-
+                    let flags = entry.flags();
                     unsafe {
                         (&mut *target_table)[index].set_addr(entry.addr(), flags);
                     }
@@ -349,5 +356,18 @@ impl GeneralPageTable for OffsetPageTable<'_> {
             self.higher_half_page_table() as *const _ as VirtualAddress
         );
         PgdHigh.write(higher_half as u64);
+    }
+}
+
+unsafe impl FrameAllocator<Size4KiB> for BitmapFrameAllocator {
+    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
+        self.allocate_frames(1)
+            .map(|addr| PhysFrame::containing_address(PhysAddr::new(addr as u64)))
+    }
+}
+
+impl FrameDeallocator<Size4KiB> for BitmapFrameAllocator {
+    unsafe fn deallocate_frame(&mut self, frame: PhysFrame<Size4KiB>) {
+        self.deallocate_frames(frame.start_address().into(), 1);
     }
 }
