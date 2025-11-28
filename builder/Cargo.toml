@@ -7,14 +7,12 @@ edition = "2024"
 argh = "0.1.13"
 anyhow = "1.0.99"
 ovmf-prebuilt = "0.2.3"
-
-[build-dependencies]
-anyhow = "1.0.99"
 tempfile = "3.21.0"
 gpt = "4.1.0"
 fatfs = "0.3.6"
+walkdir = "2.5.0"
 
-[build-dependencies.init]
+[dependencies.init]
 path = "../init"
 artifact = "bin"
 target = "loongarch64-unknown-none"

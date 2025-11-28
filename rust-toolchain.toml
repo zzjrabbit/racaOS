@@ -1,4 +1,4 @@
 [toolchain]
 channel = "nightly"
 components = ["rust-src", "rustc-dev", "llvm-tools-preview"]
-targets = ["loongarch64-unknown-none"]
+targets = ["loongarch64-unknown-none", "loongarch64-unknown-linux-musl"]

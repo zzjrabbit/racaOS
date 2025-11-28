@@ -1,8 +1,10 @@
 use anyhow::Result;
 use argh::{FromArgValue, FromArgs};
 use ovmf_prebuilt::{Arch, FileType, Prebuilt, Source};
-use std::path::Path;
 use std::process::Command;
+
+mod image;
+mod module;
 
 #[derive(FromArgs)]
 #[argh(description = "TrashOS kernel builder and runner")]
@@ -47,7 +49,11 @@ impl FromArgValue for StorageDevice {
 
 fn main() -> Result<()> {
     let args: Args = argh::from_env();
-    let img_path = Path::new(env!("IMG_PATH"));
+
+    let modules = module::build_modules()?;
+
+    println!("modules: {modules:?}");
+    let img_path = image::build(modules)?;
     println!("Image path: {img_path:?}");
 
     let mut cmd = Command::new("qemu-system-loongarch64");

@@ -11,31 +11,40 @@ use std::{env, fs, io};
 use std::{io::Seek, io::SeekFrom};
 use tempfile::NamedTempFile;
 
-type Files = BTreeMap<&'static str, PathBuf>;
+type Files = BTreeMap<String, PathBuf>;
 
-fn main() -> Result<()> {
-    let env_path = env::var("CARGO_BIN_FILE_INIT")?;
+pub fn build(modules: Vec<String>) -> Result<PathBuf> {
+    let env_path = env!("CARGO_BIN_FILE_INIT");
     let kernel_path = Path::new(&env_path);
 
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let assets_dir = manifest_dir.join("assets");
 
     let mut files = BTreeMap::new();
-    files.insert("kernel", kernel_path.to_path_buf());
+    files.insert("kernel".into(), kernel_path.to_path_buf());
     files.insert(
-        "efi/boot/bootloongarch64.efi",
+        "efi/boot/bootloongarch64.efi".into(),
         assets_dir.join("bootloongarch64.efi"),
     );
-    files.insert("limine.conf", assets_dir.join("limine.conf"));
+    files.insert("limine.conf".into(), assets_dir.join("limine.conf"));
+
+    for module in modules.iter() {
+        files.insert(
+            format!("modules/{}.km", module),
+            manifest_dir
+                .join("../")
+                .join("target/loongarch64-unknown-linux-musl/release/")
+                .join(format!("lib{}.so", module)),
+        );
+    }
 
     let img_path = manifest_dir
         .parent()
         .ok_or_else(|| anyhow!("Failed to get parent directory"))?
         .join("racaOS.img");
     build_img(files, &img_path).expect("Failed to build UEFI disk image");
-    println!("cargo:rustc-env=IMG_PATH={}", img_path.to_str().unwrap());
 
-    Ok(())
+    Ok(img_path)
 }
 
 fn build_img(files: Files, image_path: &Path) -> Result<()> {

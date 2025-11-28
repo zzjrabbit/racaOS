@@ -1,23 +1,18 @@
-use alloc::vec::Vec;
-
 use crate::{
     PhyscialMemoryError, ZodiacError,
-    mem::{FRAME_ALLOCATOR, PageSize, PhysicalAddress, convert_physical_to_virtual},
+    mem::{
+        FRAME_ALLOCATOR, PageSize, PhysicalAddress, VmSpace, convert_physical_to_virtual,
+        vm_space::{VmReader, VmWriter},
+    },
 };
 
 pub struct PhysicalMemoryAllocOptions {
     count: usize,
-    continuous: bool,
-    address: Option<PhysicalAddress>,
 }
 
 impl PhysicalMemoryAllocOptions {
     pub const fn new() -> Self {
-        Self {
-            count: 1,
-            continuous: false,
-            address: None,
-        }
+        Self { count: 1 }
     }
 }
 
@@ -33,73 +28,30 @@ impl PhysicalMemoryAllocOptions {
         self.count = count;
         self
     }
-
-    /// Set whether the allocated frames should be contiguous.
-    pub fn continuous(mut self, continuous: bool) -> Self {
-        self.continuous = continuous;
-        self
-    }
-
-    /// Set the starting address for the allocated frames.
-    /// This is only useful when allocating continuous frames.
-    pub(crate) fn address(mut self, address: PhysicalAddress) -> Self {
-        self.address = Some(address);
-        self
-    }
 }
 
 impl PhysicalMemoryAllocOptions {
     /// Allocate physical memory frames with the specified options.
     pub fn allocate(self) -> Result<PhysicalMemory, ZodiacError> {
-        if let Some(address) = self.address {
-            if !PageSize::Size4K.is_aligned(address) || !self.continuous {
-                Err(ZodiacError::InvalidArguments)
-            } else {
-                Ok(PhysicalMemory::from_start_address(address, self.count))
-            }
-        } else {
-            PhysicalMemory::new(self.count, self.continuous)
-        }
+        PhysicalMemory::new(self.count)
     }
 }
 
 pub struct PhysicalMemory {
     count: usize,
-    continuous: bool,
-    start_address: Option<PhysicalAddress>,
-    frames: Vec<PhysicalAddress>,
+    start_address: PhysicalAddress,
 }
 
 impl PhysicalMemory {
-    fn new(count: usize, continuous: bool) -> Result<Self, ZodiacError> {
-        let start_address = if continuous {
-            Some(
-                FRAME_ALLOCATOR
-                    .lock()
-                    .allocate_frames(count)
-                    .ok_or(PhyscialMemoryError::AllocateFailed(count))?,
-            )
-        } else {
-            None
-        };
-
-        let mut frames = Vec::new();
-        if start_address.is_none() {
-            for _ in 0..count {
-                frames.push(
-                    FRAME_ALLOCATOR
-                        .lock()
-                        .allocate_frames(1)
-                        .ok_or(PhyscialMemoryError::AllocateFailed(count))?,
-                );
-            }
-        }
+    fn new(count: usize) -> Result<Self, ZodiacError> {
+        let start_address = FRAME_ALLOCATOR
+            .lock()
+            .allocate_frames(count)
+            .ok_or(PhyscialMemoryError::AllocateFailed(count))?;
 
         Ok(Self {
             count,
-            continuous,
             start_address,
-            frames,
         })
     }
 }
@@ -108,9 +60,7 @@ impl PhysicalMemory {
     pub fn from_start_address(start_address: PhysicalAddress, count: usize) -> Self {
         Self {
             count,
-            continuous: true,
-            start_address: Some(start_address),
-            frames: Vec::new(),
+            start_address,
         }
     }
 
@@ -150,18 +100,26 @@ impl PhysicalMemory {
             return Err(ZodiacError::InvalidArguments);
         }
 
-        if self.continuous() {
-            Ok(self.start_address.unwrap() + (id * PageSize::Size4K as usize))
-        } else {
-            Ok(*self.frames.get(id).unwrap())
-        }
+        Ok(self.start_address + (id * PageSize::Size4K as usize))
     }
 
     pub fn count(&self) -> usize {
         self.count
     }
+}
 
-    pub fn continuous(&self) -> bool {
-        self.continuous
+impl PhysicalMemory {
+    pub fn reader(&self, offset: usize, size: usize) -> VmReader {
+        VmSpace::kernel().reader(
+            convert_physical_to_virtual(self.start_address) + offset,
+            size,
+        )
+    }
+
+    pub fn writer(&mut self, offset: usize, size: usize) -> VmWriter {
+        VmSpace::kernel().writer(
+            convert_physical_to_virtual(self.start_address) + offset,
+            size,
+        )
     }
 }

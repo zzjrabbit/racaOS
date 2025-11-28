@@ -1,7 +1,5 @@
 use core::panic::PanicInfo;
 
-use alloc::format;
-
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
     unsafe extern "Rust" {

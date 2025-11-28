@@ -1,0 +1,7 @@
+[package]
+name = "mostd"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mostd-macros = { version = "0.1.0", path = "../mostd-macros" }

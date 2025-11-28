@@ -3,3 +3,6 @@ bindeps = true
 
 [target.'cfg(target_os = "none")']
 rustflags = ["-C", "relocation-model=static"]
+
+[target.loongarch64-unknown-linux-musl]
+linker = "rust-lld"

@@ -1,4 +1,14 @@
 [workspace]
-members = ["builder", "init", "loongarch64", "zodiac", "zodiac_macro"]
+members = ["builder", "init", "loongarch64", "modules/hello", "modules/mostd", "modules/mostd-macros", "zodiac", "zodiac_macro"]
 default-members = ["builder"]
 resolver = "3"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+lto = "thin"
+panic = "abort"
+
+[workspace.dependencies]
+std = { path = "apps/std" }
