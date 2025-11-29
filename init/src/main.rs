@@ -10,7 +10,6 @@ extern crate alloc;
 
 #[main]
 pub fn main() {
-    log::info!("log test");
     module::init();
     loop {}
 }

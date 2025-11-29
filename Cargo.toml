@@ -1,5 +1,5 @@
 [workspace]
-members = ["builder", "init", "loongarch64", "modules/hello", "modules/mostd", "modules/mostd-macros", "zodiac", "zodiac_macro"]
+members = ["builder", "init", "loongarch64", "modules/hello", "modules/memory", "modules/mostd", "modules/mostd-macros", "zodiac", "zodiac_macro"]
 default-members = ["builder"]
 resolver = "3"
 

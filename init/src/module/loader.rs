@@ -1,7 +1,7 @@
 use alloc::{sync::Arc, vec::Vec};
 use elf::{
     ElfBytes,
-    abi::{ET_DYN, PF_R, PF_W, PF_X, PT_LOAD, SHT_RELA, STB_GLOBAL, STT_NOTYPE, STV_DEFAULT},
+    abi::{ET_DYN, PF_R, PF_W, PF_X, PT_LOAD, SHT_RELA, STB_GLOBAL, STV_DEFAULT},
     endian::LittleEndian,
     segment::ProgramHeader,
 };
@@ -19,6 +19,7 @@ use crate::module::{MODULES, Module, symbols::SYMBOLS};
 pub const MODULE_START: usize = 0xffff_c000_0000_0000usize;
 pub const MODULE_SIZE: usize = 64 * 1024 * 1024;
 
+const R_LARCH_64: u32 = 2;
 const R_LARCH_RELATIVE: u32 = 3;
 const R_LARCH_JUMP_SLOT: u32 = 5;
 
@@ -60,6 +61,8 @@ impl Module {
             .map(|segment| segment.p_vaddr + segment.p_memsz)
             .max()
             .unwrap() as usize;
+        let size = PageSize::Size4K.align_up(size);
+
         let vaddr_start = MODULE_ALLOCATOR.lock().allocate(size)?;
 
         Ok((vaddr_start, size))
@@ -70,7 +73,7 @@ impl Module {
         let dyn_syms = common.dynsyms.unwrap();
         let dyn_strtab = common.dynsyms_strs.unwrap();
 
-        let symbols = SYMBOLS.lock();
+        let global_symbols = SYMBOLS.lock();
 
         let kernel_vm_space = VmSpace::kernel();
 
@@ -95,19 +98,41 @@ impl Module {
                             .write(&(value as usize))?;
                     }
                     R_LARCH_JUMP_SLOT => {
-                        let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap();
+                        let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap_or("");
 
-                        let Some(value) = symbols
-                            .get(symbol_name)
-                            .map(|value| *value as i64 + rela.r_addend)
-                        else {
-                            log::error!("Symbol {} not found!", symbol_name);
-                            return Err(ZodiacError::NotFound);
+                        let s_addr = if symbol.is_undefined() {
+                            let addr = global_symbols.get(symbol_name).ok_or_else(|| {
+                                log::error!("Symbol {} not found (import)!", symbol_name);
+                                ZodiacError::NotFound
+                            })?;
+                            *addr as i64
+                        } else {
+                            (symbol.st_value as i64) + (base as i64)
                         };
+
+                        let value = s_addr.wrapping_add(rela.r_addend) as usize;
 
                         kernel_vm_space
                             .writer(reloc_addr, size_of::<usize>())
-                            .write(&(value as usize))?;
+                            .write(&(value))?;
+                    }
+                    R_LARCH_64 => {
+                        let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap_or("");
+
+                        let s_addr = if symbol.is_undefined() {
+                            *global_symbols.get(symbol_name).ok_or_else(|| {
+                                log::error!("Symbol {} not found (import)!", symbol_name);
+                                ZodiacError::NotFound
+                            })? as i64
+                        } else {
+                            (symbol.st_value as i64) + (base as i64)
+                        };
+
+                        let value = s_addr.wrapping_add(rela.r_addend) as usize;
+
+                        kernel_vm_space
+                            .writer(reloc_addr, size_of::<usize>())
+                            .write(&(value))?;
                     }
                     _ => log::warn!("Unsupported relocation type {}!", r_type),
                 }
@@ -143,7 +168,7 @@ impl Module {
         let vaddr = base + segment.p_vaddr as VirtualAddress;
         let aligned_vaddr = PageSize::Size4K.align_down(vaddr);
 
-        let size = segment.p_memsz as usize;
+        let size = segment.p_memsz as usize + vaddr - aligned_vaddr;
         let aligned_size = PageSize::Size4K.align_up(size);
 
         let mut pm = PhysicalMemoryAllocOptions::new()
@@ -165,8 +190,8 @@ impl Module {
         let common = binary
             .find_common_data()
             .map_err(|_| ZodiacError::NotFound)?;
-        let symboltab = common.symtab.ok_or(ZodiacError::NotFound)?;
-        let symbol_strtab = common.symtab_strs.ok_or(ZodiacError::NotFound)?;
+        let symboltab = common.dynsyms.ok_or(ZodiacError::NotFound)?;
+        let symbol_strtab = common.dynsyms_strs.ok_or(ZodiacError::NotFound)?;
 
         let mut entry = None;
         let mut symbols = SYMBOLS.lock();
@@ -174,12 +199,10 @@ impl Module {
         for symbol in symboltab.iter() {
             if symbol.st_vis() == STV_DEFAULT
                 && symbol.st_bind() == STB_GLOBAL
-                && symbol.st_symtype() != STT_NOTYPE
+                && !symbol.is_undefined()
             {
                 let name = symbol_strtab.get(symbol.st_name as usize).unwrap();
                 let addr = symbol.st_value as VirtualAddress + base;
-
-                log::info!("scanned symbol[{}] at {:x}!", name, addr);
 
                 if name == "init" {
                     entry = Some(unsafe { core::mem::transmute(addr) });

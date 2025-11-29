@@ -1,7 +1,9 @@
 pub use dmw::*;
+pub use int::*;
 pub use paging::*;
 
 mod dmw;
+mod int;
 mod paging;
 
 #[macro_export]

@@ -5,10 +5,15 @@ use anyhow::Result;
 pub fn build_modules() -> Result<Vec<String>> {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let module_dir = manifest_dir.join("../modules");
-    
+
     let mut modules = Vec::<String>::new();
 
-    for entry in walkdir::WalkDir::new(module_dir).min_depth(1).max_depth(1).into_iter().flatten() {
+    for entry in walkdir::WalkDir::new(module_dir)
+        .min_depth(1)
+        .max_depth(1)
+        .into_iter()
+        .flatten()
+    {
         if entry.file_type().is_file() {
             continue;
         }
