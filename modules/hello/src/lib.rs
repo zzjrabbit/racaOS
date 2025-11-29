@@ -5,7 +5,7 @@ extern crate memory;
 use memory::tester;
 use mostd::main;
 
-#[main]
+#[main(hello)]
 fn main() {
     tester();
 }

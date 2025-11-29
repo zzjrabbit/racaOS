@@ -33,8 +33,9 @@ pub fn build(modules: Vec<String>) -> Result<PathBuf> {
             format!("modules/{}.km", module),
             manifest_dir
                 .join("../")
-                .join("target/loongarch64-unknown-linux-musl/release/")
-                .join(format!("lib{}.so", module)),
+                .join("target")
+                .join("modules")
+                .join(format!("{}.km", module)),
         );
     }
 

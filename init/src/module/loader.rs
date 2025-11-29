@@ -5,6 +5,7 @@ use elf::{
     endian::LittleEndian,
     segment::ProgramHeader,
 };
+use ruzstd::{decoding::StreamingDecoder, io::Read};
 use spin::{Lazy, Mutex};
 use zodiac::{
     ZodiacError,
@@ -24,8 +25,12 @@ const R_LARCH_RELATIVE: u32 = 3;
 const R_LARCH_JUMP_SLOT: u32 = 5;
 
 impl Module {
-    pub(super) fn load_module(data: &[u8]) -> Result<Arc<Self>, ZodiacError> {
-        let binary = ElfBytes::<LittleEndian>::minimal_parse(data)
+    pub(super) fn load_module(mut data: &[u8]) -> Result<Arc<Self>, ZodiacError> {
+        let mut decoder = StreamingDecoder::new(&mut data).unwrap();
+        let mut data = Vec::new();
+        decoder.read_to_end(&mut data).unwrap();
+
+        let binary = ElfBytes::<LittleEndian>::minimal_parse(&data)
             .map_err(|_| ZodiacError::InvalidArguments)?;
 
         if binary.ehdr.e_type != ET_DYN {
@@ -42,11 +47,15 @@ impl Module {
 
         Self::relocate(base, &binary)?;
 
-        let ModuleFnSet { entry } = Self::load_symbols(base, &binary)?;
+        let module = Arc::new(Self::load_symbols(base, &binary)?);
 
-        log::info!("Module loaded at {:x}, entry: {:p}.", base, entry);
+        log::info!(
+            "Module {} loaded at {:x}, entry: {:p}.",
+            module.name(),
+            base,
+            module.entry
+        );
 
-        let module = Arc::new(Self { entry });
         MODULES.lock().push(module.clone());
 
         Ok(module)
@@ -186,14 +195,16 @@ impl Module {
     fn load_symbols(
         base: VirtualAddress,
         binary: &ElfBytes<LittleEndian>,
-    ) -> Result<ModuleFnSet, ZodiacError> {
+    ) -> Result<Self, ZodiacError> {
         let common = binary
             .find_common_data()
             .map_err(|_| ZodiacError::NotFound)?;
         let symboltab = common.dynsyms.ok_or(ZodiacError::NotFound)?;
         let symbol_strtab = common.dynsyms_strs.ok_or(ZodiacError::NotFound)?;
 
+        let mut info: Option<&ModuleInfo> = None;
         let mut entry = None;
+
         let mut symbols = SYMBOLS.lock();
 
         for symbol in symboltab.iter() {
@@ -206,20 +217,23 @@ impl Module {
 
                 if name == "init" {
                     entry = Some(unsafe { core::mem::transmute(addr) });
+                } else if name == "_MODULE_INFO" {
+                    info = Some(unsafe { &*core::ptr::with_exposed_provenance(addr) });
                 } else {
                     symbols.insert(name.into(), addr);
                 }
             }
         }
 
-        Ok(ModuleFnSet {
-            entry: entry.unwrap(),
+        Ok(Self {
+            name: info.ok_or(ZodiacError::NotFound)?.name,
+            entry: entry.ok_or(ZodiacError::NotFound)?,
         })
     }
 }
 
-struct ModuleFnSet {
-    entry: fn(),
+struct ModuleInfo {
+    pub name: &'static str,
 }
 
 static MODULE_ALLOCATOR: Lazy<Mutex<ModuleAllocator>> =

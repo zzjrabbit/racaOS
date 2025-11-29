@@ -16,6 +16,7 @@ pub fn init() {
 
 pub struct Module {
     entry: fn(),
+    name: &'static str,
 }
 
 impl Module {
@@ -23,5 +24,9 @@ impl Module {
         let module = Self::load_module(data)?;
         (module.entry)();
         Ok(module)
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
     }
 }

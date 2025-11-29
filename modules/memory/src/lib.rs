@@ -6,5 +6,5 @@ pub fn tester() {
     panic!("test passed!");
 }
 
-#[main]
+#[main(memory)]
 fn main() {}

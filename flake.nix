@@ -20,9 +20,9 @@
             clang
             llvmPackages.bintools
             rustup
-            qemu_full
-            grub2_efi
-            xorriso
+            qemu
+            zstd
+            zstd.dev
           ];
 
           RUSTC_VERSION = overrides.toolchain.channel;

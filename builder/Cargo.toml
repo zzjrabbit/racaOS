@@ -11,6 +11,7 @@ tempfile = "3.21.0"
 gpt = "4.1.0"
 fatfs = "0.3.6"
 walkdir = "2.5.0"
+zstd = "0.13.3"
 
 [dependencies.init]
 path = "../init"
