@@ -3,9 +3,10 @@
 extern crate memory;
 
 use memory::tester;
-use mostd::main;
+use mostd::{entry, println};
 
-#[main(hello)]
+#[entry(hello)]
 fn main() {
+    println!("HELLO!");
     tester();
 }

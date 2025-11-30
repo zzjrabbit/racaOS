@@ -8,4 +8,4 @@ crate-type = ["dylib"]
 
 [dependencies]
 memory = { version = "0.1.0", path = "../memory" }
-mostd = { version = "0.1.0", path = "../mostd" }
+mostd.workspace = true

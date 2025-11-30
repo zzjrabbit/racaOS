@@ -56,5 +56,18 @@ pub fn build_modules() -> Result<Vec<String>> {
         copy_encode(&mut module_file, &mut target_file, 7)?;
     }
 
+    let core_path = target_dir
+        .join("loongarch64-unknown-linux-musl")
+        .join("release")
+        .join("deps")
+        .join("libcore_dylib.so");
+    let mut module_file = File::open(core_path)?;
+
+    let mut target_file = File::create(compressed_module_dir.clone().join("core_dylib.km"))?;
+
+    copy_encode(&mut module_file, &mut target_file, 7)?;
+
+    modules.push("core_dylib".into());
+
     Ok(modules)
 }

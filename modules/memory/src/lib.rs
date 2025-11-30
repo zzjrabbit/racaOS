@@ -1,10 +1,10 @@
 #![no_std]
 
-use mostd::main;
+use mostd::entry;
 
 pub fn tester() {
     panic!("test passed!");
 }
 
-#[main(memory)]
+#[entry(memory)]
 fn main() {}

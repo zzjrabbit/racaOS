@@ -4,4 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+core-dylib = { version = "0.1.0", path = "../core-dylib" }
 mostd-macros = { version = "0.1.0", path = "../mostd-macros" }
+zodiac-dylib = { version = "0.1.0", path = "../zodiac-dylib" }

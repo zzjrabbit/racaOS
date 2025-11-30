@@ -15,7 +15,10 @@ use zodiac::{
     },
 };
 
-use crate::module::{MODULES, Module, symbols::SYMBOLS};
+use crate::module::{
+    MODULES, Module,
+    symbols::{SYMBOLS, search_global_symbol},
+};
 
 pub const MODULE_START: usize = 0xffff_c000_0000_0000usize;
 pub const MODULE_SIZE: usize = 64 * 1024 * 1024;
@@ -82,8 +85,6 @@ impl Module {
         let dyn_syms = common.dynsyms.unwrap();
         let dyn_strtab = common.dynsyms_strs.unwrap();
 
-        let global_symbols = SYMBOLS.lock();
-
         let kernel_vm_space = VmSpace::kernel();
 
         for section in binary.section_headers().unwrap() {
@@ -110,11 +111,11 @@ impl Module {
                         let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap_or("");
 
                         let s_addr = if symbol.is_undefined() {
-                            let addr = global_symbols.get(symbol_name).ok_or_else(|| {
+                            let addr = search_global_symbol(symbol_name).ok_or_else(|| {
                                 log::error!("Symbol {} not found (import)!", symbol_name);
                                 ZodiacError::NotFound
                             })?;
-                            *addr as i64
+                            addr as i64
                         } else {
                             (symbol.st_value as i64) + (base as i64)
                         };
@@ -129,7 +130,7 @@ impl Module {
                         let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap_or("");
 
                         let s_addr = if symbol.is_undefined() {
-                            *global_symbols.get(symbol_name).ok_or_else(|| {
+                            search_global_symbol(symbol_name).ok_or_else(|| {
                                 log::error!("Symbol {} not found (import)!", symbol_name);
                                 ZodiacError::NotFound
                             })? as i64
@@ -202,10 +203,10 @@ impl Module {
         let symboltab = common.dynsyms.ok_or(ZodiacError::NotFound)?;
         let symbol_strtab = common.dynsyms_strs.ok_or(ZodiacError::NotFound)?;
 
+        let mut global_symbols = SYMBOLS.lock();
+
         let mut info: Option<&ModuleInfo> = None;
         let mut entry = None;
-
-        let mut symbols = SYMBOLS.lock();
 
         for symbol in symboltab.iter() {
             if symbol.st_vis() == STV_DEFAULT
@@ -220,7 +221,7 @@ impl Module {
                 } else if name == "_MODULE_INFO" {
                     info = Some(unsafe { &*core::ptr::with_exposed_provenance(addr) });
                 } else {
-                    symbols.insert(name.into(), addr);
+                    global_symbols.insert(name.into(), addr);
                 }
             }
         }

@@ -1,5 +1,5 @@
 [package]
-name = "memory"
+name = "core-dylib"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,5 +7,3 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [dependencies]
-mostd.workspace = true
-

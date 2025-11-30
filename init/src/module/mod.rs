@@ -11,7 +11,8 @@ mod symbols;
 static MODULES: Mutex<Vec<Arc<Module>>> = Mutex::new(Vec::new());
 
 pub fn init() {
-    init_modules!(memory, hello).unwrap();
+    symbols::init().unwrap();
+    init_modules!(core_dylib, memory, hello).unwrap();
 }
 
 pub struct Module {

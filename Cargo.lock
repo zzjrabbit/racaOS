@@ -173,6 +173,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-dylib"
+version = "0.1.0"
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -426,6 +430,7 @@ dependencies = [
  "good_memory_allocator",
  "limine",
  "log",
+ "rustc-demangle",
  "ruzstd",
  "spin 0.10.0",
  "talc",
@@ -551,7 +556,9 @@ dependencies = [
 name = "mostd"
 version = "0.1.0"
 dependencies = [
+ "core-dylib",
  "mostd-macros",
+ "zodiac-dylib",
 ]
 
 [[package]]
@@ -671,6 +678,12 @@ name = "rust-fuzzy-search"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a157657054ffe556d8858504af8a672a054a6e0bd9e8ee531059100c0fa11bb2"
+
+[[package]]
+name = "rustc-demangle"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56f7d92ca342cea22a06f2121d944b4fd82af56988c270852495420f961d4ace"
 
 [[package]]
 name = "rustix"
@@ -1313,6 +1326,13 @@ dependencies = [
  "spin 0.10.0",
  "thiserror",
  "zodiac_macro",
+]
+
+[[package]]
+name = "zodiac-dylib"
+version = "0.1.0"
+dependencies = [
+ "zodiac",
 ]
 
 [[package]]

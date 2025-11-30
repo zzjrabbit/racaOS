@@ -1,5 +1,5 @@
 [workspace]
-members = ["builder", "init", "loongarch64", "modules/hello", "modules/memory", "modules/mostd", "modules/mostd-macros", "zodiac", "zodiac_macro"]
+members = ["builder", "init", "loongarch64", "modules/*", "crates/*", "zodiac", "zodiac_macro"]
 default-members = ["builder"]
 resolver = "3"
 
@@ -11,4 +11,5 @@ lto = "thin"
 panic = "abort"
 
 [workspace.dependencies]
-std = { path = "apps/std" }
+mostd = { path = "./crates/mostd" }
+zodiac = { path = "./zodiac" }

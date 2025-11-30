@@ -3,7 +3,7 @@ use quote::quote;
 use syn::{ItemFn, parse_macro_input};
 
 #[proc_macro_attribute]
-pub fn main(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn entry(attr: TokenStream, item: TokenStream) -> TokenStream {
     let name = format!("{}", attr);
 
     let main_fn = parse_macro_input!(item as ItemFn);
