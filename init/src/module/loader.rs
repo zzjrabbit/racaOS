@@ -21,7 +21,7 @@ use crate::module::{
 };
 
 pub const MODULE_START: usize = 0xffff_c000_0000_0000usize;
-pub const MODULE_SIZE: usize = 64 * 1024 * 1024;
+pub const MODULE_SIZE: usize = 1 * 1024 * 1024 * 1024 * 1024;
 
 const R_LARCH_64: u32 = 2;
 const R_LARCH_RELATIVE: u32 = 3;

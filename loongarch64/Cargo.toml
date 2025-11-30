@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 bit_field = "0.10.3"
 bitflags = "2.10.0"
-log = "0.4.28"
+log.workspace = true

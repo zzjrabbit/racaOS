@@ -1,5 +1,9 @@
 use alloc::{collections::btree_map::BTreeMap, format, string::String};
-use elf::{ElfBytes, abi::ET_DYN, endian::LittleEndian};
+use elf::{
+    ElfBytes,
+    abi::{ET_DYN, STB_GLOBAL, STV_DEFAULT},
+    endian::LittleEndian,
+};
 use rustc_demangle::demangle;
 use spin::{Lazy, Mutex};
 use zodiac::{ZodiacError, kernel_base, kernel_file, mem::VirtualAddress};
@@ -21,6 +25,7 @@ pub fn init() -> Result<(), ZodiacError> {
     let kernel_file = kernel_file();
     let file = ElfBytes::<LittleEndian>::minimal_parse(kernel_file)
         .map_err(|_| ZodiacError::InvalidArguments)?;
+    log::info!("kernel parsed");
 
     let base = if file.ehdr.e_type == ET_DYN {
         kernel_base()
@@ -34,21 +39,43 @@ pub fn init() -> Result<(), ZodiacError> {
     let symtab = common.symtab.ok_or(ZodiacError::NotFound)?;
     let strtab = common.symtab_strs.ok_or(ZodiacError::NotFound)?;
 
+    log::info!("len: {}", symtab.len());
+
     for symbol in symtab.iter() {
-        if symbol.is_undefined() {
+        if symbol.is_undefined() || symbol.st_bind() != STB_GLOBAL || symbol.st_vis() != STV_DEFAULT
+        {
             continue;
         }
         let Ok(name) = strtab.get(symbol.st_name as usize) else {
             continue;
         };
+
+        let mut is_zodiac = false;
+
+        let mut six_exist = false;
+        for ch in name.chars().skip(23).take(3) {
+            if six_exist {
+                if ch == 'z' {
+                    is_zodiac = true;
+                }
+                break;
+            }
+            if ch == '6' {
+                six_exist = true;
+            }
+        }
+
         let name = format!("{:#}", demangle(name));
 
-        if !name.starts_with("zodiac") {
-            continue;
+        if !is_zodiac {
+            if !name.starts_with("zodiac") {
+                continue;
+            }
         }
 
         symbols.insert(name, symbol.st_value as VirtualAddress + base);
     }
+    log::info!("scanned");
 
     Ok(())
 }
