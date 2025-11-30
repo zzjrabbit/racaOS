@@ -10,9 +10,10 @@ mod symbols;
 
 static MODULES: Mutex<Vec<Arc<Module>>> = Mutex::new(Vec::new());
 
-pub fn init() {
-    symbols::init().unwrap();
-    init_modules!(core_dylib, memory, hello).unwrap();
+pub fn init() -> Result<(), ZodiacError> {
+    symbols::init()?;
+    init_modules!(core_dylib, memory, hello)?;
+    Ok(())
 }
 
 pub struct Module {

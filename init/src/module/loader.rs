@@ -29,9 +29,12 @@ const R_LARCH_JUMP_SLOT: u32 = 5;
 
 impl Module {
     pub(super) fn load_module(mut data: &[u8]) -> Result<Arc<Self>, ZodiacError> {
-        let mut decoder = StreamingDecoder::new(&mut data).unwrap();
+        let mut decoder =
+            StreamingDecoder::new(&mut data).map_err(|_| ZodiacError::InvalidArguments)?;
         let mut data = Vec::new();
-        decoder.read_to_end(&mut data).unwrap();
+        decoder
+            .read_to_end(&mut data)
+            .map_err(|_| ZodiacError::InvalidArguments)?;
 
         let binary = ElfBytes::<LittleEndian>::minimal_parse(&data)
             .map_err(|_| ZodiacError::InvalidArguments)?;
@@ -67,12 +70,12 @@ impl Module {
     fn alloc_mem(binary: &ElfBytes<LittleEndian>) -> Result<(usize, usize), ZodiacError> {
         let size = binary
             .segments()
-            .unwrap()
+            .ok_or(ZodiacError::InvalidArguments)?
             .into_iter()
             .filter(|segment| segment.p_type == PT_LOAD)
             .map(|segment| segment.p_vaddr + segment.p_memsz)
             .max()
-            .unwrap() as usize;
+            .ok_or(ZodiacError::InvalidArguments)? as usize;
         let size = PageSize::Size4K.align_up(size);
 
         let vaddr_start = MODULE_ALLOCATOR.lock().allocate(size)?;
@@ -81,23 +84,33 @@ impl Module {
     }
 
     fn relocate(base: VirtualAddress, binary: &ElfBytes<LittleEndian>) -> Result<(), ZodiacError> {
-        let common = binary.find_common_data().unwrap();
-        let dyn_syms = common.dynsyms.unwrap();
-        let dyn_strtab = common.dynsyms_strs.unwrap();
+        let common = binary
+            .find_common_data()
+            .map_err(|_| ZodiacError::InvalidArguments)?;
+        let dyn_syms = common.dynsyms.ok_or(ZodiacError::NotFound)?;
+        let dyn_strtab = common.dynsyms_strs.ok_or(ZodiacError::NotFound)?;
 
         let kernel_vm_space = VmSpace::kernel();
 
-        for section in binary.section_headers().unwrap() {
+        for section in binary
+            .section_headers()
+            .ok_or(ZodiacError::InvalidArguments)?
+        {
             if section.sh_type != SHT_RELA {
                 continue;
             }
 
-            for rela in binary.section_data_as_relas(&section).unwrap() {
+            for rela in binary
+                .section_data_as_relas(&section)
+                .map_err(|_| ZodiacError::InvalidArguments)?
+            {
                 let reloc_addr = rela.r_offset as usize + base;
                 let sym_idx = rela.r_sym;
                 let r_type = rela.r_type;
 
-                let symbol = dyn_syms.get(sym_idx as usize).unwrap();
+                let symbol = dyn_syms
+                    .get(sym_idx as usize)
+                    .map_err(|_| ZodiacError::NotFound)?;
 
                 match r_type {
                     R_LARCH_RELATIVE => {
@@ -213,7 +226,9 @@ impl Module {
                 && symbol.st_bind() == STB_GLOBAL
                 && !symbol.is_undefined()
             {
-                let name = symbol_strtab.get(symbol.st_name as usize).unwrap();
+                let Ok(name) = symbol_strtab.get(symbol.st_name as usize) else {
+                    continue;
+                };
                 let addr = symbol.st_value as VirtualAddress + base;
 
                 if name == "init" {

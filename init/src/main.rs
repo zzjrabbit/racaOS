@@ -10,7 +10,7 @@ extern crate alloc;
 
 #[main]
 pub fn main() {
-    module::init();
+    module::init().unwrap();
     loop {}
 }
 
