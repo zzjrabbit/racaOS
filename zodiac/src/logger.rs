@@ -67,14 +67,15 @@ impl Write for SerialWriter {
     }
 }
 
-pub fn _print(args: fmt::Arguments) {
+#[doc(hidden)]
+pub fn print(args: fmt::Arguments) {
     let _ = SerialWriter.write_fmt(args);
 }
 
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => (
-        $crate::logger::_print(format_args!($($arg)*))
+        $crate::logger::print(format_args!($($arg)*))
     )
 }
 

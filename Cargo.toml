@@ -7,7 +7,6 @@ resolver = "3"
 panic = "abort"
 
 [profile.release]
-lto = "thin"
 panic = "abort"
 
 [workspace.dependencies]

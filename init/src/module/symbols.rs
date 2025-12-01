@@ -1,4 +1,4 @@
-use alloc::{collections::btree_map::BTreeMap, format, string::String};
+use alloc::{boxed::Box, collections::btree_map::BTreeMap, format, string::String, vec::Vec};
 use elf::{
     ElfBytes,
     abi::{ET_DYN, STB_GLOBAL, STV_DEFAULT},
@@ -12,14 +12,16 @@ use crate::panic_handler;
 
 pub(super) fn search_global_symbol(name: &str) -> Option<VirtualAddress> {
     let demangled = format!("{:#}", demangle(name));
-    if let Some(addr) = KERNEL_SYMBOLS.lock().get(&demangled) {
-        Some(*addr)
+    if demangled.len() > 6
+        && let Some(addr) = KERNEL_SYMBOLS.lock().get_function(&demangled[6..])
+    {
+        Some(addr)
     } else {
         SYMBOLS.lock().get(name).cloned()
     }
 }
 
-static KERNEL_SYMBOLS: Mutex<BTreeMap<String, VirtualAddress>> = Mutex::new(BTreeMap::new());
+static KERNEL_SYMBOLS: Mutex<SymbolTableNode> = Mutex::new(SymbolTableNode::new());
 
 pub fn init() -> Result<(), ZodiacError> {
     let kernel_file = kernel_file();
@@ -50,30 +52,13 @@ pub fn init() -> Result<(), ZodiacError> {
             continue;
         };
 
-        let mut is_zodiac = false;
-
-        let mut six_exist = false;
-        for ch in name.chars().skip(23).take(3) {
-            if six_exist {
-                if ch == 'z' {
-                    is_zodiac = true;
-                }
-                break;
-            }
-            if ch == '6' {
-                six_exist = true;
-            }
-        }
-
         let name = format!("{:#}", demangle(name));
 
-        if !is_zodiac {
-            if !name.starts_with("zodiac") {
-                continue;
-            }
+        if !name.starts_with("zodiac") {
+            continue;
         }
 
-        symbols.insert(name, symbol.st_value as VirtualAddress + base);
+        symbols.insert(&name[6..], symbol.st_value as VirtualAddress + base);
     }
     log::info!("scanned");
 
@@ -130,4 +115,41 @@ extern "C" fn memcmp(lhs: *const u8, rhs: *const u8, n: usize) -> i32 {
         }
     }
     0
+}
+
+struct SymbolTableNode {
+    function: Option<VirtualAddress>,
+    next: BTreeMap<char, SymbolTableNode>,
+}
+
+impl SymbolTableNode {
+    pub const fn new() -> Self {
+        SymbolTableNode {
+            function: None,
+            next: BTreeMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, name: &str, address: VirtualAddress) {
+        let mut current = self;
+        for ch in name.chars() {
+            let entry = current.next.entry(ch);
+            let next = entry.or_insert(SymbolTableNode::new());
+            current = next;
+        }
+
+        current.function = Some(address);
+    }
+
+    pub fn get_function(&self, name: &str) -> Option<VirtualAddress> {
+        let mut current = self;
+        for ch in name.chars() {
+            if let Some(node) = current.next.get(&ch) {
+                current = node;
+            } else {
+                return None;
+            }
+        }
+        current.function
+    }
 }
