@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, collections::btree_map::BTreeMap, format, string::String, vec::Vec};
+use alloc::{collections::btree_map::BTreeMap, format, string::String};
 use elf::{
     ElfBytes,
     abi::{ET_DYN, STB_GLOBAL, STV_DEFAULT},
