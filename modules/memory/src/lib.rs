@@ -3,6 +3,9 @@
 
 use mostd::entry;
 
+mod vmar;
+mod vmo;
+
 pub fn tester() {
     panic!("test passed!");
 }

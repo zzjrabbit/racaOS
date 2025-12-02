@@ -175,6 +175,9 @@ dependencies = [
 [[package]]
 name = "core-dylib"
 version = "0.1.0"
+dependencies = [
+ "mostd-core",
+]
 
 [[package]]
 name = "core-foundation-sys"
@@ -283,6 +286,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "filesystem"
+version = "0.1.0"
+dependencies = [
+ "mostd",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -366,14 +376,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hello"
-version = "0.1.0"
-dependencies = [
- "memory",
- "mostd",
-]
-
-[[package]]
 name = "http"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -430,6 +432,7 @@ dependencies = [
  "good_memory_allocator",
  "limine",
  "log",
+ "mostd-core",
  "rustc-demangle",
  "ruzstd",
  "spin 0.10.0",
@@ -556,9 +559,14 @@ dependencies = [
 name = "mostd"
 version = "0.1.0"
 dependencies = [
+ "mostd-core",
  "mostd-macros",
  "zodiac-dylib",
 ]
+
+[[package]]
+name = "mostd-core"
+version = "0.1.0"
 
 [[package]]
 name = "mostd-macros"
@@ -880,6 +888,13 @@ dependencies = [
  "filetime",
  "libc",
  "xattr",
+]
+
+[[package]]
+name = "task"
+version = "0.1.0"
+dependencies = [
+ "mostd",
 ]
 
 [[package]]

@@ -1,3 +1,5 @@
+use core::alloc::Layout;
+
 use alloc::{collections::btree_map::BTreeMap, format, string::String};
 use elf::{
     ElfBytes,
@@ -80,6 +82,11 @@ pub(super) static SYMBOLS: Lazy<Mutex<BTreeMap<String, VirtualAddress>>> = Lazy:
             fn memset memset;
             fn bcmp bcmp;
             fn memcmp memcmp;
+            fn alloc alloc;
+            fn dealloc dealloc;
+            fn _Unwind_Resume _Unwind_Resume;
+            fn strlen strlen;
+            fn memmove memmove;
         )
         .into(),
     )
@@ -115,6 +122,35 @@ extern "C" fn memcmp(lhs: *const u8, rhs: *const u8, n: usize) -> i32 {
         }
     }
     0
+}
+
+fn alloc(layout: Layout) -> *mut u8 {
+    unsafe { alloc::alloc::alloc(layout) }
+}
+
+fn dealloc(ptr: *mut u8, layout: Layout) {
+    unsafe {
+        alloc::alloc::dealloc(ptr, layout);
+    }
+}
+
+#[allow(non_snake_case)]
+extern "C" fn _Unwind_Resume() {}
+
+extern "C" fn strlen(s: *const u8) -> usize {
+    let mut len = 0;
+    unsafe {
+        while *s.add(len) != 0 {
+            len += 1;
+        }
+    }
+    len
+}
+
+extern "C" fn memmove(dst: *mut u8, src: *const u8, count: usize) {
+    unsafe {
+        core::ptr::copy(src, dst, count);
+    }
 }
 
 struct SymbolTableNode {

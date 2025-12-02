@@ -2,13 +2,9 @@
 
 use core::panic::PanicInfo;
 
+pub use mostd_core::*;
 pub use mostd_macros::*;
 pub use zodiac_dylib::*;
-
-#[doc(hidden)]
-pub struct ModuleInfo {
-    pub name: &'static str,
-}
 
 #[zodiac_dylib::panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {

@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+mostd-core = { version = "0.1.0", path = "../mostd-core" }
 mostd-macros = { version = "0.1.0", path = "../mostd-macros" }
 zodiac-dylib = { version = "0.1.0", path = "../zodiac-dylib" }

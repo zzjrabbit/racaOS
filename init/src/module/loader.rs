@@ -5,6 +5,7 @@ use elf::{
     endian::LittleEndian,
     segment::ProgramHeader,
 };
+use mostd_core::ModuleInfo;
 use ruzstd::{decoding::StreamingDecoder, io::Read};
 use spin::{Lazy, Mutex};
 use zodiac::{
@@ -246,10 +247,6 @@ impl Module {
             entry: entry.ok_or(ZodiacError::NotFound)?,
         })
     }
-}
-
-struct ModuleInfo {
-    pub name: &'static str,
 }
 
 static MODULE_ALLOCATOR: Lazy<Mutex<ModuleAllocator>> =

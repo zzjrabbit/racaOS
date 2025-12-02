@@ -12,7 +12,7 @@ static MODULES: Mutex<Vec<Arc<Module>>> = Mutex::new(Vec::new());
 
 pub fn init() -> Result<(), ZodiacError> {
     symbols::init()?;
-    init_modules!(core_dylib, errors, memory, hello)?;
+    init_modules!(core_dylib, errors, memory, filesystem, task)?;
     Ok(())
 }
 

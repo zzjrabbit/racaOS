@@ -8,6 +8,7 @@ elf = { version = "0.8.0", default-features = false, features = ["alloc"] }
 good_memory_allocator = "0.1.7"
 limine = "0.5.0"
 log.workspace = true
+mostd-core = { version = "0.1.0", path = "../crates/mostd-core" }
 rustc-demangle = "0.1.26"
 ruzstd = { version = "0.8.2", default-features = false }
 spin = "0.10.0"

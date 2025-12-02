@@ -1,11 +1,10 @@
 #![no_std]
 
-use core::panic::PanicInfo;
+extern crate alloc;
 
-#[doc(hidden)]
-pub struct ModuleInfo {
-    pub name: &'static str,
-}
+use core::{alloc::GlobalAlloc, panic::PanicInfo};
+
+use mostd_core::ModuleInfo;
 
 #[used]
 #[unsafe(no_mangle)]
@@ -22,5 +21,26 @@ fn panic_handler(info: &PanicInfo) -> ! {
         }
 
         kernel_panic_handler(info);
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: Allocator = Allocator;
+
+struct Allocator;
+
+unsafe impl GlobalAlloc for Allocator {
+    unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
+        unsafe extern "Rust" {
+            fn alloc(layout: core::alloc::Layout) -> *mut u8;
+        }
+        unsafe { alloc(layout) }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: core::alloc::Layout) {
+        unsafe extern "Rust" {
+            fn dealloc(ptr: *mut u8, layout: core::alloc::Layout);
+        }
+        unsafe { dealloc(ptr, layout) }
     }
 }
