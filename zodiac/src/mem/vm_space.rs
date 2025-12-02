@@ -1,4 +1,4 @@
-use core::slice::{from_raw_parts, from_raw_parts_mut};
+use core::{fmt::Debug, mem::MaybeUninit};
 
 use alloc::sync::Arc;
 use spin::{Lazy, RwLock};
@@ -6,6 +6,7 @@ use spin::{Lazy, RwLock};
 use crate::{
     ZodiacError,
     arch::mem::kernel_page_table,
+    io::IoMem,
     mem::{
         GeneralPageTable, Page, PageProperty, PageSize, PhysicalMemory, VirtualAddress,
         convert_physical_to_virtual,
@@ -14,6 +15,12 @@ use crate::{
 
 pub struct VmSpace {
     page_table: Arc<RwLock<dyn GeneralPageTable>>,
+}
+
+impl Debug for VmSpace {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("VmSpace").finish()
+    }
 }
 
 static KERNEL_VM_SPACE: Lazy<Arc<VmSpace>> = Lazy::new(|| {
@@ -111,6 +118,44 @@ impl Cursor {
             if let Err(error) = self.page_table.write().map(
                 Page::new_aligned(vaddr + page_size as usize * index, page_size),
                 physical_memory.get_start_address_of_frame(index)?,
+                property,
+            ) && first_error.is_none()
+            {
+                first_error = Some(error);
+            }
+        }
+
+        if let Some(error) = first_error {
+            return Err(error);
+        }
+
+        self.virtual_address += page_size as usize * page_count;
+
+        Ok(())
+    }
+
+    pub fn map_iomem(
+        &mut self,
+        io_mem: &IoMem,
+        property: PageProperty,
+        offset: usize,
+        len: usize,
+    ) -> Result<(), ZodiacError> {
+        let page_size = PageSize::Size4K;
+
+        let vaddr = self.virtual_address;
+        let phys_start = page_size.align_down(io_mem.start_address() + offset);
+        let size = {
+            let end = io_mem.start_address() + offset + len;
+            end - phys_start
+        };
+        let page_count = page_size.align_up(size) / page_size as usize;
+        let mut first_error = None;
+
+        for index in 0..page_count {
+            if let Err(error) = self.page_table.write().map(
+                Page::new_aligned(vaddr + page_size as usize * index, page_size),
+                phys_start + index * page_size as usize,
                 property,
             ) && first_error.is_none()
             {
@@ -233,9 +278,8 @@ impl VmReader {
 
     /// Read data from the virtual memory space into the buffer.
     /// The virtual memory space doesn't necessarily have to be the current one.
-    pub fn read<T>(&self, buffer: &mut T) -> Result<(), ZodiacError> {
-        let buffer =
-            unsafe { from_raw_parts_mut(buffer as *mut T as *mut u8, size_of_val(buffer)) };
+    pub fn read<T: Pod>(&self, buffer: &mut T) -> Result<(), ZodiacError> {
+        let buffer = buffer.as_bytes_mut();
 
         self.read_bytes(buffer)
     }
@@ -282,10 +326,60 @@ impl VmWriter {
 
     /// Write data from the buffer into the virtual memory space.
     /// The virtual memory space doesn't necessarily have to be the current one.
-    pub fn write<T>(&self, buffer: &T) -> Result<(), ZodiacError> {
-        let buffer =
-            unsafe { from_raw_parts(buffer as *const T as *const u8, size_of_val(buffer)) };
+    pub fn write<T: Pod>(&self, buffer: &T) -> Result<(), ZodiacError> {
+        let buffer = buffer.as_bytes();
 
         self.write_bytes(buffer)
     }
 }
+
+pub unsafe trait Pod: Copy + Sized {
+    /// Creates a new instance of Pod type that is filled with zeroes.
+    fn new_zeroed() -> Self {
+        // SAFETY. An all-zero value of `T: Pod` is always valid.
+        unsafe { core::mem::zeroed() }
+    }
+
+    /// Creates a new instance of Pod type with uninitialized content.
+    fn new_uninit() -> Self {
+        // SAFETY. A value of `T: Pod` can have arbitrary bits.
+        #[allow(clippy::uninit_assumed_init)]
+        unsafe {
+            MaybeUninit::uninit().assume_init()
+        }
+    }
+
+    /// Creates a new instance from the given bytes.
+    fn from_bytes(bytes: &[u8]) -> Self {
+        let mut new_self = Self::new_uninit();
+        let copy_len = new_self.as_bytes().len();
+        new_self.as_bytes_mut().copy_from_slice(&bytes[..copy_len]);
+        new_self
+    }
+
+    /// As a slice of bytes.
+    fn as_bytes(&self) -> &[u8] {
+        let ptr = self as *const Self as *const u8;
+        let len = core::mem::size_of::<Self>();
+        unsafe { core::slice::from_raw_parts(ptr, len) }
+    }
+
+    /// As a mutable slice of bytes.
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        let ptr = self as *mut Self as *mut u8;
+        let len = core::mem::size_of::<Self>();
+        unsafe { core::slice::from_raw_parts_mut(ptr, len) }
+    }
+}
+
+macro_rules! impl_pod_for {
+    ($($pod_ty:ty),*) => {
+        $(unsafe impl Pod for $pod_ty {})*
+    };
+}
+// impl Pod for primitive types
+impl_pod_for!(
+    u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, isize, usize
+);
+// impl Pod for array
+unsafe impl<T: Pod, const N: usize> Pod for [T; N] {}

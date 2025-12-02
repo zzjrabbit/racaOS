@@ -37,6 +37,7 @@ impl PhysicalMemoryAllocOptions {
     }
 }
 
+#[derive(Debug)]
 pub struct PhysicalMemory {
     count: usize,
     start_address: PhysicalAddress,
@@ -116,7 +117,7 @@ impl PhysicalMemory {
         )
     }
 
-    pub fn writer(&mut self, offset: usize, size: usize) -> VmWriter {
+    pub fn writer(&self, offset: usize, size: usize) -> VmWriter {
         VmSpace::kernel().writer(
             convert_physical_to_virtual(self.start_address) + offset,
             size,

@@ -19,9 +19,9 @@ Everything is provided as kernel modules, including the framework. You can devel
 
 ## Roadmap
 
+- [x] Kernel Modules
 - [ ] Memory Management
 - [ ] Multitask
-- [ ] Kernel Modules
 - [ ] User space
 - [ ] AHCI driver
 - [ ] NVMe driver

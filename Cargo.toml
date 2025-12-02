@@ -14,3 +14,4 @@ mostd = { path = "./crates/mostd" }
 zodiac = { path = "./zodiac" }
 errors = { path = "./modules/errors" }
 log = "0.4.28"
+spin = "0.10.0"

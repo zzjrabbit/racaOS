@@ -542,7 +542,10 @@ dependencies = [
 name = "memory"
 version = "0.1.0"
 dependencies = [
+ "errors",
+ "log",
  "mostd",
+ "spin 0.10.0",
 ]
 
 [[package]]

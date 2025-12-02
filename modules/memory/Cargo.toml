@@ -8,4 +8,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 mostd.workspace = true
-
+errors.workspace = true
+spin.workspace = true
+log.workspace = true

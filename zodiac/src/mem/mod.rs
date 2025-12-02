@@ -7,7 +7,7 @@ pub use heap::Allocator;
 pub(crate) use page_table::GeneralPageTable;
 pub use page_table::{CachePolicy, MMUFlags, Page, PageProperty, PageSize, Privilege};
 pub use physical::{PhysicalMemory, PhysicalMemoryAllocOptions};
-pub use vm_space::VmSpace;
+pub use vm_space::{Pod, VmReader, VmSpace, VmWriter};
 
 mod frame;
 mod heap;

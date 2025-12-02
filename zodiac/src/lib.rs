@@ -11,6 +11,7 @@ pub mod arch;
 mod boot;
 mod error;
 pub mod framebuffer;
+pub mod io;
 pub mod logger;
 pub mod mem;
 mod panic;
