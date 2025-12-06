@@ -1,98 +1,95 @@
-use core::alloc::Layout;
+use core::{alloc::Layout, slice::from_raw_parts};
 
-use alloc::{collections::btree_map::BTreeMap, format, string::String};
-use elf::{
-    ElfBytes,
-    abi::{ET_DYN, STB_GLOBAL, STV_DEFAULT},
-    endian::LittleEndian,
-};
+use alloc::{format, string::ToString};
 use rustc_demangle::demangle;
 use spin::{Lazy, Mutex};
-use zodiac::{ZodiacError, kernel_base, kernel_file, mem::VirtualAddress};
+use stringmap::StringMap;
+use zodiac::mem::VirtualAddress;
 
-use crate::panic_handler;
+use crate::{module::BOOT_FILES, panic_handler};
 
 pub(super) fn search_global_symbol(name: &str) -> Option<VirtualAddress> {
-    let demangled = format!("{:#}", demangle(name));
-    if demangled.len() > 6
-        && let Some(addr) = KERNEL_SYMBOLS.lock().get_function(&demangled[6..])
-    {
-        Some(addr)
+    let demangled = format!("{:#}", demangle(name)).trim().to_string();
+
+    if let Some(addr) = KERNEL_SYMBOLS.lock().get(&demangled) {
+        Some(*addr)
     } else {
-        SYMBOLS.lock().get(name).cloned()
+        let addr = SYMBOLS.lock().get(&demangled).cloned();
+        if addr.is_none() {
+            log::warn!("Lost of symbol: [{}]!", demangled);
+        }
+        addr
     }
 }
 
-static KERNEL_SYMBOLS: Mutex<SymbolTableNode> = Mutex::new(SymbolTableNode::new());
-
-pub fn init() -> Result<(), ZodiacError> {
-    let kernel_file = kernel_file();
-    let file = ElfBytes::<LittleEndian>::minimal_parse(kernel_file)
-        .map_err(|_| ZodiacError::InvalidArguments)?;
-    log::info!("kernel parsed");
-
-    let base = if file.ehdr.e_type == ET_DYN {
-        kernel_base()
-    } else {
-        0
-    };
-
-    let mut symbols = KERNEL_SYMBOLS.lock();
-
-    let common = file.find_common_data().map_err(|_| ZodiacError::NotFound)?;
-    let symtab = common.symtab.ok_or(ZodiacError::NotFound)?;
-    let strtab = common.symtab_strs.ok_or(ZodiacError::NotFound)?;
-
-    log::info!("len: {}", symtab.len());
-
-    for symbol in symtab.iter() {
-        if symbol.is_undefined() || symbol.st_bind() != STB_GLOBAL || symbol.st_vis() != STV_DEFAULT
-        {
-            continue;
-        }
-        let Ok(name) = strtab.get(symbol.st_name as usize) else {
-            continue;
-        };
-
-        let name = format!("{:#}", demangle(name));
-
-        if !name.starts_with("zodiac") {
-            continue;
-        }
-
-        symbols.insert(&name[6..], symbol.st_value as VirtualAddress + base);
-    }
-    log::info!("scanned");
-
-    Ok(())
+pub(super) fn insert_symbol(name: &str, address: VirtualAddress) {
+    let demangled = format!("{:#}", demangle(name));
+    SYMBOLS.lock().insert(&demangled, address);
 }
 
 macro_rules! symbols {
-    ($(fn $name: ident $func: ident);* $(;)?) => {
-        [$((stringify!($name).into(), VirtualAddress::from($func as *const () as usize))),*]
+    ($(fn $name: literal [$func: path]);* $(;)?) => {
+        [$(($name.into(), VirtualAddress::from($func as *const () as usize))),*]
+    };
+
+    ($(static $name: literal [$var: path]);* $(;)?) => {
+        [$(($name.into(), VirtualAddress::from(&$var as *const _ as usize))),*]
     };
 }
 
-pub(super) static SYMBOLS: Lazy<Mutex<BTreeMap<String, VirtualAddress>>> = Lazy::new(|| {
-    Mutex::new(
-        symbols!(
-            fn kernel_panic_handler panic_handler;
-            fn rust_eh_personality rust_eh_personality;
-            fn memcpy memcpy;
-            fn memset memset;
-            fn bcmp bcmp;
-            fn memcmp memcmp;
-            fn alloc alloc;
-            fn dealloc dealloc;
-            fn _Unwind_Resume _Unwind_Resume;
-            fn strlen strlen;
-            fn memmove memmove;
-        )
-        .into(),
-    )
+static KERNEL_SYMBOLS: Lazy<Mutex<StringMap<VirtualAddress>>> = Lazy::new(|| {
+    let boot_files = BOOT_FILES.get_response().unwrap();
+    let file = boot_files
+        .modules()
+        .iter()
+        .find(|file| file.path().to_string_lossy().ends_with("symbols.sym"))
+        .unwrap();
+
+    let file_content = unsafe { from_raw_parts(file.addr(), file.size() as usize) };
+    let content = core::str::from_utf8(file_content).unwrap();
+
+    let mut map = StringMap::new();
+
+    for line in content.lines() {
+        if line.is_empty() {
+            continue;
+        }
+        let mut items = line.split(";");
+        let name = items.next().unwrap().trim();
+        let address = items.next().unwrap().trim().parse().unwrap();
+        map.insert(name, address);
+    }
+
+    Mutex::new(map)
 });
 
-fn rust_eh_personality() {}
+static SYMBOLS: Lazy<Mutex<StringMap<VirtualAddress>>> = Lazy::new(|| {
+    let mut map = StringMap::new();
+
+    let lists: &[&[(&str, VirtualAddress)]] = &[&symbols!(
+        fn "kernel_panic_handler" [panic_handler];
+        fn "rust_eh_personality" [empty_fn];
+        fn "memcpy" [memcpy];
+        fn "memset" [memset];
+        fn "bcmp" [bcmp];
+        fn "memcmp" [memcmp];
+        fn "alloc" [alloc];
+        fn "dealloc" [dealloc];
+        fn "_Unwind_Resume" [_Unwind_Resume];
+        fn "strlen" [strlen];
+        fn "memmove" [memmove];
+    )];
+
+    for list in lists {
+        for (name, addr) in list.iter() {
+            map.insert(name, *addr);
+        }
+    }
+
+    Mutex::new(map)
+});
+
+fn empty_fn() {}
 
 extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) {
     unsafe {
@@ -150,42 +147,5 @@ extern "C" fn strlen(s: *const u8) -> usize {
 extern "C" fn memmove(dst: *mut u8, src: *const u8, count: usize) {
     unsafe {
         core::ptr::copy(src, dst, count);
-    }
-}
-
-struct SymbolTableNode {
-    function: Option<VirtualAddress>,
-    next: BTreeMap<char, SymbolTableNode>,
-}
-
-impl SymbolTableNode {
-    pub const fn new() -> Self {
-        SymbolTableNode {
-            function: None,
-            next: BTreeMap::new(),
-        }
-    }
-
-    pub fn insert(&mut self, name: &str, address: VirtualAddress) {
-        let mut current = self;
-        for ch in name.chars() {
-            let entry = current.next.entry(ch);
-            let next = entry.or_insert(SymbolTableNode::new());
-            current = next;
-        }
-
-        current.function = Some(address);
-    }
-
-    pub fn get_function(&self, name: &str) -> Option<VirtualAddress> {
-        let mut current = self;
-        for ch in name.chars() {
-            if let Some(node) = current.next.get(&ch) {
-                current = node;
-            } else {
-                return None;
-            }
-        }
-        current.function
     }
 }

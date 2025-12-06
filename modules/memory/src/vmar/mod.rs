@@ -1,6 +1,11 @@
+use core::ops::Range;
+
 use alloc::{sync::Arc, vec::Vec};
-use errors::Result;
-use mostd::mem::{MMUFlags, PageProperty, VirtualAddress, VmSpace};
+use errors::{Errno, Result};
+use mostd::{
+    arch::mem::MAX_USERSPACE_VADDR,
+    mem::{MMUFlags, PageProperty, VirtualAddress, VmSpace},
+};
 use spin::RwLock;
 
 use mapping::VmMapping;
@@ -46,47 +51,58 @@ impl Vmar {
         size: usize,
         prop: PageProperty,
         process_overlap: bool,
-    ) -> Result<()> {
+    ) -> Result<Vmo> {
         if size == 0 {
-            return Ok(());
+            return Vmo::allocate_ram(0);
         }
 
         let aligned = align_down_by_page_size(addr);
         let size = align_up_by_page_size(size + addr - aligned);
 
-        let mut inner = self.inner.write();
-
         let vmo = Vmo::allocate_ram(size / PAGE_SIZE)?;
 
-        let vm_mapping = VmMapping::new(vmo, aligned, size, prop, prop.flags);
+        let vm_mapping = VmMapping::new(vmo.clone(), aligned, size, prop, prop.flags);
 
         if process_overlap {
-            let mut new_mappings = Vec::new();
-            let mut mappings_to_remove = Vec::new();
-            for mapping in inner.vm_mappings.iter_mut() {
-                if mapping.overlaps(&vm_mapping) {
-                    let (new, to_remove) = mapping.make_not_overlap_with(&vm_mapping);
-                    if let Some(new) = new {
-                        new_mappings.push(new);
-                    }
-                    if to_remove {
-                        mappings_to_remove.push(mapping.start());
-                    }
-                }
-            }
-
-            mappings_to_remove.sort();
-            mappings_to_remove.dedup();
-            for start in mappings_to_remove {
-                inner.vm_mappings.retain(|mapping| mapping.start() != start);
-            }
-
-            inner.vm_mappings.extend(new_mappings);
+            self.insert_truncate_others(vm_mapping)?;
+        } else {
+            self.insert(vm_mapping)?;
         }
 
-        inner.vm_mappings.push(vm_mapping);
+        Ok(vmo)
+    }
 
-        Ok(())
+    pub fn map_with_alloc(&self, size: usize, prop: PageProperty) -> Result<(VirtualAddress, Vmo)> {
+        let regions = self
+            .inner
+            .read()
+            .vm_mappings
+            .iter()
+            .map(|mapping| (mapping.start(), mapping.end()))
+            .collect::<Vec<_>>();
+
+        const USER_ASPACE_BASE: usize = 0x0000_0001_0000_0000;
+        let mut last_end = USER_ASPACE_BASE;
+
+        for (start, end) in regions {
+            if start < last_end {
+                continue;
+            }
+
+            let usable = start - last_end;
+            if usable >= size {
+                let vmo = self.map(last_end, size, prop, true)?;
+                return Ok((last_end, vmo));
+            }
+            last_end = end;
+        }
+
+        if last_end >= MAX_USERSPACE_VADDR {
+            Err(Errno::ENOMEM.no_message())
+        } else {
+            let vmo = self.map(last_end, size, prop, true)?;
+            Ok((last_end, vmo))
+        }
     }
 
     pub fn unmap(&self, addr: VirtualAddress, size: usize) -> Result<()> {
@@ -118,35 +134,107 @@ impl Vmar {
             return Ok(());
         }
 
+        {
+            let aligned = align_down_by_page_size(addr);
+            let size = align_up_by_page_size(size + addr - aligned);
+
+            let mut cursor = self.vm_space.cursor(aligned)?;
+            cursor.protect(size, |cprop| {
+                cprop.flags.insert(flags);
+            })?;
+        }
+
+        let mappings = self
+            .inner
+            .read()
+            .vm_mappings
+            .iter()
+            .filter(|mapping| mapping.contains_range(addr, size))
+            .map(|mapping| mapping.start())
+            .collect::<Vec<_>>();
+
+        for &vm_mapping_addr in mappings.iter() {
+            let mapping = self.remove_by_addr(vm_mapping_addr).unwrap();
+
+            if mapping.perm().contains(flags) {
+                continue;
+            }
+
+            let split_range =
+                get_intersected_range(&(mapping.start()..mapping.end()), &(addr..addr + size));
+            let split_left = split_range.start;
+            let split_right = split_range.end;
+
+            let (left, mut taken, right) = mapping.split_range(split_left, split_right)?;
+
+            if let Some(left) = left {
+                self.insert(left)?;
+            }
+            if let Some(right) = right {
+                self.insert(right)?;
+            }
+
+            let mut prop = taken.prop();
+            prop.flags |= flags;
+            taken.set_prop(prop);
+
+            taken.set_perm(taken.perm() | flags);
+
+            self.insert(taken)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Vmar {
+    fn remove_by_addr(&self, addr: VirtualAddress) -> Option<VmMapping> {
+        let index = self
+            .inner
+            .read()
+            .vm_mappings
+            .iter()
+            .position(|mapping| mapping.start() == addr)?;
+        let mapping = self.inner.write().vm_mappings.remove(index);
+        Some(mapping)
+    }
+
+    fn insert(&self, mapping: VmMapping) -> Result<()> {
         let mut inner = self.inner.write();
+        inner.vm_mappings.push(mapping);
+        Ok(())
+    }
 
-        for mapping in inner.vm_mappings.iter_mut() {
-            if mapping.contains_range(addr, size) {
-                mapping.set_prop({
-                    let mut prop = mapping.prop();
-                    prop.flags |= flags;
-                    prop
-                });
-                mapping.set_perm({
-                    let mut perm = mapping.perm();
-                    perm.insert(flags);
-                    perm
-                });
+    fn insert_truncate_others(&self, mapping: VmMapping) -> Result<()> {
+        let mappings_to_remove = self
+            .inner
+            .read()
+            .vm_mappings
+            .iter()
+            .filter(|other| other.overlaps(&mapping))
+            .map(|mapping| mapping.start())
+            .collect::<Vec<_>>();
 
-                let aligned = align_down_by_page_size(addr);
-                let size = align_up_by_page_size(size + addr - aligned);
+        for addr in mappings_to_remove {
+            let vm_mapping = self.remove_by_addr(addr).unwrap();
 
-                let mut cursor = self.vm_space.cursor(aligned)?;
-                cursor.protect(size, |cprop| {
-                    cprop.flags.insert(flags);
-                })?;
+            let vm_mapping_range = vm_mapping.start()..vm_mapping.end();
+            let required_range = mapping.start()..mapping.end();
 
-                let mut prop = mapping.prop();
-                prop.flags |= flags;
-                mapping.set_prop(prop);
+            let split_range = get_intersected_range(&vm_mapping_range, &required_range);
+            let split_left = split_range.start;
+            let split_right = split_range.end;
+
+            let (left, _taken, right) = vm_mapping.split_range(split_left, split_right)?;
+            if let Some(left) = left {
+                self.insert(left)?;
+            }
+            if let Some(right) = right {
+                self.insert(right)?;
             }
         }
 
+        self.insert(mapping)?;
         Ok(())
     }
 }
@@ -160,9 +248,7 @@ impl Vmar {
                 let address = mapping.start();
                 let size = mapping.size();
 
-                log::debug!("OK {address:x} {size:x}");
                 let mut cursor = self.vm_space.cursor(address)?;
-                log::debug!("OK");
                 cursor.protect(size, |cprop| {
                     cprop.flags.remove(MMUFlags::WRITE);
                 })?;
@@ -174,4 +260,11 @@ impl Vmar {
             inner: RwLock::new(VmarInner { vm_mappings }),
         }))
     }
+}
+
+fn get_intersected_range(
+    range1: &Range<VirtualAddress>,
+    range2: &Range<VirtualAddress>,
+) -> Range<VirtualAddress> {
+    range1.start.max(range2.start)..range1.end.min(range2.end)
 }

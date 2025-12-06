@@ -9,3 +9,4 @@ crate-type = ["dylib"]
 [dependencies]
 zodiac.workspace = true
 core-dylib = { version = "0.1.0", path = "../core-dylib" }
+mostd-core = { version = "0.1.0", path = "../mostd-core" }

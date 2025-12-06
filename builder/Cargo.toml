@@ -12,6 +12,9 @@ gpt = "4.1.0"
 fatfs = "0.3.6"
 walkdir = "2.5.0"
 zstd = "0.13.3"
+elf = "0.8.0"
+stringmap.workspace = true
+rustc-demangle = "0.1.26"
 
 [dependencies.init]
 path = "../init"

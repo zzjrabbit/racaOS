@@ -114,10 +114,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "argh",
+ "elf",
  "fatfs",
  "gpt",
  "init",
  "ovmf-prebuilt",
+ "rustc-demangle",
+ "stringmap",
  "tempfile",
  "walkdir",
  "zstd",
@@ -176,6 +179,7 @@ dependencies = [
 name = "core-dylib"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mostd-core",
 ]
 
@@ -436,6 +440,7 @@ dependencies = [
  "rustc-demangle",
  "ruzstd",
  "spin 0.10.0",
+ "stringmap",
  "talc",
  "zodiac",
 ]
@@ -520,6 +525,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
+name = "logger"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "mostd",
+]
+
+[[package]]
 name = "loongarch64"
 version = "0.1.0"
 dependencies = [
@@ -562,6 +575,7 @@ dependencies = [
 name = "mostd"
 version = "0.1.0"
 dependencies = [
+ "log",
  "mostd-core",
  "mostd-macros",
  "zodiac-dylib",
@@ -855,6 +869,10 @@ checksum = "d96d2d1d716fb500937168cc09353ffdc7a012be8475ac7308e1bdf0e3923300"
 dependencies = [
  "lock_api",
 ]
+
+[[package]]
+name = "stringmap"
+version = "0.1.0"
 
 [[package]]
 name = "subtle"
@@ -1350,6 +1368,7 @@ name = "zodiac-dylib"
 version = "0.1.0"
 dependencies = [
  "core-dylib",
+ "mostd-core",
  "zodiac",
 ]
 

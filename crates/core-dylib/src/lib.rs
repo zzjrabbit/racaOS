@@ -11,7 +11,9 @@ use mostd_core::ModuleInfo;
 pub static _MODULE_INFO: ModuleInfo = ModuleInfo { name: "core-dylib" };
 
 #[unsafe(no_mangle)]
-pub fn init() {}
+pub fn _module_init_() {
+    log::info!("Core loaded");
+}
 
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {

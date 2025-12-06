@@ -2,7 +2,7 @@ use alloc::{sync::Arc, vec::Vec};
 use spin::Mutex;
 use zodiac::ZodiacError;
 
-use crate::init_modules;
+use crate::{files, init_modules};
 
 mod loader;
 mod macros;
@@ -10,9 +10,19 @@ mod symbols;
 
 static MODULES: Mutex<Vec<Arc<Module>>> = Mutex::new(Vec::new());
 
+files!(
+    BOOT_FILES,
+    c"symbols.sym",
+    c"modules/core_dylib.km",
+    c"modules/logger.km",
+    c"modules/errors.km",
+    c"modules/memory.km",
+    c"modules/filesystem.km",
+    c"modules/task.km",
+);
+
 pub fn init() -> Result<(), ZodiacError> {
-    symbols::init()?;
-    init_modules!(core_dylib, errors, memory, filesystem, task)?;
+    init_modules!(BOOT_FILES)?;
     Ok(())
 }
 

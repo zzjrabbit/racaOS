@@ -15,8 +15,8 @@ extern "C" fn trap_handler() {
     let era = ExceptionReturnAddress.read();
     let badv = VirtAddr::new(BadVirtAddr.read());
 
-    log::error!("Unhandled exception {}!", ecode);
-    log::error!("ERA(PC): {:x} BADV: {:x}", era, badv);
+    log::error!("Unhandled exception 0x{:x}!", ecode);
+    log::error!("ERA(PC): 0x{:x} BADV: 0x{:x}", era, badv);
 
     panic!("Unrecoverable Exception");
 }

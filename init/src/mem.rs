@@ -3,7 +3,7 @@ use core::alloc::GlobalAlloc;
 use zodiac::{global_allocator, mem::Allocator};
 
 #[global_allocator]
-static ALLOCATOR: DefaultAllocator = DefaultAllocator::new();
+pub static ALLOCATOR: DefaultAllocator = DefaultAllocator::new();
 
 /// # Default Allocator
 /// This allocator manages 8MB of memory.
@@ -36,7 +36,7 @@ unsafe impl GlobalAlloc for DefaultAllocator {
 impl Allocator for DefaultAllocator {
     #[allow(static_mut_refs)]
     fn init(&self) {
-        const HEAP_SIZE: usize = 8 * 1024 * 1024;
+        const HEAP_SIZE: usize = 16 * 1024 * 1024;
         static mut HEAP: [u8; HEAP_SIZE] = [0; HEAP_SIZE];
 
         unsafe {

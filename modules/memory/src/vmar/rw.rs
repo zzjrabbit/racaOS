@@ -7,28 +7,68 @@ use crate::Vmar;
 impl Vmar {
     pub fn read_val<T: Pod>(&self, address: usize) -> Result<T> {
         let mut buffer = T::new_uninit();
-        self.vm_space
-            .reader(address, size_of::<T>())
-            .read(&mut buffer)?;
+        self.read(address, buffer.as_bytes_mut())?;
         Ok(buffer)
     }
 
     pub fn write_val<T: Pod>(&self, address: usize, value: &T) -> Result<()> {
-        self.vm_space.writer(address, size_of::<T>()).write(value)?;
+        self.write(address, value.as_bytes())?;
         Ok(())
     }
 
     pub fn read(&self, address: usize, buffer: &mut [u8]) -> Result<()> {
-        self.vm_space
-            .reader(address, buffer.len())
-            .read_bytes(buffer)?;
+        let mut read: usize = 0;
+
+        while read < buffer.len() {
+            let current_address = address + read;
+
+            let (mapping_start, mapping_size, vmo) = self
+                .inner
+                .read()
+                .vm_mappings
+                .iter()
+                .find(|mapping| mapping.contains(current_address))
+                .map(|mapping| (mapping.start(), mapping.size(), mapping.vmo().clone()))
+                .unwrap();
+
+            let remaining = buffer.len() - read;
+            let chunk_size = mapping_size.min(remaining);
+
+            vmo.read_bytes(
+                current_address - mapping_start,
+                &mut buffer[read..read + chunk_size],
+            )?;
+            read += chunk_size;
+        }
+
         Ok(())
     }
 
     pub fn write(&self, address: usize, buffer: &[u8]) -> Result<()> {
-        self.vm_space
-            .writer(address, buffer.len())
-            .write_bytes(buffer)?;
+        let mut written: usize = 0;
+
+        while written < buffer.len() {
+            let current_address = address + written;
+
+            let (mapping_start, mapping_size, vmo) = self
+                .inner
+                .read()
+                .vm_mappings
+                .iter()
+                .find(|mapping| mapping.contains(current_address))
+                .map(|mapping| (mapping.start(), mapping.size(), mapping.vmo().clone()))
+                .ok_or(Errno::EFAULT.no_message())?;
+
+            let remaining = buffer.len() - written;
+            let chunk_size = mapping_size.min(remaining);
+
+            vmo.write_bytes(
+                current_address - mapping_start,
+                &buffer[written..written + chunk_size],
+            )?;
+            written += chunk_size;
+        }
+
         Ok(())
     }
 }

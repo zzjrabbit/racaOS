@@ -1,10 +1,15 @@
+#![feature(exit_status_error)]
+
 use anyhow::Result;
 use argh::{FromArgValue, FromArgs};
 use ovmf_prebuilt::{Arch, FileType, Prebuilt, Source};
-use std::process::Command;
+use std::{fs::File, io::Write, path::Path, process::Command};
+
+use crate::symbols::scan_kernel;
 
 mod image;
 mod module;
+mod symbols;
 
 #[derive(FromArgs)]
 #[argh(description = "TrashOS kernel builder and runner")]
@@ -48,11 +53,22 @@ impl FromArgValue for StorageDevice {
 }
 
 fn main() -> Result<()> {
+    let env_path = env!("CARGO_BIN_FILE_INIT");
+    let kernel_path = Path::new(&env_path);
     let args: Args = argh::from_env();
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let symbol_file_path = manifest_dir.join("..").join("target").join("symbols.sym");
+    println!("symbol file path: {}", symbol_file_path.display());
+
+    let symbols = scan_kernel(kernel_path)?;
+    let mut file = File::create(symbol_file_path)?;
+    symbols.for_each(|name, address| {
+        writeln!(file, "{name};{address}").unwrap();
+    });
 
     let modules = module::build_modules()?;
-
     println!("modules: {modules:?}");
+
     let img_path = image::build(modules)?;
     println!("Image path: {img_path:?}");
 
@@ -107,6 +123,6 @@ fn main() -> Result<()> {
 
     cmd.args(["-device", "VGA,vgamem_mb=64"]);
 
-    cmd.spawn()?.wait()?;
+    cmd.spawn()?.wait()?.exit_ok()?;
     Ok(())
 }

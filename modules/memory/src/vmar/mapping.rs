@@ -1,7 +1,7 @@
-use errors::Result;
+use errors::{Errno, Result};
 use mostd::mem::{MMUFlags, PageProperty, VirtualAddress};
 
-use crate::{PAGE_SIZE, Vmo};
+use crate::{PAGE_SIZE, Vmo, align_down_by_page_size};
 
 #[derive(Debug)]
 pub struct VmMapping {
@@ -80,34 +80,64 @@ impl VmMapping {
         self.start + self.size
     }
 
-    pub fn make_not_overlap_with(&mut self, other: &Self) -> (Option<Self>, bool) {
-        if self.start() == other.start() && self.size() == other.size() {
-            return (None, true);
+    pub fn split_at(self, addr: VirtualAddress) -> Result<(VmMapping, VmMapping)> {
+        if !self.contains(addr) || addr % PAGE_SIZE != 0 {
+            return Err(Errno::EINVAL.no_message());
         }
 
-        if self.contains_range(other.start(), other.size()) {
-            let new_self_size = self.end() - other.end();
-            let new_self = Self::new(
-                self.vmo
-                    .split((self.vmo.len() - new_self_size) / PAGE_SIZE)
-                    .unwrap(),
-                other.end(),
-                new_self_size,
-                self.prop,
-                self.perm,
-            );
-            self.size = other.start() - self.start();
-            (Some(new_self), false)
-        } else if other.contains_range(self.start(), self.size()) {
-            (None, true)
-        } else if self.start() <= other.end() {
-            self.start = other.end();
-            (None, false)
-        } else if other.start() <= self.end() {
-            self.size = other.start() - self.start();
-            (None, false)
+        let offset = addr - self.start();
+
+        let left_vmo = self.vmo().clone();
+        let right_vmo = self
+            .vmo()
+            .split(align_down_by_page_size(offset) / PAGE_SIZE)?;
+
+        let left = Self::new(left_vmo, self.start(), offset, self.prop(), self.perm());
+        let right = Self::new(
+            right_vmo,
+            addr,
+            self.size() - offset,
+            self.prop(),
+            self.perm(),
+        );
+
+        Ok((left, right))
+    }
+
+    pub fn split_range(
+        self,
+        left: VirtualAddress,
+        right: VirtualAddress,
+    ) -> Result<(Option<Self>, Self, Option<Self>)> {
+        if left % PAGE_SIZE != 0 || right % PAGE_SIZE != 0 {
+            return Err(Errno::EINVAL.no_message());
+        }
+
+        let start = self.start();
+        let end = self.end();
+
+        if left <= start && right >= end {
+            Ok((None, self, None))
+        } else if start < left {
+            let (left, within) = self.split_at(left)?;
+            if right < end {
+                let (within, right) = within.split_at(right)?;
+                Ok((Some(left), within, Some(right)))
+            } else {
+                Ok((Some(left), within, None))
+            }
+        } else if right < end {
+            let (within, right) = self.split_at(right)?;
+            Ok((None, within, Some(right)))
         } else {
-            (None, false)
+            log::warn!(
+                "The mapping {:x}..{:x} does not contain range {:x}..{:x}!",
+                start,
+                end,
+                left,
+                right
+            );
+            Err(Errno::EINVAL.no_message())
         }
     }
 }

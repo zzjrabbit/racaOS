@@ -18,7 +18,7 @@ use zodiac::{
 
 use crate::module::{
     MODULES, Module,
-    symbols::{SYMBOLS, search_global_symbol},
+    symbols::{insert_symbol, search_global_symbol},
 };
 
 pub const MODULE_START: usize = 0xffff_c000_0000_0000usize;
@@ -125,10 +125,9 @@ impl Module {
                         let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap_or("");
 
                         let s_addr = if symbol.is_undefined() {
-                            let addr = search_global_symbol(symbol_name).ok_or_else(|| {
-                                log::error!("Symbol {} not found (import)!", symbol_name);
-                                ZodiacError::NotFound
-                            })?;
+                            let Some(addr) = search_global_symbol(symbol_name) else {
+                                continue;
+                            };
                             addr as i64
                         } else {
                             (symbol.st_value as i64) + (base as i64)
@@ -143,13 +142,12 @@ impl Module {
                     R_LARCH_64 => {
                         let symbol_name = dyn_strtab.get(symbol.st_name as usize).unwrap_or("");
 
-                        let s_addr = if symbol.is_undefined() {
-                            search_global_symbol(symbol_name).ok_or_else(|| {
-                                log::error!("Symbol {} not found (import)!", symbol_name);
-                                ZodiacError::NotFound
-                            })? as i64
+                        let Some(s_addr) = (if symbol.is_undefined() {
+                            search_global_symbol(symbol_name).map(|v| v as i64)
                         } else {
-                            (symbol.st_value as i64) + (base as i64)
+                            Some((symbol.st_value as i64) + (base as i64))
+                        }) else {
+                            continue;
                         };
 
                         let value = s_addr.wrapping_add(rela.r_addend) as usize;
@@ -195,9 +193,10 @@ impl Module {
         let size = segment.p_memsz as usize + vaddr - aligned_vaddr;
         let aligned_size = PageSize::Size4K.align_up(size);
 
-        let mut pm = PhysicalMemoryAllocOptions::new()
+        let pm = PhysicalMemoryAllocOptions::new()
             .count(aligned_size / PageSize::Size4K as usize)
             .allocate()?;
+        pm.zero()?;
 
         let data = binary.segment_data(&segment).unwrap();
         pm.writer(vaddr - aligned_vaddr, data.len())
@@ -217,8 +216,6 @@ impl Module {
         let symboltab = common.dynsyms.ok_or(ZodiacError::NotFound)?;
         let symbol_strtab = common.dynsyms_strs.ok_or(ZodiacError::NotFound)?;
 
-        let mut global_symbols = SYMBOLS.lock();
-
         let mut info: Option<&ModuleInfo> = None;
         let mut entry = None;
 
@@ -232,12 +229,12 @@ impl Module {
                 };
                 let addr = symbol.st_value as VirtualAddress + base;
 
-                if name == "init" {
+                if name == "_module_init_" {
                     entry = Some(unsafe { core::mem::transmute(addr) });
                 } else if name == "_MODULE_INFO" {
                     info = Some(unsafe { &*core::ptr::with_exposed_provenance(addr) });
                 } else {
-                    global_symbols.insert(name.into(), addr);
+                    insert_symbol(name, addr);
                 }
             }
         }

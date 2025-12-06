@@ -18,6 +18,8 @@ use crate::{
     },
 };
 
+pub const MAX_USERSPACE_VADDR: usize = 0xffffffffffffffff;
+
 static KERNEL_PAGE_TABLE: Lazy<Arc<RwLock<dyn GeneralPageTable>>> =
     Lazy::new(|| current_page_table());
 

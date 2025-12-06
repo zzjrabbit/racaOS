@@ -123,4 +123,19 @@ impl PhysicalMemory {
             size,
         )
     }
+
+    pub fn zero(&self) -> Result<(), ZodiacError> {
+        let page_size = PageSize::Size4K;
+
+        let zeros = alloc::vec![0; page_size as usize];
+        for id in 0..self.count {
+            VmSpace::kernel()
+                .writer(
+                    convert_physical_to_virtual(self.start_address) + id * page_size as usize,
+                    page_size as usize,
+                )
+                .write_bytes(&zeros)?;
+        }
+        Ok(())
+    }
 }

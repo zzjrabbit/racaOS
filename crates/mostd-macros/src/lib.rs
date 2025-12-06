@@ -18,7 +18,7 @@ pub fn entry(attr: TokenStream, item: TokenStream) -> TokenStream {
         };
 
         #[unsafe(no_mangle)]
-        pub extern "C" fn init() {
+        pub extern "C" fn _module_init_() {
             let _: () = #main_fn_name();
         }
 

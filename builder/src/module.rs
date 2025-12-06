@@ -1,6 +1,6 @@
 use std::{
     fs::{File, create_dir_all},
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -48,6 +48,7 @@ pub fn build_modules() -> Result<Vec<String>> {
             .join("loongarch64-unknown-linux-musl")
             .join("release")
             .join(format!("lib{}.so", module));
+
         let mut module_file = File::open(module_path)?;
 
         let mut target_file =
@@ -56,18 +57,24 @@ pub fn build_modules() -> Result<Vec<String>> {
         copy_encode(&mut module_file, &mut target_file, 7)?;
     }
 
-    let core_path = target_dir
-        .join("loongarch64-unknown-linux-musl")
-        .join("release")
-        .join("deps")
-        .join("libcore_dylib.so");
-    let mut module_file = File::open(core_path)?;
-
-    let mut target_file = File::create(compressed_module_dir.clone().join("core_dylib.km"))?;
-
-    copy_encode(&mut module_file, &mut target_file, 7)?;
-
+    compress(&target_dir, &compressed_module_dir, "core_dylib".into())?;
     modules.push("core_dylib".into());
 
     Ok(modules)
+}
+
+fn compress(target_dir: &PathBuf, compressed_module_dir: &PathBuf, module: String) -> Result<()> {
+    let module_path = target_dir
+        .join("loongarch64-unknown-linux-musl")
+        .join("release")
+        .join("deps")
+        .join(format!("lib{}.so", module));
+    let mut module_file = File::open(module_path)?;
+
+    let mut target_file =
+        File::create(compressed_module_dir.clone().join(format!("{}.km", module)))?;
+
+    copy_encode(&mut module_file, &mut target_file, 7)?;
+
+    Ok(())
 }

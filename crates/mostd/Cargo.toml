@@ -7,3 +7,4 @@ edition = "2024"
 mostd-core = { version = "0.1.0", path = "../mostd-core" }
 mostd-macros = { version = "0.1.0", path = "../mostd-macros" }
 zodiac-dylib = { version = "0.1.0", path = "../zodiac-dylib" }
+log.workspace = true

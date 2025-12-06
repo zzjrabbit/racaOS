@@ -2,7 +2,8 @@
 bindeps = true
 
 [target.'cfg(target_os = "none")']
-rustflags = ["-C", "relocation-model=static"]
+rustflags = ["-Crelocation-model=static", "-Zexport-executable-symbols", "-Clink-dead-code"]
 
 [target.loongarch64-unknown-linux-musl]
 linker = "rust-lld"
+rustflags = ["-C", "target-feature=-lasx,-lsx"]

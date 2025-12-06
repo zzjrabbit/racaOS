@@ -3,7 +3,10 @@
 
 extern crate alloc;
 
-use mostd::{entry, mem::PageSize};
+use mostd::{
+    entry,
+    mem::{CachePolicy, MMUFlags, PageProperty, PageSize, Privilege},
+};
 
 pub use vmar::*;
 pub use vmo::*;
@@ -22,4 +25,20 @@ pub const fn align_up_by_page_size(addr: usize) -> usize {
 }
 
 #[entry(memory)]
-fn main() {}
+fn main() {
+    let vmar = Vmar::new();
+    let (address, _) = vmar
+        .map_with_alloc(
+            1024,
+            PageProperty::new(
+                MMUFlags::READ | MMUFlags::WRITE,
+                CachePolicy::CacheCoherent,
+                Privilege::KernelOnly,
+            ),
+        )
+        .unwrap();
+    vmar.write_val(address, &0x114514u64);
+
+    let val: u64 = vmar.read_val(address).unwrap();
+    assert_eq!(val, 0x114514u64);
+}

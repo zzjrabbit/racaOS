@@ -1,5 +1,5 @@
 [package]
-name = "core-dylib"
+name = "logger"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,5 +7,5 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [dependencies]
-mostd-core = { version = "0.1.0", path = "../mostd-core" }
+mostd.workspace = true
 log.workspace = true

@@ -20,6 +20,7 @@ impl IoMem {
         let size = range.end - range.start;
 
         let start_address = convert_physical_to_virtual(start);
+        log::info!("start address: {:x}", start_address);
 
         Ok(Arc::new(IoMem {
             start_address,

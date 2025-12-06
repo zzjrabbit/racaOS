@@ -20,6 +20,8 @@ pub fn build(modules: Vec<String>) -> Result<PathBuf> {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let assets_dir = manifest_dir.join("assets");
 
+    let symbol_file_path = manifest_dir.join("..").join("target").join("symbols.sym");
+
     let mut files = BTreeMap::new();
     files.insert("kernel".into(), kernel_path.to_path_buf());
     files.insert(
@@ -27,6 +29,7 @@ pub fn build(modules: Vec<String>) -> Result<PathBuf> {
         assets_dir.join("bootloongarch64.efi"),
     );
     files.insert("limine.conf".into(), assets_dir.join("limine.conf"));
+    files.insert("symbols.sym".into(), symbol_file_path);
 
     for module in modules.iter() {
         files.insert(
