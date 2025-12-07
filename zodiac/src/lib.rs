@@ -20,4 +20,7 @@ fn init() {
     mem::init();
     arch::init();
     logger::init();
+
+    #[cfg(feature = "smp")]
+    arch::init_smp();
 }

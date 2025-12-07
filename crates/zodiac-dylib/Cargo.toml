@@ -7,6 +7,6 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [dependencies]
-zodiac.workspace = true
+zodiac = { path = "../../zodiac", default-features = false }
 core-dylib = { version = "0.1.0", path = "../core-dylib" }
 mostd-core = { version = "0.1.0", path = "../mostd-core" }

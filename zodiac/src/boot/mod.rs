@@ -7,8 +7,6 @@ use limine::{
 
 use crate::mem::VirtualAddress;
 
-mod smp;
-
 #[used]
 #[unsafe(link_section = ".requests")]
 static BASE_REVISION: BaseRevision = BaseRevision::with_revision(4);
