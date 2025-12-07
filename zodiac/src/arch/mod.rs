@@ -1,16 +1,17 @@
+#[cfg(feature = "smp")]
+mod boot;
+pub(crate) mod context;
 mod error;
+mod int;
 pub mod mem;
 pub mod serial;
-#[cfg(feature = "smp")]
-mod smp;
-mod trap;
 
 pub(crate) fn init() {
     serial::init();
-    trap::init();
+    int::init();
 }
 
 #[cfg(feature = "smp")]
 pub(crate) fn init_smp() {
-    smp::init();
+    boot::init();
 }

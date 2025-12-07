@@ -15,6 +15,7 @@ pub mod io;
 pub mod logger;
 pub mod mem;
 mod panic;
+pub mod task;
 
 fn init() {
     mem::init();
