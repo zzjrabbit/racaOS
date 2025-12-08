@@ -3,12 +3,7 @@
 
 use alloc::sync::Arc;
 use limine::request::StackSizeRequest;
-use zodiac::{
-    arch::{enable_int, idle_loop},
-    main,
-    mem::VmSpace,
-    println,
-};
+use zodiac::{arch::idle_loop, main, mem::VmSpace, println};
 
 mod mem;
 mod module;
@@ -22,7 +17,6 @@ static STACK_REQUEST: StackSizeRequest = StackSizeRequest::new().with_size(256 *
 #[main]
 pub fn main() {
     module::init().unwrap();
-    enable_int();
     idle_loop();
 }
 

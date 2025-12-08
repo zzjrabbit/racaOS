@@ -15,3 +15,7 @@ pub fn init() {
 pub fn enable_int() {
     interrupt::enable();
 }
+
+pub fn disable_int() {
+    interrupt::disable();
+}

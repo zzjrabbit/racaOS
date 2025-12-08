@@ -1,4 +1,6 @@
-pub use int::enable_int;
+pub(crate) use int::{disable_int, enable_int};
+
+use crate::irq::DisabledLocalIrqGuard;
 
 #[cfg(feature = "smp")]
 mod boot;
@@ -20,6 +22,9 @@ pub(crate) fn init_smp() {
 }
 
 pub fn idle_ins() {
+    if DisabledLocalIrqGuard::count() != 0 {
+        panic!("Disable irq and idle would cause dead loop!");
+    }
     unsafe {
         core::arch::asm!("idle 0");
     }
