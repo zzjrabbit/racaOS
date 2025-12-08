@@ -4,7 +4,10 @@ use alloc::alloc::alloc;
 use bit_field::BitField;
 use loongarch64::registers::{IpiSend, MailSend};
 
-use crate::mem::{PageSize, VirtualAddress, VmSpace};
+use crate::{
+    arch::idle_loop,
+    mem::{PageSize, VirtualAddress, VmSpace},
+};
 
 pub fn init() {
     for i in 1..8 {
@@ -28,8 +31,8 @@ static mut BOOT_DATA: BootData = BootData {
 global_asm!(include_str!("entry.asm"));
 
 #[unsafe(no_mangle)]
-extern "C" fn ap_rust_entry() {
-    loop {}
+extern "C" fn ap_rust_entry() -> ! {
+    idle_loop();
 }
 
 unsafe extern "C" {

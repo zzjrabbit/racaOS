@@ -21,7 +21,8 @@ use crate::module::{
     symbols::{insert_symbol, search_global_symbol},
 };
 
-pub const MODULE_START: usize = 0xffff_c000_0000_0000usize;
+const MODULE_END: usize = 0xffff_ffff_8000_0000usize;
+pub const MODULE_START: usize = MODULE_END - MODULE_SIZE;
 pub const MODULE_SIZE: usize = 1 * 1024 * 1024 * 1024 * 1024;
 
 const R_LARCH_64: u32 = 2;

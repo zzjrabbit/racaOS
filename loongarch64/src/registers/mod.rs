@@ -1,11 +1,13 @@
 pub use dmw::*;
 pub use int::*;
 pub use ipi::*;
+pub use mode::*;
 pub use paging::*;
 
 mod dmw;
 mod int;
 mod ipi;
+mod mode;
 mod paging;
 
 #[macro_export]

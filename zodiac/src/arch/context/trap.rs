@@ -1,4 +1,4 @@
-use crate::mem::VirtualAddress;
+use crate::{arch::context::GeneralRegs, mem::VirtualAddress};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -23,4 +23,17 @@ impl CpuExceptionInfo {
     pub fn exception_code(&self) -> u64 {
         self.code
     }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+#[repr(C)]
+pub struct TrapFrame {
+    /// General registers
+    pub general: GeneralRegs,
+    /// Pre-exception Mode Information
+    pub prmd: usize,
+    /// Exception Return Address
+    pub era: usize,
+    /// Extended Unit Enable
+    pub euen: usize,
 }

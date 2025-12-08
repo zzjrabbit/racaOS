@@ -3,7 +3,12 @@
 
 use alloc::sync::Arc;
 use limine::request::StackSizeRequest;
-use zodiac::{main, mem::VmSpace, println};
+use zodiac::{
+    arch::{enable_int, idle_loop},
+    main,
+    mem::VmSpace,
+    println,
+};
 
 mod mem;
 mod module;
@@ -17,7 +22,8 @@ static STACK_REQUEST: StackSizeRequest = StackSizeRequest::new().with_size(256 *
 #[main]
 pub fn main() {
     module::init().unwrap();
-    loop {}
+    enable_int();
+    idle_loop();
 }
 
 pub fn make_alloc() {
@@ -28,5 +34,5 @@ pub fn make_alloc() {
 #[zodiac::panic_handler]
 fn panic_handler(info: &core::panic::PanicInfo) -> ! {
     println!("Panic occurred: {}", info);
-    loop {}
+    idle_loop();
 }

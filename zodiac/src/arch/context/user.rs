@@ -25,6 +25,17 @@ impl Default for RawUserContext {
     }
 }
 
+impl RawUserContext {
+    pub(in crate::arch) fn run(&mut self) {
+        unsafe extern "C" {
+            fn run_user(regs: &mut RawUserContext);
+        }
+        unsafe {
+            run_user(self);
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct UserContext {
